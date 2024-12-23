@@ -42,8 +42,8 @@ abstract class MarkdownComponent {
     List<InlineSpan> spans = [];
 
     List<MarkdownComponent> combinedComponenets = [
+      ...config.customComponents,
       ...components,
-      ...config.customComponents
     ];
 
     List<String> regexes =
@@ -230,7 +230,7 @@ class HTag extends BlockMd {
 
 class NewLines extends InlineMd {
   @override
-  RegExp get exp => RegExp(r"\n\n+");
+  RegExp get exp => RegExp(r"""\n\n+""");
   @override
   InlineSpan span(
     BuildContext context,
