@@ -102,6 +102,7 @@ abstract class MarkdownComponent {
   );
 
   RegExp get exp;
+
   bool get inline;
 }
 
@@ -170,6 +171,7 @@ abstract class BlockMd extends MarkdownComponent {
 class HTag extends BlockMd {
   @override
   String get expString => (r"(?<hash>#{1,6})\ (?<data>[^\n]+?)$");
+
   @override
   Widget build(
     BuildContext context,
@@ -221,6 +223,7 @@ class HTag extends BlockMd {
 class NewLines extends InlineMd {
   @override
   RegExp get exp => RegExp(r"\n\n+");
+
   @override
   InlineSpan span(
     BuildContext context,
@@ -241,6 +244,7 @@ class NewLines extends InlineMd {
 class HrLine extends BlockMd {
   @override
   String get expString => (r"(--)[-]+$");
+
   @override
   Widget build(
     BuildContext context,
@@ -260,6 +264,7 @@ class HrLine extends BlockMd {
 class CheckBoxMd extends BlockMd {
   @override
   String get expString => (r"\[(\x?)\]\ (\S[^\n]*?)$");
+
   get onLinkTab => null;
 
   @override
@@ -284,6 +289,7 @@ class CheckBoxMd extends BlockMd {
 class RadioButtonMd extends BlockMd {
   @override
   String get expString => (r"\((\x?)\)\ (\S[^\n]*)$");
+
   get onLinkTab => null;
 
   @override
@@ -308,6 +314,7 @@ class RadioButtonMd extends BlockMd {
 class IndentMd extends InlineMd {
   @override
   bool get inline => false;
+
   @override
   RegExp get exp =>
       // RegExp(r"(?<=\n\n)(\ +)(.+?)(?=\n\n)", dotAll: true, multiLine: true);
@@ -542,6 +549,7 @@ class ItalicMd extends InlineMd {
 class LatexMathMultiLine extends BlockMd {
   @override
   String get expString => (r"\\\[(((?!\n\n).)*?)\\\]|(\\begin.*?\\end{.*?})");
+
   @override
   RegExp get exp => RegExp(expString, dotAll: true, multiLine: true);
 
@@ -720,7 +728,8 @@ class SourceTag extends InlineMd {
 /// Link text component
 class ATagMd extends InlineMd {
   @override
-  RegExp get exp => RegExp(r"\[([^\s\*\[][^\n]*?[^\s]?)?\]\(([^\s\*]*[^\)])\)");
+  RegExp get exp =>
+      RegExp(r"(?<!!)\[((?:[^\]\n]|\\\])*)\]\(((?:[^)\n]|\\\))*)\)");
 
   @override
   InlineSpan span(
@@ -823,6 +832,7 @@ class TableMd extends BlockMd {
   @override
   String get expString =>
       (r"(((\|[^\n\|]+\|)((([^\n\|]+\|)+)?))(\n(((\|[^\n\|]+\|)(([^\n\|]+\|)+)?)))+)$");
+
   @override
   Widget build(
     BuildContext context,
@@ -914,6 +924,7 @@ class TableMd extends BlockMd {
 class CodeBlockMd extends BlockMd {
   @override
   String get expString => r"```(.*?)\n((.*?)(:?\n\s*?```)|(.*)(:?\n```)?)$";
+
   @override
   Widget build(
     BuildContext context,
