@@ -840,9 +840,10 @@ class ImageMd extends InlineMd {
     final GptMarkdownConfig config,
   ) {
     var match = exp.firstMatch(text.trim());
+    String? altText = match?[1];
     double? height;
     double? width;
-    if (match?[1] != null) {
+    if (altText != null) {
       var size = RegExp(
         r"^([0-9]+)?x?([0-9]+)?",
       ).firstMatch(match![1].toString().trim());
@@ -851,13 +852,14 @@ class ImageMd extends InlineMd {
     }
     final Widget image;
     if (config.imageBuilder != null) {
-      image = config.imageBuilder!(context, '${match?[2]}');
+      image = config.imageBuilder!(context, '${match?[2]}', altText);
     } else {
       image = SizedBox(
         width: width,
         height: height,
         child: Image(
           image: NetworkImage("${match?[2]}"),
+          semanticLabel: altText,
           loadingBuilder: (
             BuildContext context,
             Widget child,

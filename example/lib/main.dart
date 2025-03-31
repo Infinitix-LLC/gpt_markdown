@@ -487,11 +487,13 @@ This document was created to test the robustness of Markdown parsers and to ensu
                                             RegExp(r"align\*"),
                                             (match) => "aligned");
                                       },
-                                      imageBuilder: (context, url) {
+                                      imageBuilder:
+                                          (context, url, semanticLabel) {
                                         return Image.network(
                                           url,
                                           width: 100,
                                           height: 100,
+                                          semanticLabel: semanticLabel,
                                         );
                                       },
                                       latexBuilder:
