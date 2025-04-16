@@ -16,7 +16,6 @@ abstract class MarkdownComponent {
         HrLine(),
         LatexMath(),
         LatexMathMultiLine(),
-        ImageMd(),
         HighlightedText(),
         StrikeMd(),
         BoldMd(),
@@ -779,7 +778,7 @@ class ATagMd extends InlineMd {
 /// Image component
 class ImageMd extends InlineMd {
   @override
-  RegExp get exp => RegExp(r"\!\[([^\s][^\n]*[^\s]?)?\]\(([^\s]+?)\)");
+  RegExp get exp => RegExp(r"!\[([^\]]*)\]\((?<url>[^)]+)\)");
 
   @override
   InlineSpan span(
@@ -788,40 +787,40 @@ class ImageMd extends InlineMd {
     final GptMarkdownConfig config,
   ) {
     var match = exp.firstMatch(text.trim());
-    double? height;
-    double? width;
-    if (match?[1] != null) {
-      var size = RegExp(r"^([0-9]+)?x?([0-9]+)?")
-          .firstMatch(match![1].toString().trim());
-      width = double.tryParse(size?[1]?.toString().trim() ?? 'a');
-      height = double.tryParse(size?[2]?.toString().trim() ?? 'a');
+    final url = match?.namedGroup('url');
+    if (url == null || url.isEmpty) {
+      return const TextSpan();
     }
+
+    // double? height;
+    // double? width;
+    // if (match?[1] != null) {
+    //   var size = RegExp(r"^([0-9]+)?x?([0-9]+)?")
+    //       .firstMatch(match![1].toString().trim());
+    //   width = double.tryParse(size?[1]?.toString().trim() ?? 'a');
+    //   height = double.tryParse(size?[2]?.toString().trim() ?? 'a');
+    // }
+
     return WidgetSpan(
       alignment: PlaceholderAlignment.bottom,
-      child: SizedBox(
-        width: width,
-        height: height,
-        child: Image(
-          image: NetworkImage(
-            "${match?[2]}",
-          ),
-          loadingBuilder: (BuildContext context, Widget child,
-              ImageChunkEvent? loadingProgress) {
-            if (loadingProgress == null) {
-              return child;
-            }
-            return CustomImageLoading(
-              progress: loadingProgress.expectedTotalBytes != null
-                  ? loadingProgress.cumulativeBytesLoaded /
-                      loadingProgress.expectedTotalBytes!
-                  : 1,
-            );
-          },
-          fit: BoxFit.fill,
-          errorBuilder: (context, error, stackTrace) {
-            return const CustomImageError();
-          },
-        ),
+      child: Image(
+        image: NetworkImage(url),
+        loadingBuilder: (BuildContext context, Widget child,
+            ImageChunkEvent? loadingProgress) {
+          if (loadingProgress == null) {
+            return child;
+          }
+          return CustomImageLoading(
+            progress: loadingProgress.expectedTotalBytes != null
+                ? loadingProgress.cumulativeBytesLoaded /
+                    loadingProgress.expectedTotalBytes!
+                : 1,
+          );
+        },
+        fit: BoxFit.fill,
+        errorBuilder: (context, error, stackTrace) {
+          return const CustomImageError();
+        },
       ),
     );
   }
