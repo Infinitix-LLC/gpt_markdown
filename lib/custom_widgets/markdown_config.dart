@@ -54,7 +54,12 @@ typedef HighlightBuilder =
     Widget Function(BuildContext context, String text, TextStyle style);
 
 /// A builder function for the image.
-typedef ImageBuilder = Widget Function(BuildContext context, String imageUrl);
+typedef ImageBuilder =
+    Widget Function(
+      BuildContext context,
+      String imageUrl,
+      String? semanticLabel,
+    );
 
 /// A configuration class for the GPT Markdown component.
 ///
