@@ -779,10 +779,12 @@ class SourceTag extends InlineMd {
   }
 }
 
+
+
 /// Link text component
 class ATagMd extends InlineMd {
   @override
-  RegExp get exp => RegExp(r"\[([^\s\*\[][^\n]*?[^\s]?)?\]\(([^\s\*]*[^\)])\)");
+  RegExp get exp => RegExp(r"\[[^\[\]]*\]\([^\s]*\)");
 
   @override
   InlineSpan span(
@@ -790,13 +792,41 @@ class ATagMd extends InlineMd {
     String text,
     final GptMarkdownConfig config,
   ) {
-    var match = exp.firstMatch(text.trim());
-    if (match?[1] == null && match?[2] == null) {
+    // First try to find the basic pattern
+    final basicMatch = RegExp(r'\[([^\[\]]*)\]\(').firstMatch(text.trim());
+    if (basicMatch == null) {
       return const TextSpan();
     }
 
-    final linkText = match?[1] ?? "";
-    final url = match?[2] ?? "";
+    final linkText = basicMatch.group(1) ?? '';
+    final urlStart = basicMatch.end;
+
+    // Now find the balanced closing parenthesis
+    int parenCount = 0;
+    int urlEnd = urlStart;
+
+    for (int i = urlStart; i < text.length; i++) {
+      final char = text[i];
+
+      if (char == '(') {
+        parenCount++;
+      } else if (char == ')') {
+        if (parenCount == 0) {
+          // This is the closing parenthesis of the link
+          urlEnd = i;
+          break;
+        } else {
+          parenCount--;
+        }
+      }
+    }
+
+    if (urlEnd == urlStart) {
+      // No closing parenthesis found
+      return const TextSpan();
+    }
+
+    final url = text.substring(urlStart, urlEnd).trim();
 
     var builder = config.linkBuilder;
 
@@ -834,7 +864,7 @@ class ATagMd extends InlineMd {
 /// Image component
 class ImageMd extends InlineMd {
   @override
-  RegExp get exp => RegExp(r"\!\[([^\s][^\n]*[^\s]?)?\]\(([^\s]+?)\)");
+  RegExp get exp => RegExp(r"\!\[[^\[\]]*\]\([^\s]*\)");
 
   @override
   InlineSpan span(
@@ -842,25 +872,61 @@ class ImageMd extends InlineMd {
     String text,
     final GptMarkdownConfig config,
   ) {
-    var match = exp.firstMatch(text.trim());
+    // First try to find the basic pattern
+    final basicMatch = RegExp(r'\!\[([^\[\]]*)\]\(').firstMatch(text.trim());
+    if (basicMatch == null) {
+      return const TextSpan();
+    }
+
+    final altText = basicMatch.group(1) ?? '';
+    final urlStart = basicMatch.end;
+
+    // Now find the balanced closing parenthesis
+    int parenCount = 0;
+    int urlEnd = urlStart;
+
+    for (int i = urlStart; i < text.length; i++) {
+      final char = text[i];
+
+      if (char == '(') {
+        parenCount++;
+      } else if (char == ')') {
+        if (parenCount == 0) {
+          // This is the closing parenthesis of the image
+          urlEnd = i;
+          break;
+        } else {
+          parenCount--;
+        }
+      }
+    }
+
+    if (urlEnd == urlStart) {
+      // No closing parenthesis found
+      return const TextSpan();
+    }
+
+    final url = text.substring(urlStart, urlEnd).trim();
+
     double? height;
     double? width;
-    if (match?[1] != null) {
+    if (altText.isNotEmpty) {
       var size = RegExp(
         r"^([0-9]+)?x?([0-9]+)?",
-      ).firstMatch(match![1].toString().trim());
+      ).firstMatch(altText.trim());
       width = double.tryParse(size?[1]?.toString().trim() ?? 'a');
       height = double.tryParse(size?[2]?.toString().trim() ?? 'a');
     }
+
     final Widget image;
     if (config.imageBuilder != null) {
-      image = config.imageBuilder!(context, '${match?[2]}');
+      image = config.imageBuilder!(context, url);
     } else {
       image = SizedBox(
         width: width,
         height: height,
         child: Image(
-          image: NetworkImage("${match?[2]}"),
+          image: NetworkImage(url),
           loadingBuilder: (
             BuildContext context,
             Widget child,
