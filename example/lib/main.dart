@@ -20,6 +20,7 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> {
   ThemeMode _themeMode = ThemeMode.dark;
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -64,6 +65,7 @@ class _MyAppState extends State<MyApp> {
 
 class MyHomePage extends StatefulWidget {
   const MyHomePage({super.key, required this.title, required this.onPressed});
+
   final VoidCallback? onPressed;
 
   final String title;
@@ -181,8 +183,7 @@ Markdown and LaTeX can be powerful tools for formatting text and mathematical ex
                     ? Theme.of(context).colorScheme.onSurfaceVariant
                     : Theme.of(context)
                         .colorScheme
-                        .onSurface
-                        .withValues(alpha: 0.38),
+                        .onSurface /* .withValues(alpha: 0.38) */,
               ),
             ),
             IconButton(
@@ -280,8 +281,7 @@ Markdown and LaTeX can be powerful tools for formatting text and mathematical ex
                                             border: Border.all(
                                               color: Theme.of(context)
                                                   .colorScheme
-                                                  .secondary
-                                                  .withValues(alpha: 0.5),
+                                                  .secondary /* .withValues(alpha: 0.5) */,
                                               width: 1,
                                             ),
                                           ),

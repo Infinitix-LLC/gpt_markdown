@@ -348,7 +348,7 @@ class IndentMd extends InlineMd {
                 direction: config.textDirection,
                 child: Padding(
                   padding: const EdgeInsetsDirectional.only(start: 10.0),
-                  child: Expanded(child: config.getRich(child)),
+                  child: config.getRich(child),
                 ),
               ),
             ),
