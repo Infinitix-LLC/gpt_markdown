@@ -833,6 +833,7 @@ class ATagMd extends InlineMd {
     // Use custom builder if provided
     if (builder != null) {
       return WidgetSpan(
+        alignment: PlaceholderAlignment.middle,
         child: GestureDetector(
           onTap: () => config.onLinkTab?.call(url, linkText),
           child: builder(
@@ -848,6 +849,7 @@ class ATagMd extends InlineMd {
     // Default rendering
     var theme = GptMarkdownTheme.of(context);
     return WidgetSpan(
+      alignment: PlaceholderAlignment.middle,
       child: LinkButton(
         hoverColor: theme.linkHoverColor,
         color: theme.linkColor,
