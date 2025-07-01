@@ -140,8 +140,9 @@ return GptMarkdown(
     * This is a unordered list.
     ''',
     style: const TextStyle(
-    color: Colors.red,
-),
+        color: Colors.red,
+    ),
+);
 
 ```
 
