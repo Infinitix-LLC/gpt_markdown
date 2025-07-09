@@ -90,6 +90,7 @@ class GptMarkdownConfig {
     this.imageBuilder,
     this.maxLines,
     this.overflow,
+    this.textWidthBasis,
     this.components,
     this.inlineComponents,
     this.tableBuilder,
@@ -137,6 +138,9 @@ class GptMarkdownConfig {
   /// The overflow.
   final TextOverflow? overflow;
 
+  /// The text width basis.
+  final TextWidthBasis? textWidthBasis;
+
   /// The highlight builder.
   final HighlightBuilder? highlightBuilder;
 
@@ -169,6 +173,7 @@ class GptMarkdownConfig {
     final CodeBlockBuilder? codeBuilder,
     final int? maxLines,
     final TextOverflow? overflow,
+    final TextWidthBasis? textWidthBasis,
     final HighlightBuilder? highlightBuilder,
     final LinkBuilder? linkBuilder,
     final ImageBuilder? imageBuilder,
@@ -211,6 +216,7 @@ class GptMarkdownConfig {
       textAlign: textAlign,
       maxLines: maxLines,
       overflow: overflow,
+      textWidthBasis: textWidthBasis,
     );
   }
 
