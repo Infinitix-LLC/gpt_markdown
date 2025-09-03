@@ -8,56 +8,68 @@ gpt_markdown is a drop-in replacement for flutter_markdown, offering extended su
 
 ⭐ If you find this package helpful, please give it a like on [pub.dev](https://pub.dev/packages/gpt_markdown)! Your support means a lot! ⭐
 
+## 🆕 Latest Update (v1.1.4)
+
+**🔧 iOS Build Fix**: Fixed iOS build failures for Flutter 3.35.2 by updating `flutter_math_fork` dependency to ^0.7.4. This resolves compatibility issues that prevented iOS compilation.
+
+**📱 Enhanced Compatibility**: Improved support for the latest Flutter versions, ensuring smooth builds across all platforms.
+
 ---
 
 ## Supported Markdown & LaTeX Features
-| ✨ Feature  | ✅ Supported | 🔜 Upcoming |
-| --- | --- | --- |
-| 💻 Code Block | ✅ |  |
-| 📊 Table | ✅ |  |
-| 📝 Heading | ✅ |  |
-| 📌 Unordered List | ✅ |  |
-| 📋 Ordered List | ✅ |  |
-| 🔘 Radio Button | ✅ |  |
-| ☑️ Check Box | ✅ |  |
-| ➖ Horizontal Line | ✅ |  |
-| 🔢 Latex Math | ✅ |  |
-| ↩️ Indent | ✅ |
-| ↩️ BlockQuote | ✅ |
-| 🖼️ Image | ✅ |
-| ✨ Highlighted Text | ✅ |
-| ✂️ Strike Text | ✅ |
-| 🔵 Bold Text | ✅ |
-| 📜 Italic Text | ✅ |
-| 🔗 Links | ✅ |
-| 📱 Selectable | ✅ |
-| 🧩 Custom components | ✅ |  |
-| 📎 Underline | ✅ |  |
+
+| ✨ Feature           | ✅ Supported | 🔜 Upcoming |
+| -------------------- | ------------ | ----------- |
+| 💻 Code Block        | ✅           |             |
+| 📊 Table             | ✅           |             |
+| 📝 Heading           | ✅           |             |
+| 📌 Unordered List    | ✅           |             |
+| 📋 Ordered List      | ✅           |             |
+| 🔘 Radio Button      | ✅           |             |
+| ☑️ Check Box         | ✅           |             |
+| ➖ Horizontal Line   | ✅           |             |
+| 🔢 Latex Math        | ✅           |             |
+| ↩️ Indent            | ✅           |
+| ↩️ BlockQuote        | ✅           |
+| 🖼️ Image             | ✅           |
+| ✨ Highlighted Text  | ✅           |
+| ✂️ Strike Text       | ✅           |
+| 🔵 Bold Text         | ✅           |
+| 📜 Italic Text       | ✅           |
+| 🔗 Links             | ✅           |
+| 📱 Selectable        | ✅           |
+| 🧩 Custom components | ✅           |             |
+| 📎 Underline         | ✅           |             |
 
 ## ✨ Key Features
 
 Render a wide variety of content with full Markdown and LaTeX support, including:
 
-- List 
+- List
+
 ```
 - Unordered list item
 1. Ordered list item
 ```
 
 - Horizontal line
+
 ```
 ---
 ```
 
-- Links 
+- Links
+
 ```
 [<text here>](<href>)
 ```
 
-- Images with size 
+- Images with size
+
 ```
 ![<with>x<hight> someText](url)
 ```
+
 - Table
 
 ```
@@ -68,30 +80,34 @@ Render a wide variety of content with full Markdown and LaTeX support, including
 ```
 
 | Name  | Roll |
-|-------|------|
+| ----- | ---- |
 | sohag | 1    |
 
 - ~~Striked text~~
+
 ```
 ~~striked text~~
 ```
 
 - **Bold text**
+
 ```
 **Bold text**
 ```
 
-- *Italic text*
+- _Italic text_
+
 ```
 *Italic text*
 ```
 
 - <u>Underline text</u>
+
 ```
 <u>Underline text</u>
 ```
 
-- heading texts 
+- heading texts
 
 ```
 # Heading 1
@@ -103,6 +119,7 @@ Render a wide variety of content with full Markdown and LaTeX support, including
 ```
 
 - Latex formula `\(\frac a b\)` or `\[\frac ab\]`
+
 ```
 \(\frac a b\)
 ```
@@ -124,12 +141,14 @@ Render a wide variety of content with full Markdown and LaTeX support, including
 - **Rich Customization**: Easily apply custom styles using Flutter widgets like `TextStyle`.
 - **Selectable Content**: Enable content selection with `SelectionArea`.
 - **Seamless Integration**: Works out of the box with minimal setup.
+- **Latest Flutter Support**: Fully compatible with Flutter 3.35.2+ including iOS builds.
 
 ## 🛠️ Getting Started
 
 Run this command:
+
 ```
-flutter pub add gpt_markdown 
+flutter pub add gpt_markdown
 ```
 
 ## 📖 Usage
@@ -163,7 +182,7 @@ Welcome to ChatGPT! Below is an example of a response with Markdown and LaTeX co
 You can use Markdown to format text easily. Here are some examples:
 
 - **Bold Text**: **This text is bold**
-- *Italic Text*: *This text is italicized*
+- _Italic Text_: _This text is italicized_
 - [Link](https://www.example.com): [This is a link](https://www.example.com)
 - Lists:
   1. Item 1
@@ -175,7 +194,7 @@ You can use Markdown to format text easily. Here are some examples:
 You can also use LaTeX for mathematical expressions. Here's an example:
 
 - **Equation**: \( f(x) = x^2 + 2x + 1 \)
-- **Integral**: \( \int_{0}^{1} x^2 \, dx \)
+- **Integral**: \( \int\_{0}^{1} x^2 \, dx \)
 - **Matrix**:
 
 \[
@@ -190,6 +209,7 @@ You can also use LaTeX for mathematical expressions. Here's an example:
 
 Markdown and LaTeX can be powerful tools for formatting text and mathematical expressions in your Flutter app. If you have any questions or need further assistance, feel free to ask!
 ```
+
 ### Output from gpt_markdown
 
 <img width="614" alt="Screenshot 2024-02-15 at 4 13 59 AM" src="https://github.com/saminsohag/flutter_packages/assets/59507062/8f4a4068-a12c-45d1-a954-ebaf3822e754">
@@ -199,4 +219,3 @@ If you're using flutter_markdown and need more customization or LaTeX support, g
 ## 🔗 Additional Information
 
 You can find the source code [here.](https://github.com/Infinitix-LLC/gpt_markdown)
-
