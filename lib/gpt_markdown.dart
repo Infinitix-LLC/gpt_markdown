@@ -38,6 +38,7 @@ class GptMarkdown extends StatelessWidget {
     this.linkBuilder,
     this.maxLines,
     this.overflow,
+    this.textWidthBasis,
     this.orderedListBuilder,
     this.unOrderedListBuilder,
     this.tableBuilder,
@@ -70,6 +71,9 @@ class GptMarkdown extends StatelessWidget {
 
   /// The overflow.
   final TextOverflow? overflow;
+
+  /// The text width basis.
+  final TextWidthBasis? textWidthBasis;
 
   /// The LaTeX builder.
   final LatexBuilder? latexBuilder;
@@ -198,6 +202,7 @@ class GptMarkdown extends StatelessWidget {
           codeBuilder: codeBuilder,
           maxLines: maxLines,
           overflow: overflow,
+          textWidthBasis: textWidthBasis,
           sourceTagBuilder: sourceTagBuilder,
           highlightBuilder: highlightBuilder,
           linkBuilder: linkBuilder,
