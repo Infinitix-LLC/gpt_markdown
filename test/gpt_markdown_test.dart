@@ -158,4 +158,70 @@ void main() {
 
     expect(matchingMaterial, isNotNull);
   });
+
+  testWidgets('Table uses theme colors and HighlightedText has decoration', (
+    tester,
+  ) async {
+    const hrColor = Colors.pink;
+    const codeBgColor = Colors.green;
+    const highlightColor = Colors.orange;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: GptMarkdownTheme(
+            gptThemeData: GptMarkdownThemeData(
+              brightness: Brightness.light,
+              hrLineColor: hrColor,
+              codeBlockBackgroundColor: codeBgColor,
+              highlightColor: highlightColor,
+            ),
+            child: const GptMarkdown('| Header |\n| -- |\n| Cell |\n\n`code`'),
+          ),
+        ),
+      ),
+    );
+
+    // Verify Table Border Color
+    final tableFinder = find.byType(Table);
+    expect(tableFinder, findsOneWidget);
+    final table = tester.widget<Table>(tableFinder);
+    expect(table.border?.top.color, hrColor);
+
+    // Verify Header Color
+    // The header is a TableRow with a decoration.
+    // We cannot easily inspect TableRow directly from widget tree as it is not a widget.
+    // But we know Table usage: children -> TableRow.
+    // tester.widget<Table> returns the Table widget which has children property which is List<TableRow>.
+    expect(table.children.first.decoration, isA<BoxDecoration>());
+    final decoration = table.children.first.decoration as BoxDecoration;
+    expect(decoration.color, codeBgColor);
+
+    // Verify HighlightedText decoration
+    // It should be a Container with decoration inside a WidgetSpan
+    // RichText -> TextSpan -> WidgetSpan -> Container
+    final richTextFinder =
+        find.byType(RichText).last; // Last because Table might use RichText too
+    final richText = tester.widget<RichText>(richTextFinder);
+    // traversing to find the WidgetSpan relative to `code`
+    // Implementation: WidgetSpan child is Container.
+    final containerFinder = find.byType(Container);
+    // There might be multiple containers (Table uses padding etc).
+    // Let's look for one with our highlight color.
+    final highlightContainer = tester
+        .widgetList<Container>(containerFinder)
+        .firstWhere(
+          (c) =>
+              (c.decoration is BoxDecoration) &&
+              (c.decoration as BoxDecoration).color == highlightColor,
+          orElse: () => throw Exception('Highlight container not found'),
+        );
+
+    final boxDec = highlightContainer.decoration as BoxDecoration;
+    expect(boxDec.borderRadius, BorderRadius.circular(4));
+    expect(
+      highlightContainer.padding,
+      const EdgeInsets.symmetric(horizontal: 5),
+    );
+  });
 }

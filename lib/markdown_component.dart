@@ -471,25 +471,22 @@ class HighlightedText extends InlineMd {
       );
     }
 
-    var style =
-        config.style?.copyWith(
-          fontWeight: FontWeight.bold,
-          background:
-              Paint()
-                ..color = GptMarkdownTheme.of(context).highlightColor
-                ..strokeCap = StrokeCap.round
-                ..strokeJoin = StrokeJoin.round,
-        ) ??
-        TextStyle(
-          fontWeight: FontWeight.bold,
-          background:
-              Paint()
-                ..color = GptMarkdownTheme.of(context).highlightColor
-                ..strokeCap = StrokeCap.round
-                ..strokeJoin = StrokeJoin.round,
-        );
-
-    return TextSpan(text: highlightedText, style: style);
+    return WidgetSpan(
+      alignment: PlaceholderAlignment.middle,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 5),
+        decoration: BoxDecoration(
+          color: GptMarkdownTheme.of(context).highlightColor,
+          borderRadius: BorderRadius.circular(4),
+        ),
+        child: Text(
+          highlightedText,
+          style:
+              config.style?.copyWith(fontWeight: FontWeight.bold) ??
+              const TextStyle(fontWeight: FontWeight.bold),
+        ),
+      ),
+    );
   }
 }
 
@@ -846,19 +843,31 @@ class ATagMd extends InlineMd {
 
     var ending = text.substring(urlEnd + 1);
 
+    var theme = GptMarkdownTheme.of(context);
+    var linkConfig = config.copyWith(
+      style:
+          config.style?.copyWith(
+            color: theme.linkColor,
+            decorationColor: theme.linkColor,
+          ) ??
+          TextStyle(color: theme.linkColor, decorationColor: theme.linkColor),
+    );
+
     var endingSpans = MarkdownComponent.generate(
       context,
       ending,
       config,
       false,
     );
-    var theme = GptMarkdownTheme.of(context);
+
     var linkTextSpan = TextSpan(
-      children: MarkdownComponent.generate(context, linkText, config, false),
-      style: config.style?.copyWith(
-        color: theme.linkColor,
-        decorationColor: theme.linkColor,
+      children: MarkdownComponent.generate(
+        context,
+        linkText,
+        linkConfig,
+        false,
       ),
+      style: linkConfig.style,
     );
 
     // Use custom builder if provided
@@ -1100,7 +1109,7 @@ class TableMd extends BlockMd {
           defaultVerticalAlignment: TableCellVerticalAlignment.middle,
           border: TableBorder.all(
             width: 1,
-            color: Theme.of(context).colorScheme.onSurface,
+            color: GptMarkdownTheme.of(context).hrLineColor,
           ),
           children:
               value
@@ -1119,9 +1128,9 @@ class TableMd extends BlockMd {
                           (hasHeader && entry.key == 0)
                               ? BoxDecoration(
                                 color:
-                                    Theme.of(
+                                    GptMarkdownTheme.of(
                                       context,
-                                    ).colorScheme.surfaceContainerHighest,
+                                    ).codeBlockBackgroundColor,
                               )
                               : null,
                       children: List.generate(maxCol, (index) {
