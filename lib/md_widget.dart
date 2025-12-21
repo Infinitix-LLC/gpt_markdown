@@ -27,14 +27,9 @@ class MdWidget extends StatefulWidget {
 class _MdWidgetState extends State<MdWidget> {
   List<InlineSpan> list = [];
   @override
-  void initState() {
-    super.initState();
-    list = MarkdownComponent.generate(
-      widget.context,
-      widget.exp,
-      widget.config,
-      widget.includeGlobalComponents,
-    );
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _updateList();
   }
 
   @override
@@ -42,13 +37,17 @@ class _MdWidgetState extends State<MdWidget> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.exp != widget.exp ||
         !oldWidget.config.isSame(widget.config)) {
-      list = MarkdownComponent.generate(
-        context,
-        widget.exp,
-        widget.config,
-        widget.includeGlobalComponents,
-      );
+      _updateList();
     }
+  }
+
+  void _updateList() {
+    list = MarkdownComponent.generate(
+      context,
+      widget.exp,
+      widget.config,
+      widget.includeGlobalComponents,
+    );
   }
 
   @override

@@ -14,6 +14,7 @@ class GptMarkdownThemeData extends ThemeExtension<GptMarkdownThemeData> {
     required this.hrLineColor,
     required this.linkColor,
     required this.linkHoverColor,
+    required this.codeBlockBackgroundColor,
   });
 
   /// A factory constructor for `GptMarkdownThemeData`.
@@ -30,6 +31,7 @@ class GptMarkdownThemeData extends ThemeExtension<GptMarkdownThemeData> {
     Color? hrLineColor,
     Color? linkColor,
     Color? linkHoverColor,
+    Color? codeBlockBackgroundColor,
   }) {
     ThemeData themeData = switch (brightness) {
       Brightness.light => ThemeData.light(),
@@ -68,6 +70,7 @@ class GptMarkdownThemeData extends ThemeExtension<GptMarkdownThemeData> {
       hrLineColor: hrLineColor,
       linkColor: linkColor,
       linkHoverColor: linkHoverColor,
+      codeBlockBackgroundColor: codeBlockBackgroundColor,
     );
   }
 
@@ -87,6 +90,7 @@ class GptMarkdownThemeData extends ThemeExtension<GptMarkdownThemeData> {
       hrLineColor: theme.colorScheme.outline,
       linkColor: Colors.blue,
       linkHoverColor: Colors.red,
+      codeBlockBackgroundColor: theme.colorScheme.onInverseSurface,
     );
   }
 
@@ -121,6 +125,9 @@ class GptMarkdownThemeData extends ThemeExtension<GptMarkdownThemeData> {
   /// The color of the link when hovering.
   Color linkHoverColor;
 
+  /// The background color of the code block.
+  Color codeBlockBackgroundColor;
+
   /// A method to copy the `GptMarkdownThemeData`.
   @override
   GptMarkdownThemeData copyWith({
@@ -135,6 +142,7 @@ class GptMarkdownThemeData extends ThemeExtension<GptMarkdownThemeData> {
     Color? hrLineColor,
     Color? linkColor,
     Color? linkHoverColor,
+    Color? codeBlockBackgroundColor,
   }) {
     return GptMarkdownThemeData._(
       highlightColor: highlightColor ?? this.highlightColor,
@@ -148,6 +156,8 @@ class GptMarkdownThemeData extends ThemeExtension<GptMarkdownThemeData> {
       hrLineColor: hrLineColor ?? this.hrLineColor,
       linkColor: linkColor ?? this.linkColor,
       linkHoverColor: linkHoverColor ?? this.linkHoverColor,
+      codeBlockBackgroundColor:
+          codeBlockBackgroundColor ?? this.codeBlockBackgroundColor,
     );
   }
 
@@ -173,6 +183,13 @@ class GptMarkdownThemeData extends ThemeExtension<GptMarkdownThemeData> {
       linkColor: Color.lerp(linkColor, other.linkColor, t) ?? linkColor,
       linkHoverColor:
           Color.lerp(linkHoverColor, other.linkHoverColor, t) ?? linkHoverColor,
+      codeBlockBackgroundColor:
+          Color.lerp(
+            codeBlockBackgroundColor,
+            other.codeBlockBackgroundColor,
+            t,
+          ) ??
+          codeBlockBackgroundColor,
     );
   }
 }

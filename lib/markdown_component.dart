@@ -273,10 +273,7 @@ class HrLine extends BlockMd {
   ) {
     var thickness = GptMarkdownTheme.of(context).hrLineThickness;
     var color = GptMarkdownTheme.of(context).hrLineColor;
-    return CustomDivider(
-      height: thickness,
-      color: config.style?.color ?? color,
-    );
+    return CustomDivider(height: thickness, color: color);
   }
 }
 
