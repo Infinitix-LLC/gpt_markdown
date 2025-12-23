@@ -482,8 +482,8 @@ class HighlightedText extends InlineMd {
         child: Text(
           highlightedText,
           style:
-              config.style?.copyWith(fontWeight: FontWeight.bold) ??
-              const TextStyle(fontWeight: FontWeight.bold),
+              config.style?.copyWith(color: Colors.grey, fontSize: 13) ??
+              const TextStyle(color: Colors.grey, fontSize: 13),
         ),
       ),
     );
