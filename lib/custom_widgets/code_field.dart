@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:gpt_markdown/gpt_markdown.dart';
 
 /// A widget that displays code with syntax highlighting and a copy button.
 ///
@@ -27,7 +28,7 @@ class _CodeFieldState extends State<CodeField> {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: Theme.of(context).colorScheme.onInverseSurface,
+      color: GptMarkdownTheme.of(context).codeBlockBackgroundColor,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
