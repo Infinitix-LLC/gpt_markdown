@@ -77,14 +77,28 @@ class UnorderedListView extends StatelessWidget {
 /// It takes a [child] parameter which is the content of the list item,
 /// a [spacing] parameter to set the spacing between items,
 /// a [padding] parameter to set the padding of the list item,
+/// and an optional [numberWidth] parameter to override the calculated width.
 class OrderedListView extends StatelessWidget {
+  /// The list item number (e.g., "1.", "2.", "10.").
   final String no;
+
+  /// The spacing between the number and content.
   final double spacing;
+
+  /// The padding before the number.
   final double padding;
+
+  /// Optional fixed width for the number container.
+  /// If null, width is calculated dynamically based on font size.
+  /// The calculated width accommodates "99." by default for proper alignment
+  /// in typical lists (up to 99 items).
+  final double? numberWidth;
+
   const OrderedListView({
     super.key,
     this.spacing = 6,
     this.padding = 6,
+    this.numberWidth,
     TextStyle? style,
     required this.child,
     this.textDirection = TextDirection.ltr,
@@ -100,8 +114,26 @@ class OrderedListView extends StatelessWidget {
   /// The child widget to be displayed in the list item.
   final Widget child;
 
+  /// Calculate the width needed for "99." to ensure consistent alignment.
+  double _calculateNumberWidth(BuildContext context) {
+    if (numberWidth != null) return numberWidth!;
+
+    // Use the current style or default text style
+    final effectiveStyle = _style ?? DefaultTextStyle.of(context).style;
+
+    // Calculate width for "99." which accommodates most lists
+    final textPainter = TextPainter(
+      text: TextSpan(text: '99.', style: effectiveStyle),
+      textDirection: textDirection,
+    )..layout();
+
+    return textPainter.width;
+  }
+
   @override
   Widget build(BuildContext context) {
+    final calculatedWidth = _calculateNumberWidth(context);
+
     return Directionality(
       textDirection: textDirection,
       child: Row(
@@ -109,10 +141,23 @@ class OrderedListView extends StatelessWidget {
         textBaseline: TextBaseline.alphabetic,
         crossAxisAlignment: CrossAxisAlignment.baseline,
         children: [
+          // Fixed-width container for right-aligned numbers
+          // This ensures proper vertical alignment regardless of digit count
           Padding(
-            padding: EdgeInsetsDirectional.only(start: padding, end: spacing),
-            child: Text.rich(TextSpan(text: no), style: _style),
+            padding: EdgeInsetsDirectional.only(start: padding),
+            child: SizedBox(
+              width: calculatedWidth,
+              child: Text(
+                no,
+                style: _style,
+                textAlign:
+                    textDirection == TextDirection.rtl
+                        ? TextAlign.left
+                        : TextAlign.right,
+              ),
+            ),
           ),
+          SizedBox(width: spacing),
           Flexible(child: child),
         ],
       ),

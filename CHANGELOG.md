@@ -1,3 +1,11 @@
+## 1.1.6
+
+* Fixed ordered list numbers vertical alignment issue by using dynamically calculated width with right-aligned text
+* Width is now calculated based on "99." using the current font style, ensuring proper alignment across different font sizes
+* Added optional `numberWidth` parameter to `OrderedListView` for manual width override if needed
+* Improved RTL support for ordered lists (numbers are left-aligned in RTL mode)
+* Fixed ordered list number style override issue - numbers now respect the configured text style ([#105](https://github.com/Infinitix-LLC/gpt_markdown/issues/105))
+
 ## 1.1.5
 
 * Fixed block latex markdown syntax.

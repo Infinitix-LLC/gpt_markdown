@@ -442,9 +442,7 @@ class OrderedList extends BlockMd {
         OrderedListView(
           no: "$no.",
           textDirection: config.textDirection,
-          style: (config.style ?? const TextStyle()).copyWith(
-            fontWeight: FontWeight.w100,
-          ),
+          style: config.style,
           child: child,
         );
   }
