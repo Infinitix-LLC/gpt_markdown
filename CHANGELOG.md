@@ -1,3 +1,7 @@
+## 1.1.5
+
+* Fixed block latex markdown syntax.
+
 ## 1.1.4
 
 * 🔗 Fixed vertical alignment issue with link text rendering ([#92](https://github.com/Infinitix-LLC/gpt_markdown/issues/92))
