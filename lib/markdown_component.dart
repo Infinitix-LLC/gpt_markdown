@@ -791,7 +791,7 @@ class SourceTag extends InlineMd {
 /// Link text component
 class ATagMd extends InlineMd {
   @override
-  RegExp get exp => RegExp(r"(?<!\!)\[.*\]\([^\s]*\)");
+  RegExp get exp => RegExp(r'(?<!\!)\[.*\]\([^\s\)]*(?:\s+"[^"]*")?\)');
 
   @override
   InlineSpan span(
@@ -852,7 +852,10 @@ class ATagMd extends InlineMd {
       return const TextSpan();
     }
 
-    final url = text.substring(urlStart, urlEnd).trim();
+    var rawUrl = text.substring(urlStart, urlEnd).trim();
+    // Remove title if present: url "title" -> url
+    final titleMatch = RegExp(r'^(\S+)\s+"[^"]*"$').firstMatch(rawUrl);
+    final url = titleMatch != null ? titleMatch.group(1)! : rawUrl;
 
     var builder = config.linkBuilder;
 
@@ -902,6 +905,7 @@ class ATagMd extends InlineMd {
           config.onLinkTap?.call(url, linkText);
         },
         text: linkText,
+        url: url,
         config: config,
         child: config.getRich(linkTextSpan),
       ),
