@@ -292,11 +292,15 @@ class CheckBoxMd extends BlockMd {
     final GptMarkdownConfig config,
   ) {
     var match = this.exp.firstMatch(text.trim());
-    return CustomCb(
-      value: ("${match?[1]}" == "x"),
-      textDirection: config.textDirection,
-      child: MdWidget(context, "${match?[2]}", false, config: config),
-    );
+    var isChecked = ("${match?[1]}" == "x");
+    var child = MdWidget(context, "${match?[2]}", false, config: config);
+
+    return config.checkBoxBuilder?.call(context, isChecked, child, config) ??
+        CustomCb(
+          value: isChecked,
+          textDirection: config.textDirection,
+          child: child,
+        );
   }
 }
 
@@ -312,11 +316,16 @@ class RadioButtonMd extends BlockMd {
     final GptMarkdownConfig config,
   ) {
     var match = this.exp.firstMatch(text.trim());
-    return CustomRb(
-      value: ("${match?[1]}" == "x"),
-      textDirection: config.textDirection,
-      child: MdWidget(context, "${match?[2]}", false, config: config),
-    );
+    var isSelected = ("${match?[1]}" == "x");
+    var child = MdWidget(context, "${match?[2]}", false, config: config);
+
+    return config.radioButtonBuilder
+            ?.call(context, isSelected, child, config) ??
+        CustomRb(
+          value: isSelected,
+          textDirection: config.textDirection,
+          child: child,
+        );
   }
 }
 

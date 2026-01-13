@@ -65,6 +65,24 @@ typedef HighlightBuilder =
 /// A builder function for the image.
 typedef ImageBuilder = Widget Function(BuildContext context, String imageUrl);
 
+/// A builder function for the checkbox.
+typedef CheckBoxBuilder =
+    Widget Function(
+      BuildContext context,
+      bool isChecked,
+      Widget child,
+      GptMarkdownConfig config,
+    );
+
+/// A builder function for the radio button.
+typedef RadioButtonBuilder =
+    Widget Function(
+      BuildContext context,
+      bool isSelected,
+      Widget child,
+      GptMarkdownConfig config,
+    );
+
 /// A configuration class for the GPT Markdown component.
 ///
 /// The [GptMarkdownConfig] class is used to configure the GPT Markdown component.
@@ -93,6 +111,8 @@ class GptMarkdownConfig {
     this.components,
     this.inlineComponents,
     this.tableBuilder,
+    this.checkBoxBuilder,
+    this.radioButtonBuilder,
   });
 
   /// The direction of the text.
@@ -155,6 +175,12 @@ class GptMarkdownConfig {
   /// The table builder.
   final TableBuilder? tableBuilder;
 
+  /// The checkbox builder.
+  final CheckBoxBuilder? checkBoxBuilder;
+
+  /// The radio button builder.
+  final RadioButtonBuilder? radioButtonBuilder;
+
   /// A copy of the configuration with the specified parameters.
   GptMarkdownConfig copyWith({
     TextStyle? style,
@@ -177,6 +203,8 @@ class GptMarkdownConfig {
     final List<MarkdownComponent>? components,
     final List<MarkdownComponent>? inlineComponents,
     final TableBuilder? tableBuilder,
+    final CheckBoxBuilder? checkBoxBuilder,
+    final RadioButtonBuilder? radioButtonBuilder,
   }) {
     return GptMarkdownConfig(
       style: style ?? this.style,
@@ -199,6 +227,8 @@ class GptMarkdownConfig {
       components: components ?? this.components,
       inlineComponents: inlineComponents ?? this.inlineComponents,
       tableBuilder: tableBuilder ?? this.tableBuilder,
+      checkBoxBuilder: checkBoxBuilder ?? this.checkBoxBuilder,
+      radioButtonBuilder: radioButtonBuilder ?? this.radioButtonBuilder,
     );
   }
 
