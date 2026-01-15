@@ -26,11 +26,12 @@ class MdWidget extends StatefulWidget {
 
 class _MdWidgetState extends State<MdWidget> {
   List<InlineSpan> list = [];
+
   @override
-  void initState() {
-    super.initState();
+  void didChangeDependencies() {
+    super.didChangeDependencies();
     list = MarkdownComponent.generate(
-      widget.context,
+      context,
       widget.exp,
       widget.config,
       widget.includeGlobalComponents,

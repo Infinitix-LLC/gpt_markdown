@@ -121,8 +121,8 @@ void main() {
       final text = tester.widget<Text>(textFinder);
       final textSpan = text.textSpan as TextSpan;
 
-      // Default styling should include underline and blue color
-      expect(textSpan.style?.decoration, TextDecoration.underline);
+      // Default styling should include blue color, no underline
+      expect(textSpan.style?.decoration, isNull);
       expect(textSpan.style?.color, Colors.blue);
     });
   });
