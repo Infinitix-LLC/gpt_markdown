@@ -782,7 +782,7 @@ class SourceTag extends InlineMd {
 /// Link text component
 class ATagMd extends InlineMd {
   @override
-  RegExp get exp => RegExp(r"(?<!\!)\[.*\]\([^\s]*\)");
+  RegExp get exp => RegExp(r'(?<!\!)\[.*\]\([^\s\)]*(?:\s+"[^"]*")?\)');
 
   @override
   InlineSpan span(
@@ -843,7 +843,10 @@ class ATagMd extends InlineMd {
       return const TextSpan();
     }
 
-    final url = text.substring(urlStart, urlEnd).trim();
+    var rawUrl = text.substring(urlStart, urlEnd).trim();
+    // Remove title if present: url "title" -> url
+    final titleMatch = RegExp(r'^(\S+)\s+"[^"]*"$').firstMatch(rawUrl);
+    final url = titleMatch != null ? titleMatch.group(1)! : rawUrl;
 
     var builder = config.linkBuilder;
 
@@ -858,7 +861,9 @@ class ATagMd extends InlineMd {
     var theme = GptMarkdownTheme.of(context);
     var linkTextSpan = TextSpan(
       children: MarkdownComponent.generate(context, linkText, config, false),
-      style: config.style?.copyWith(
+      // changed from config.style?.copyWith()
+      // so that default style is applied when config.style is null
+      style: config.style ?? TextStyle(
         color: theme.linkColor,
         decorationColor: theme.linkColor,
       ),
@@ -893,6 +898,7 @@ class ATagMd extends InlineMd {
           config.onLinkTap?.call(url, linkText);
         },
         text: linkText,
+        url: url,
         config: config,
         child: config.getRich(linkTextSpan),
       ),
