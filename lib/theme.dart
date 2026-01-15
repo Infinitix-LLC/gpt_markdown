@@ -31,10 +31,12 @@ class GptMarkdownThemeData extends ThemeExtension<GptMarkdownThemeData> {
     Color? linkColor,
     Color? linkHoverColor,
   }) {
-    ThemeData themeData = switch (brightness) {
-      Brightness.light => ThemeData.light(),
-      Brightness.dark => ThemeData.dark(),
-    };
+    ThemeData themeData = ThemeData(
+      brightness: brightness,
+      colorScheme: brightness == Brightness.dark
+          ? const ColorScheme.dark()
+          : const ColorScheme.light(),
+    );
     return GptMarkdownThemeData._fromTheme(themeData, themeData.textTheme).copyWith(
       highlightColor: highlightColor,
       h1: h1,
@@ -54,14 +56,18 @@ class GptMarkdownThemeData extends ThemeExtension<GptMarkdownThemeData> {
     ThemeData theme,
     TextTheme textTheme,
   ) {
+    // Explicitly apply onSurface color to ensure headings have proper
+    // text color, since TextTheme styles may rely on inheritance which
+    // doesn't work reliably in all widget tree contexts.
+    final Color textColor = theme.colorScheme.onSurface;
     return GptMarkdownThemeData._(
       highlightColor: theme.colorScheme.onSurfaceVariant.withAlpha(50),
-      h1: textTheme.headlineLarge,
-      h2: textTheme.headlineMedium,
-      h3: textTheme.headlineSmall,
-      h4: textTheme.titleLarge,
-      h5: textTheme.titleMedium,
-      h6: textTheme.titleSmall,
+      h1: textTheme.headlineLarge?.copyWith(color: textColor),
+      h2: textTheme.headlineMedium?.copyWith(color: textColor),
+      h3: textTheme.headlineSmall?.copyWith(color: textColor),
+      h4: textTheme.titleLarge?.copyWith(color: textColor),
+      h5: textTheme.titleMedium?.copyWith(color: textColor),
+      h6: textTheme.titleSmall?.copyWith(color: textColor),
       hrLineThickness: 1,
       hrLineColor: theme.colorScheme.outline,
       linkColor: Colors.blue,
