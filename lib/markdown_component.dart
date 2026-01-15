@@ -1133,15 +1133,6 @@ class TableMd extends BlockMd {
                   })
                   .map<TableRow>(
                     (entry) => TableRow(
-                      decoration:
-                          (hasHeader && entry.key == 0)
-                              ? BoxDecoration(
-                                color:
-                                    Theme.of(
-                                      context,
-                                    ).colorScheme.surfaceContainerHighest,
-                              )
-                              : null,
                       children: List.generate(maxCol, (index) {
                         var e = entry.value;
                         String data = e[index] ?? "";
