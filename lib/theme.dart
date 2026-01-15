@@ -35,28 +35,7 @@ class GptMarkdownThemeData extends ThemeExtension<GptMarkdownThemeData> {
       Brightness.light => ThemeData.light(),
       Brightness.dark => ThemeData.dark(),
     };
-    final typography = Typography.tall2021.copyWith(
-      displayLarge: Typography.tall2021.displayLarge?.copyWith(inherit: true),
-      displayMedium: Typography.tall2021.displayMedium?.copyWith(inherit: true),
-      displaySmall: Typography.tall2021.displaySmall?.copyWith(inherit: true),
-      headlineLarge: Typography.tall2021.headlineLarge?.copyWith(inherit: true),
-      headlineMedium: Typography.tall2021.headlineMedium?.copyWith(
-        inherit: true,
-      ),
-      headlineSmall: Typography.tall2021.headlineSmall?.copyWith(inherit: true),
-      titleLarge: Typography.tall2021.titleLarge?.copyWith(inherit: true),
-      titleMedium: Typography.tall2021.titleMedium?.copyWith(inherit: true),
-      titleSmall: Typography.tall2021.titleSmall?.copyWith(inherit: true),
-      bodyLarge: Typography.tall2021.bodyLarge?.copyWith(inherit: true),
-      bodyMedium: Typography.tall2021.bodyMedium?.copyWith(inherit: true),
-      bodySmall: Typography.tall2021.bodySmall?.copyWith(inherit: true),
-      labelLarge: Typography.tall2021.labelLarge?.copyWith(inherit: true),
-      labelMedium: Typography.tall2021.labelMedium?.copyWith(inherit: true),
-      labelSmall: Typography.tall2021.labelSmall?.copyWith(inherit: true),
-    );
-    themeData = themeData.copyWith(textTheme: typography);
-    TextTheme textTheme = themeData.textTheme;
-    return GptMarkdownThemeData._fromTheme(themeData, textTheme).copyWith(
+    return GptMarkdownThemeData._fromTheme(themeData, themeData.textTheme).copyWith(
       highlightColor: highlightColor,
       h1: h1,
       h2: h2,
