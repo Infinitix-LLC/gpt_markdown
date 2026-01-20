@@ -40,6 +40,7 @@ class GptMarkdown extends StatelessWidget {
     this.overflow,
     this.orderedListBuilder,
     this.unOrderedListBuilder,
+    this.listGroupBuilder,
     this.tableBuilder,
     this.components,
     this.inlineComponents,
@@ -100,6 +101,9 @@ class GptMarkdown extends StatelessWidget {
 
   /// The unordered list builder.
   final UnOrderedListBuilder? unOrderedListBuilder;
+
+  /// The list group builder for handling consecutive list items as a group.
+  final ListGroupBuilder? listGroupBuilder;
 
   /// Whether to use dollar signs for LaTeX.
   final bool useDollarSignsForLatex;
@@ -246,6 +250,7 @@ class GptMarkdown extends StatelessWidget {
           imageBuilder: imageBuilder,
           orderedListBuilder: orderedListBuilder,
           unOrderedListBuilder: unOrderedListBuilder,
+          listGroupBuilder: listGroupBuilder,
           components: components,
           inlineComponents: inlineComponents,
           tableBuilder: tableBuilder,

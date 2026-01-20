@@ -9,6 +9,7 @@ abstract class MarkdownComponent {
     BlockQuote(),
     TableMd(),
     HTag(),
+    ListGroupMd(),
     UnOrderedList(),
     OrderedList(),
     RadioButtonMd(),
@@ -423,6 +424,59 @@ class UnOrderedList extends BlockMd {
           textDirection: config.textDirection,
           child: child,
         );
+  }
+}
+
+/// Grouped unordered list component - matches consecutive list items
+class ListGroupMd extends BlockMd {
+  @override
+  String get expString => r"(?:[-*]\ [^\n]+)(?:\n[-*]\ [^\n]+)+";
+
+  @override
+  Widget build(
+    BuildContext context,
+    String text,
+    final GptMarkdownConfig config,
+  ) {
+    // Parse each line into ListGroupItem
+    final lines = text.split('\n');
+    final items = <ListGroupItem>[];
+
+    for (int i = 0; i < lines.length; i++) {
+      final line = lines[i];
+      final match = RegExp(r'^[-*]\ (.+)$').firstMatch(line);
+      if (match != null) {
+        final rawText = match.group(1) ?? '';
+        items.add(ListGroupItem(
+          index: i,
+          rawText: rawText,
+          content: MdWidget(context, rawText, true, config: config),
+        ));
+      }
+    }
+
+    // Use custom builder if provided
+    if (config.listGroupBuilder != null) {
+      return config.listGroupBuilder!(context, items, config);
+    }
+
+    // Fallback: render each item individually
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: items.map((item) =>
+        config.unOrderedListBuilder?.call(context, item.content, config) ??
+        UnorderedListView(
+          bulletColor: config.style?.color ??
+              DefaultTextStyle.of(context).style.color,
+          padding: 7,
+          spacing: 10,
+          bulletSize: 0.3 * (config.style?.fontSize ??
+              DefaultTextStyle.of(context).style.fontSize ?? kDefaultFontSize),
+          textDirection: config.textDirection,
+          child: item.content,
+        ),
+      ).toList(),
+    );
   }
 }
 

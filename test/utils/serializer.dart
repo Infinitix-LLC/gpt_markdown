@@ -121,6 +121,17 @@ class MarkdownSerializer {
       return;
     }
 
+    if (widget is Column) {
+      for (final child in widget.children) {
+        if (child is Flexible) {
+          _visitWidget(child.child);
+        } else {
+          _visitWidget(child);
+        }
+      }
+      return;
+    }
+
     if (widget is Flexible) {
       _visitWidget(widget.child);
       return;

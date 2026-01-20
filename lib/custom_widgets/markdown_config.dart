@@ -83,6 +83,32 @@ typedef RadioButtonBuilder =
       GptMarkdownConfig config,
     );
 
+/// Represents a single list item with its content and index.
+class ListGroupItem {
+  /// The index of this item within the group.
+  final int index;
+
+  /// The raw markdown text content of this list item.
+  final String rawText;
+
+  /// The rendered widget content of this list item.
+  final Widget content;
+
+  ListGroupItem({
+    required this.index,
+    required this.rawText,
+    required this.content,
+  });
+}
+
+/// A builder function for grouped list items (enables ReorderableListView).
+typedef ListGroupBuilder =
+    Widget Function(
+      BuildContext context,
+      List<ListGroupItem> items,
+      GptMarkdownConfig config,
+    );
+
 /// A configuration class for the GPT Markdown component.
 ///
 /// The [GptMarkdownConfig] class is used to configure the GPT Markdown component.
@@ -104,6 +130,7 @@ class GptMarkdownConfig {
     this.highlightBuilder,
     this.orderedListBuilder,
     this.unOrderedListBuilder,
+    this.listGroupBuilder,
     this.linkBuilder,
     this.imageBuilder,
     this.maxLines,
@@ -151,6 +178,9 @@ class GptMarkdownConfig {
 
   /// The Unordered List builder.
   final UnOrderedListBuilder? unOrderedListBuilder;
+
+  /// The List Group builder for handling consecutive list items as a group.
+  final ListGroupBuilder? listGroupBuilder;
 
   /// The maximum number of lines.
   final int? maxLines;
@@ -215,6 +245,7 @@ class GptMarkdownConfig {
     final ImageBuilder? imageBuilder,
     final OrderedListBuilder? orderedListBuilder,
     final UnOrderedListBuilder? unOrderedListBuilder,
+    final ListGroupBuilder? listGroupBuilder,
     final List<MarkdownComponent>? components,
     final List<MarkdownComponent>? inlineComponents,
     final TableBuilder? tableBuilder,
@@ -240,6 +271,7 @@ class GptMarkdownConfig {
       imageBuilder: imageBuilder ?? this.imageBuilder,
       orderedListBuilder: orderedListBuilder ?? this.orderedListBuilder,
       unOrderedListBuilder: unOrderedListBuilder ?? this.unOrderedListBuilder,
+      listGroupBuilder: listGroupBuilder ?? this.listGroupBuilder,
       components: components ?? this.components,
       inlineComponents: inlineComponents ?? this.inlineComponents,
       tableBuilder: tableBuilder ?? this.tableBuilder,
