@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:gpt_markdown/custom_widgets/markdown_config.dart';
+export 'package:gpt_markdown/custom_widgets/markdown_config.dart';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_math_fork/flutter_math.dart';
