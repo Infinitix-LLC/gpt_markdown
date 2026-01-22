@@ -293,9 +293,12 @@ class CheckBoxMd extends BlockMd {
   ) {
     var match = this.exp.firstMatch(text.trim());
     var isChecked = ("${match?[1]}" == "x");
-    var child = MdWidget(context, "${match?[2]}", false, config: config);
+    var rawText = match?[2] ?? '';
+    var child = MdWidget(context, rawText, false, config: config);
+    var updatedConfig = config.copyWith(rawText: rawText);
 
-    return config.checkBoxBuilder?.call(context, isChecked, child, config) ??
+    return config.checkBoxBuilder
+            ?.call(context, isChecked, child, updatedConfig) ??
         CustomCb(
           value: isChecked,
           textDirection: config.textDirection,
@@ -317,10 +320,12 @@ class RadioButtonMd extends BlockMd {
   ) {
     var match = this.exp.firstMatch(text.trim());
     var isSelected = ("${match?[1]}" == "x");
-    var child = MdWidget(context, "${match?[2]}", false, config: config);
+    var rawText = match?[2] ?? '';
+    var child = MdWidget(context, rawText, false, config: config);
+    var updatedConfig = config.copyWith(rawText: rawText);
 
     return config.radioButtonBuilder
-            ?.call(context, isSelected, child, config) ??
+            ?.call(context, isSelected, child, updatedConfig) ??
         CustomRb(
           value: isSelected,
           textDirection: config.textDirection,

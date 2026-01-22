@@ -241,4 +241,139 @@ void main() {
       expect(find.text('has-style:true'), findsOneWidget);
     });
   });
+
+  group('rawText in config', () {
+    testWidgets('checkbox builder receives rawText in config', (tester) async {
+      String? capturedRawText;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: GptMarkdown(
+              '[x] Task complete',
+              checkBoxBuilder: (context, isChecked, child, config) {
+                capturedRawText = config.rawText;
+                return Text('rawText:${config.rawText}');
+              },
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(capturedRawText, equals('Task complete'));
+      expect(find.text('rawText:Task complete'), findsOneWidget);
+    });
+
+    testWidgets('radio button builder receives rawText in config',
+        (tester) async {
+      String? capturedRawText;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: GptMarkdown(
+              '(x) Option selected',
+              radioButtonBuilder: (context, isSelected, child, config) {
+                capturedRawText = config.rawText;
+                return Text('rawText:${config.rawText}');
+              },
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(capturedRawText, equals('Option selected'));
+      expect(find.text('rawText:Option selected'), findsOneWidget);
+    });
+
+    testWidgets('rawText contains markdown formatting', (tester) async {
+      String? capturedRawText;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: GptMarkdown(
+              '[x] **Bold** task',
+              checkBoxBuilder: (context, isChecked, child, config) {
+                capturedRawText = config.rawText;
+                return Text('captured');
+              },
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // rawText should contain the original markdown formatting
+      expect(capturedRawText, equals('**Bold** task'));
+    });
+
+    testWidgets('multiple checkboxes each have correct rawText',
+        (tester) async {
+      final capturedTexts = <String>[];
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: GptMarkdown(
+              '[x] First task\n[ ] Second task',
+              checkBoxBuilder: (context, isChecked, child, config) {
+                capturedTexts.add(config.rawText ?? '');
+                return Text('item:${config.rawText}');
+              },
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(capturedTexts, contains('First task'));
+      expect(capturedTexts, contains('Second task'));
+      expect(find.text('item:First task'), findsOneWidget);
+      expect(find.text('item:Second task'), findsOneWidget);
+    });
+
+    testWidgets('rawText can be used for toggle identification',
+        (tester) async {
+      // Simulates the use case of toggling a checkbox by its text
+      final toggledItems = <String, bool>{};
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: GptMarkdown(
+              '[x] Buy milk\n[ ] Walk dog',
+              checkBoxBuilder: (context, isChecked, child, config) {
+                final rawText = config.rawText!;
+                return GestureDetector(
+                  onTap: () {
+                    toggledItems[rawText] = !isChecked;
+                  },
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(isChecked
+                          ? Icons.check_box
+                          : Icons.check_box_outline_blank),
+                      child,
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Tap on "Buy milk" checkbox
+      await tester.tap(find.text('Buy milk'));
+      await tester.pumpAndSettle();
+
+      // Verify the correct item was identified for toggling
+      expect(toggledItems['Buy milk'], equals(false)); // was checked, now false
+    });
+  });
 }
