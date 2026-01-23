@@ -227,14 +227,15 @@ class HTag extends BlockMd {
                 text: "\n ",
                 style: TextStyle(fontSize: 0, height: 0),
               ),
-            WidgetSpan(
-              child: CustomDivider(
-                height: theme.hrLineThickness,
-                color:
-                    config.style?.color ??
-                    Theme.of(context).colorScheme.outline,
+            if (config.addDividerAfterH1)
+              WidgetSpan(
+                child: CustomDivider(
+                  height: theme.hrLineThickness,
+                  color:
+                      config.style?.color ??
+                      Theme.of(context).colorScheme.outline,
+                ),
               ),
-            ),
           ],
         ],
       ),
@@ -274,6 +275,7 @@ class HrLine extends BlockMd {
   ) {
     var thickness = GptMarkdownTheme.of(context).hrLineThickness;
     var color = GptMarkdownTheme.of(context).hrLineColor;
+    print("thickness: $thickness, color: $color");
     return CustomDivider(
       height: thickness,
       color: config.style?.color ?? color,
