@@ -266,7 +266,7 @@ class NewLines extends InlineMd {
 /// Horizontal line component
 class HrLine extends BlockMd {
   @override
-  String get expString => (r"⸻|((--)[-]+)$");
+  String get expString => (r"^( *(?:- *){3,}|⸻)$");
   @override
   Widget build(
     BuildContext context,
