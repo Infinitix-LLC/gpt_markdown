@@ -12,6 +12,7 @@ class GptMarkdownThemeData extends ThemeExtension<GptMarkdownThemeData> {
     required this.h6,
     required this.hrLineThickness,
     required this.hrLineColor,
+    required this.hrHeight,
     required this.linkColor,
     required this.linkHoverColor,
   });
@@ -28,6 +29,7 @@ class GptMarkdownThemeData extends ThemeExtension<GptMarkdownThemeData> {
     TextStyle? h6,
     double? hrLineThickness,
     Color? hrLineColor,
+    double? hrHeight,
     Color? linkColor,
     Color? linkHoverColor,
   }) {
@@ -66,6 +68,7 @@ class GptMarkdownThemeData extends ThemeExtension<GptMarkdownThemeData> {
       h6: h6,
       hrLineThickness: hrLineThickness,
       hrLineColor: hrLineColor,
+      hrHeight: hrHeight,
       linkColor: linkColor,
       linkHoverColor: linkHoverColor,
     );
@@ -85,6 +88,7 @@ class GptMarkdownThemeData extends ThemeExtension<GptMarkdownThemeData> {
       h6: textTheme.titleSmall,
       hrLineThickness: 1,
       hrLineColor: theme.colorScheme.outline,
+      hrHeight: 1,
       linkColor: Colors.blue,
       linkHoverColor: Colors.red,
     );
@@ -110,16 +114,21 @@ class GptMarkdownThemeData extends ThemeExtension<GptMarkdownThemeData> {
 
   /// The style of the h6 text.
   TextStyle? h6;
+
+  /// The thickness of the horizontal line.
   double hrLineThickness;
 
   /// The color of the horizontal line.
   Color hrLineColor;
 
+  /// The height of the horizontal line.
+  double? hrHeight;
+
   /// The color of the link.
-  Color linkColor;
+  final Color linkColor;
 
   /// The color of the link when hovering.
-  Color linkHoverColor;
+  final Color linkHoverColor;
 
   /// A method to copy the `GptMarkdownThemeData`.
   @override
@@ -133,6 +142,7 @@ class GptMarkdownThemeData extends ThemeExtension<GptMarkdownThemeData> {
     TextStyle? h6,
     double? hrLineThickness,
     Color? hrLineColor,
+    double? hrHeight,
     Color? linkColor,
     Color? linkHoverColor,
   }) {
@@ -146,6 +156,7 @@ class GptMarkdownThemeData extends ThemeExtension<GptMarkdownThemeData> {
       h6: h6 ?? this.h6,
       hrLineThickness: hrLineThickness ?? this.hrLineThickness,
       hrLineColor: hrLineColor ?? this.hrLineColor,
+      hrHeight: hrHeight ?? this.hrHeight,
       linkColor: linkColor ?? this.linkColor,
       linkHoverColor: linkHoverColor ?? this.linkHoverColor,
     );
@@ -168,6 +179,10 @@ class GptMarkdownThemeData extends ThemeExtension<GptMarkdownThemeData> {
       hrLineThickness: Tween(
         begin: hrLineThickness,
         end: other.hrLineThickness,
+      ).transform(t),
+      hrHeight: Tween(
+        begin: hrHeight,
+        end: other.hrHeight,
       ).transform(t),
       hrLineColor: Color.lerp(hrLineColor, other.hrLineColor, t) ?? hrLineColor,
       linkColor: Color.lerp(linkColor, other.linkColor, t) ?? linkColor,
