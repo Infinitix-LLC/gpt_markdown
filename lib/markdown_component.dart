@@ -2,7 +2,9 @@ part of 'gpt_markdown.dart';
 
 /// Markdown components
 abstract class MarkdownComponent {
-  static List<MarkdownComponent> get globalComponents => [
+  const MarkdownComponent();
+
+  static final List<MarkdownComponent> globalComponents = const [
     CodeBlockMd(),
     LatexMathMultiLine(),
     NewLines(),
@@ -17,7 +19,7 @@ abstract class MarkdownComponent {
     IndentMd(),
   ];
 
-  static final List<MarkdownComponent> inlineComponents = [
+  static final List<MarkdownComponent> inlineComponents = const [
     ATagMd(),
     ImageMd(),
     TableMd(),
@@ -100,6 +102,8 @@ abstract class MarkdownComponent {
 
 /// Inline component
 abstract class InlineMd extends MarkdownComponent {
+  const InlineMd();
+
   @override
   bool get inline => true;
 
@@ -113,6 +117,8 @@ abstract class InlineMd extends MarkdownComponent {
 
 /// Block component
 abstract class BlockMd extends MarkdownComponent {
+  const BlockMd();
+
   @override
   bool get inline => false;
 
@@ -160,6 +166,8 @@ abstract class BlockMd extends MarkdownComponent {
 
 /// Indent component
 class IndentMd extends BlockMd {
+  const IndentMd();
+
   @override
   String get expString => (r"^(\ \ +)([^\n]+)$");
   @override
@@ -195,6 +203,8 @@ class IndentMd extends BlockMd {
 
 /// Heading component
 class HTag extends BlockMd {
+  const HTag();
+
   @override
   String get expString => (r"(?<hash>#{1,6})\ (?<data>[^\n]+?)$");
   @override
@@ -246,6 +256,8 @@ class HTag extends BlockMd {
 }
 
 class NewLines extends InlineMd {
+  const NewLines();
+
   @override
   RegExp get exp => RegExp(r"\n\n+");
   @override
@@ -267,6 +279,8 @@ class NewLines extends InlineMd {
 
 /// Horizontal line component
 class HrLine extends BlockMd {
+  const HrLine();
+
   @override
   String get expString => (r"⸻|((--)[-]+)$");
   @override
@@ -286,6 +300,8 @@ class HrLine extends BlockMd {
 
 /// Checkbox component
 class CheckBoxMd extends BlockMd {
+  const CheckBoxMd();
+
   @override
   String get expString => (r"\[((?:\x|\ ))\]\ (\S[^\n]*?)$");
 
@@ -306,6 +322,8 @@ class CheckBoxMd extends BlockMd {
 
 /// Radio Button component
 class RadioButtonMd extends BlockMd {
+  const RadioButtonMd();
+
   @override
   String get expString => (r"\(((?:\x|\ ))\)\ (\S[^\n]*)$");
 
@@ -326,6 +344,8 @@ class RadioButtonMd extends BlockMd {
 
 /// Block quote component
 class BlockQuote extends InlineMd {
+  const BlockQuote();
+
   @override
   bool get inline => false;
   @override
@@ -387,6 +407,8 @@ class BlockQuote extends InlineMd {
 
 /// Unordered list component
 class UnOrderedList extends BlockMd {
+  const UnOrderedList();
+
   @override
   String get expString => (r"(?:\-|\*)\ ([^\n]+)$");
 
@@ -423,6 +445,8 @@ class UnOrderedList extends BlockMd {
 
 /// Ordered list component
 class OrderedList extends BlockMd {
+  const OrderedList();
+
   @override
   String get expString => (r"([0-9]+)\.\ ([^\n]+)$");
 
@@ -455,6 +479,8 @@ class OrderedList extends BlockMd {
 }
 
 class HighlightedText extends InlineMd {
+  const HighlightedText();
+
   @override
   RegExp get exp => RegExp(r"`(?!`)(.+?)(?<!`)`(?!`)");
 
@@ -502,6 +528,8 @@ class HighlightedText extends InlineMd {
 
 /// Bold text component
 class BoldMd extends InlineMd {
+  const BoldMd();
+
   @override
   RegExp get exp => RegExp(r"(?<!\*)\*\*(?<!\s)(.+?)(?<!\s)\*\*(?!\*)");
 
@@ -530,6 +558,8 @@ class BoldMd extends InlineMd {
 }
 
 class StrikeMd extends InlineMd {
+  const StrikeMd();
+
   @override
   RegExp get exp => RegExp(r"(?<!\*)\~\~(?<!\s)(.+?)(?<!\s)\~\~(?!\*)");
 
@@ -562,6 +592,8 @@ class StrikeMd extends InlineMd {
 
 /// Italic text component
 class ItalicMd extends InlineMd {
+  const ItalicMd();
+
   @override
   RegExp get exp =>
       RegExp(r"(?:(?<!\*)\*(?<!\s)(.+?)(?<!\s)\*(?!\*))", dotAll: true);
@@ -587,6 +619,8 @@ class ItalicMd extends InlineMd {
 }
 
 class LatexMathMultiLine extends BlockMd {
+  const LatexMathMultiLine();
+
   @override
   String get expString => (r"\ *\\\[((?:.)*?)\\\]");
   // (r"\ *\\\[((?:(?!\n\n\n).)*?)\\\]|(\\begin.*?\\end{.*?})");
@@ -659,6 +693,8 @@ class LatexMathMultiLine extends BlockMd {
 
 /// Italic text component
 class LatexMath extends InlineMd {
+  const LatexMath();
+
   @override
   RegExp get exp => RegExp(
     [
@@ -738,6 +774,8 @@ class LatexMath extends InlineMd {
 
 /// source text component
 class SourceTag extends InlineMd {
+  const SourceTag();
+
   @override
   RegExp get exp => RegExp(r"(?:【.*?)?\[(\d+?)\]");
 
@@ -785,6 +823,8 @@ class SourceTag extends InlineMd {
 
 /// Link text component
 class ATagMd extends InlineMd {
+  const ATagMd();
+
   @override
   RegExp get exp => RegExp(r"(?<!\!)\[.*\]\([^\s]*\)");
 
@@ -908,6 +948,8 @@ class ATagMd extends InlineMd {
 
 /// Image component
 class ImageMd extends InlineMd {
+  const ImageMd();
+
   @override
   RegExp get exp => RegExp(r"\!\[[^\[\]]*\]\([^\s]*\)");
 
@@ -999,6 +1041,8 @@ class ImageMd extends InlineMd {
 
 /// Table component
 class TableMd extends BlockMd {
+  const TableMd();
+
   @override
   String get expString =>
       (r"(((\|[^\n\|]+\|)((([^\n\|]+\|)+)?)\ *)(\n\ *(((\|[^\n\|]+\|)(([^\n\|]+\|)+)?))\ *)+)$");
@@ -1185,6 +1229,8 @@ class TableMd extends BlockMd {
 }
 
 class CodeBlockMd extends BlockMd {
+  const CodeBlockMd();
+
   @override
   String get expString => r"```(.*?)\n((.*?)(:?\n\s*?```)|(.*)(:?\n```)?)$";
   @override
@@ -1204,6 +1250,8 @@ class CodeBlockMd extends BlockMd {
 }
 
 class UnderLineMd extends InlineMd {
+  const UnderLineMd();
+
   @override
   RegExp get exp =>
       RegExp(r"<u>(.*?)(?:</u>|$)", multiLine: true, dotAll: true);
