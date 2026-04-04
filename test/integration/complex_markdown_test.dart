@@ -13,7 +13,7 @@ void main() {
 - Apples
 - Bananas
 - **Organic** spinach
-- [Recipe ideas](https://example.com/recipes)
+- [Recipe ideas](https://example.com/recipes "Get inspired")
 * Tomatoes
 * *Fresh* basil
 
@@ -140,10 +140,10 @@ Use the `rewards card` for discounts.
 
       // Links in list, table, and checkbox sections
       expect(output, contains('LINK'));
-      // Link in unordered list
-      expect(output, contains('LINK("Recipe ideas")'));
+      // Link in unordered list (with title attribute - title is stripped, URL preserved)
+      expect(output, contains('LINK("Recipe ideas", url="https://example.com/recipes")'));
       // Link in checkbox item
-      expect(output, contains('LINK("Grocery Store")'));
+      expect(output, contains('LINK("Grocery Store", url="https://example.com/store")'));
     });
 
     testWidgets('contains bold text', (tester) async {

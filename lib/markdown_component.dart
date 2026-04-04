@@ -9,6 +9,7 @@ abstract class MarkdownComponent {
     BlockQuote(),
     TableMd(),
     HTag(),
+    ListGroupMd(),
     UnOrderedList(),
     OrderedList(),
     RadioButtonMd(),
@@ -292,11 +293,15 @@ class CheckBoxMd extends BlockMd {
     final GptMarkdownConfig config,
   ) {
     var match = this.exp.firstMatch(text.trim());
-    return CustomCb(
-      value: ("${match?[1]}" == "x"),
-      textDirection: config.textDirection,
-      child: MdWidget(context, "${match?[2]}", false, config: config),
-    );
+    var isChecked = ("${match?[1]}" == "x");
+    var child = MdWidget(context, "${match?[2]}", false, config: config);
+
+    return config.checkBoxBuilder?.call(context, isChecked, child, config) ??
+        CustomCb(
+          value: isChecked,
+          textDirection: config.textDirection,
+          child: child,
+        );
   }
 }
 
@@ -312,11 +317,16 @@ class RadioButtonMd extends BlockMd {
     final GptMarkdownConfig config,
   ) {
     var match = this.exp.firstMatch(text.trim());
-    return CustomRb(
-      value: ("${match?[1]}" == "x"),
-      textDirection: config.textDirection,
-      child: MdWidget(context, "${match?[2]}", false, config: config),
-    );
+    var isSelected = ("${match?[1]}" == "x");
+    var child = MdWidget(context, "${match?[2]}", false, config: config);
+
+    return config.radioButtonBuilder
+            ?.call(context, isSelected, child, config) ??
+        CustomRb(
+          value: isSelected,
+          textDirection: config.textDirection,
+          child: child,
+        );
   }
 }
 
@@ -414,6 +424,59 @@ class UnOrderedList extends BlockMd {
           textDirection: config.textDirection,
           child: child,
         );
+  }
+}
+
+/// Grouped unordered list component - matches consecutive list items
+class ListGroupMd extends BlockMd {
+  @override
+  String get expString => r"(?:[-*]\ [^\n]+)(?:\n[-*]\ [^\n]+)+";
+
+  @override
+  Widget build(
+    BuildContext context,
+    String text,
+    final GptMarkdownConfig config,
+  ) {
+    // Parse each line into ListGroupItem
+    final lines = text.split('\n');
+    final items = <ListGroupItem>[];
+
+    for (int i = 0; i < lines.length; i++) {
+      final line = lines[i];
+      final match = RegExp(r'^[-*]\ (.+)$').firstMatch(line);
+      if (match != null) {
+        final rawText = match.group(1) ?? '';
+        items.add(ListGroupItem(
+          index: i,
+          rawText: rawText,
+          content: MdWidget(context, rawText, true, config: config),
+        ));
+      }
+    }
+
+    // Use custom builder if provided
+    if (config.listGroupBuilder != null) {
+      return config.listGroupBuilder!(context, items, config);
+    }
+
+    // Fallback: render each item individually
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: items.map((item) =>
+        config.unOrderedListBuilder?.call(context, item.content, config) ??
+        UnorderedListView(
+          bulletColor: config.style?.color ??
+              DefaultTextStyle.of(context).style.color,
+          padding: 7,
+          spacing: 10,
+          bulletSize: 0.3 * (config.style?.fontSize ??
+              DefaultTextStyle.of(context).style.fontSize ?? kDefaultFontSize),
+          textDirection: config.textDirection,
+          child: item.content,
+        ),
+      ).toList(),
+    );
   }
 }
 
@@ -782,7 +845,7 @@ class SourceTag extends InlineMd {
 /// Link text component
 class ATagMd extends InlineMd {
   @override
-  RegExp get exp => RegExp(r"(?<!\!)\[.*\]\([^\s]*\)");
+  RegExp get exp => RegExp(r'(?<!\!)\[.*\]\([^\s\)]*(?:\s+"[^"]*")?\)');
 
   @override
   InlineSpan span(
@@ -843,7 +906,10 @@ class ATagMd extends InlineMd {
       return const TextSpan();
     }
 
-    final url = text.substring(urlStart, urlEnd).trim();
+    var rawUrl = text.substring(urlStart, urlEnd).trim();
+    // Remove title if present: url "title" -> url
+    final titleMatch = RegExp(r'^(\S+)\s+"[^"]*"$').firstMatch(rawUrl);
+    final url = titleMatch != null ? titleMatch.group(1)! : rawUrl;
 
     var builder = config.linkBuilder;
 
@@ -858,7 +924,9 @@ class ATagMd extends InlineMd {
     var theme = GptMarkdownTheme.of(context);
     var linkTextSpan = TextSpan(
       children: MarkdownComponent.generate(context, linkText, config, false),
-      style: config.style?.copyWith(
+      // changed from config.style?.copyWith()
+      // so that default style is applied when config.style is null
+      style: config.style ?? TextStyle(
         color: theme.linkColor,
         decorationColor: theme.linkColor,
       ),
@@ -893,6 +961,7 @@ class ATagMd extends InlineMd {
           config.onLinkTap?.call(url, linkText);
         },
         text: linkText,
+        url: url,
         config: config,
         child: config.getRich(linkTextSpan),
       ),
@@ -1118,15 +1187,6 @@ class TableMd extends BlockMd {
                   })
                   .map<TableRow>(
                     (entry) => TableRow(
-                      decoration:
-                          (hasHeader && entry.key == 0)
-                              ? BoxDecoration(
-                                color:
-                                    Theme.of(
-                                      context,
-                                    ).colorScheme.surfaceContainerHighest,
-                              )
-                              : null,
                       children: List.generate(maxCol, (index) {
                         var e = entry.value;
                         String data = e[index] ?? "";

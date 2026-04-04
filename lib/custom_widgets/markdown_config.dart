@@ -65,6 +65,50 @@ typedef HighlightBuilder =
 /// A builder function for the image.
 typedef ImageBuilder = Widget Function(BuildContext context, String imageUrl);
 
+/// A builder function for the checkbox.
+typedef CheckBoxBuilder =
+    Widget Function(
+      BuildContext context,
+      bool isChecked,
+      Widget child,
+      GptMarkdownConfig config,
+    );
+
+/// A builder function for the radio button.
+typedef RadioButtonBuilder =
+    Widget Function(
+      BuildContext context,
+      bool isSelected,
+      Widget child,
+      GptMarkdownConfig config,
+    );
+
+/// Represents a single list item with its content and index.
+class ListGroupItem {
+  /// The index of this item within the group.
+  final int index;
+
+  /// The raw markdown text content of this list item.
+  final String rawText;
+
+  /// The rendered widget content of this list item.
+  final Widget content;
+
+  ListGroupItem({
+    required this.index,
+    required this.rawText,
+    required this.content,
+  });
+}
+
+/// A builder function for grouped list items (enables ReorderableListView).
+typedef ListGroupBuilder =
+    Widget Function(
+      BuildContext context,
+      List<ListGroupItem> items,
+      GptMarkdownConfig config,
+    );
+
 /// A configuration class for the GPT Markdown component.
 ///
 /// The [GptMarkdownConfig] class is used to configure the GPT Markdown component.
@@ -86,6 +130,7 @@ class GptMarkdownConfig {
     this.highlightBuilder,
     this.orderedListBuilder,
     this.unOrderedListBuilder,
+    this.listGroupBuilder,
     this.linkBuilder,
     this.imageBuilder,
     this.maxLines,
@@ -93,6 +138,9 @@ class GptMarkdownConfig {
     this.components,
     this.inlineComponents,
     this.tableBuilder,
+    this.checkBoxBuilder,
+    this.radioButtonBuilder,
+    this.showFrontmatter = true,
   });
 
   /// The direction of the text.
@@ -131,6 +179,9 @@ class GptMarkdownConfig {
   /// The Unordered List builder.
   final UnOrderedListBuilder? unOrderedListBuilder;
 
+  /// The List Group builder for handling consecutive list items as a group.
+  final ListGroupBuilder? listGroupBuilder;
+
   /// The maximum number of lines.
   final int? maxLines;
 
@@ -155,6 +206,26 @@ class GptMarkdownConfig {
   /// The table builder.
   final TableBuilder? tableBuilder;
 
+  /// The checkbox builder.
+  final CheckBoxBuilder? checkBoxBuilder;
+
+  /// The radio button builder.
+  final RadioButtonBuilder? radioButtonBuilder;
+
+  /// Whether to show YAML frontmatter at the beginning of markdown content.
+  ///
+  /// When set to `false`, frontmatter blocks like:
+  /// ```
+  /// ---
+  /// summary: "frontmatter contents"
+  /// tags: ["active"]
+  /// ---
+  /// ```
+  /// will be stripped from the beginning of the content before rendering.
+  ///
+  /// Defaults to `true`.
+  final bool showFrontmatter;
+
   /// A copy of the configuration with the specified parameters.
   GptMarkdownConfig copyWith({
     TextStyle? style,
@@ -174,9 +245,13 @@ class GptMarkdownConfig {
     final ImageBuilder? imageBuilder,
     final OrderedListBuilder? orderedListBuilder,
     final UnOrderedListBuilder? unOrderedListBuilder,
+    final ListGroupBuilder? listGroupBuilder,
     final List<MarkdownComponent>? components,
     final List<MarkdownComponent>? inlineComponents,
     final TableBuilder? tableBuilder,
+    final CheckBoxBuilder? checkBoxBuilder,
+    final RadioButtonBuilder? radioButtonBuilder,
+    final bool? showFrontmatter,
   }) {
     return GptMarkdownConfig(
       style: style ?? this.style,
@@ -196,9 +271,13 @@ class GptMarkdownConfig {
       imageBuilder: imageBuilder ?? this.imageBuilder,
       orderedListBuilder: orderedListBuilder ?? this.orderedListBuilder,
       unOrderedListBuilder: unOrderedListBuilder ?? this.unOrderedListBuilder,
+      listGroupBuilder: listGroupBuilder ?? this.listGroupBuilder,
       components: components ?? this.components,
       inlineComponents: inlineComponents ?? this.inlineComponents,
       tableBuilder: tableBuilder ?? this.tableBuilder,
+      checkBoxBuilder: checkBoxBuilder ?? this.checkBoxBuilder,
+      radioButtonBuilder: radioButtonBuilder ?? this.radioButtonBuilder,
+      showFrontmatter: showFrontmatter ?? this.showFrontmatter,
     );
   }
 
@@ -222,6 +301,7 @@ class GptMarkdownConfig {
         maxLines == other.maxLines &&
         overflow == other.overflow &&
         followLinkColor == other.followLinkColor &&
+        showFrontmatter == other.showFrontmatter &&
         // latexWorkaround == other.latexWorkaround &&
         // components == other.components &&
         // inlineComponents == other.inlineComponents &&

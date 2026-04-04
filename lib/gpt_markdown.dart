@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:gpt_markdown/custom_widgets/markdown_config.dart';
+export 'package:gpt_markdown/custom_widgets/markdown_config.dart';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_math_fork/flutter_math.dart';
@@ -40,10 +41,14 @@ class GptMarkdown extends StatelessWidget {
     this.overflow,
     this.orderedListBuilder,
     this.unOrderedListBuilder,
+    this.listGroupBuilder,
     this.tableBuilder,
     this.components,
     this.inlineComponents,
     this.useDollarSignsForLatex = false,
+    this.checkBoxBuilder,
+    this.radioButtonBuilder,
+    this.showFrontmatter = true,
   });
 
   /// The direction of the text.
@@ -98,11 +103,34 @@ class GptMarkdown extends StatelessWidget {
   /// The unordered list builder.
   final UnOrderedListBuilder? unOrderedListBuilder;
 
+  /// The list group builder for handling consecutive list items as a group.
+  final ListGroupBuilder? listGroupBuilder;
+
   /// Whether to use dollar signs for LaTeX.
   final bool useDollarSignsForLatex;
 
   /// The table builder.
   final TableBuilder? tableBuilder;
+
+  /// The checkbox builder.
+  final CheckBoxBuilder? checkBoxBuilder;
+
+  /// The radio button builder.
+  final RadioButtonBuilder? radioButtonBuilder;
+
+  /// Whether to show YAML frontmatter at the beginning of markdown content.
+  ///
+  /// When set to `false`, frontmatter blocks like:
+  /// ```
+  /// ---
+  /// summary: "frontmatter contents"
+  /// tags: ["active"]
+  /// ---
+  /// ```
+  /// will be stripped from the beginning of the content before rendering.
+  ///
+  /// Defaults to `true`.
+  final bool showFrontmatter;
 
   /// The list of components.
   ///  ```dart
@@ -159,9 +187,28 @@ class GptMarkdown extends StatelessWidget {
   //   );
   // }
 
+  /// Regular expression to match YAML frontmatter at the beginning of content.
+  /// Matches content between --- delimiters at the start of the string.
+  static final _frontmatterRegex = RegExp(
+    r'^---\s*\n(.*?)\n---\s*(\n|$)',
+    multiLine: false,
+    dotAll: true,
+  );
+
+  /// Strips YAML frontmatter from the beginning of markdown content.
+  static String _stripFrontmatter(String content) {
+    return content.replaceFirst(_frontmatterRegex, '');
+  }
+
   @override
   Widget build(BuildContext context) {
     String tex = data.trim();
+
+    // Strip frontmatter if showFrontmatter is false
+    if (!showFrontmatter) {
+      tex = _stripFrontmatter(tex);
+    }
+
     if (useDollarSignsForLatex) {
       tex = tex.replaceAllMapped(
         RegExp(r"(?<!\\)\$\$(.*?)(?<!\\)\$\$", dotAll: true),
@@ -204,9 +251,13 @@ class GptMarkdown extends StatelessWidget {
           imageBuilder: imageBuilder,
           orderedListBuilder: orderedListBuilder,
           unOrderedListBuilder: unOrderedListBuilder,
+          listGroupBuilder: listGroupBuilder,
           components: components,
           inlineComponents: inlineComponents,
           tableBuilder: tableBuilder,
+          checkBoxBuilder: checkBoxBuilder,
+          radioButtonBuilder: radioButtonBuilder,
+          showFrontmatter: showFrontmatter,
         ),
       ),
     );
