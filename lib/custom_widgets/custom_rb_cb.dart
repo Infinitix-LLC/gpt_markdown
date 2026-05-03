@@ -1,11 +1,6 @@
 import 'package:flutter/material.dart';
 
 /// A custom radio button widget that extends StatelessWidget.
-///
-/// The [CustomRb] widget is used to create a radio button in the UI.
-/// It takes a [child] parameter which is the content of the radio button,
-/// a [value] parameter which is the value of the radio button,
-/// and an optional [spacing] parameter to set the spacing between the radio button and its label.
 class CustomRb extends StatelessWidget {
   const CustomRb({
     super.key,
@@ -36,13 +31,11 @@ class CustomRb extends StatelessWidget {
                   start: spacing,
                   end: spacing,
                 ),
-                child: RadioGroup(
-                  onChanged: (value) {},
+                child: Radio<bool>(
+                  value: value,
                   groupValue: true,
-                  child: Radio(
-                    value: value,
-                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  ),
+                  onChanged: (v) {},
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
               ),
             ),
@@ -55,11 +48,6 @@ class CustomRb extends StatelessWidget {
 }
 
 /// A custom checkbox widget that extends StatelessWidget.
-///
-/// The [CustomCb] widget is used to create a checkbox in the UI.
-/// It takes a [child] parameter which is the content of the checkbox,
-/// a [value] parameter which is the value of the checkbox,
-/// and an optional [spacing] parameter to set the spacing between the checkbox and its label.
 class CustomCb extends StatelessWidget {
   const CustomCb({
     super.key,

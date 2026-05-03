@@ -1,21 +1,20 @@
 name: example
 description: A new Flutter project.
 
-publish_to: 'none' # Remove this line if you wish to publish to pub.dev
+publish_to: 'none'
 version: 1.0.0+1
 
 environment:
   sdk: '>=3.5.0 <4.0.0'
+  flutter: ">=3.0.0"
 dependencies:
   flutter:
     sdk: flutter
 
   cupertino_icons: ^1.0.2
   gpt_markdown:
-    path: ../../gpt_markdown
+    path: ..
   flutter_math_fork: ^0.7.2
-  watcher: ^1.1.0
-  desktop_drop: ^0.4.4
 
 dev_dependencies:
   flutter_test:
