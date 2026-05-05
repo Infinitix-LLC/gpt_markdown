@@ -161,7 +161,7 @@ class GptMarkdown extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    String tex = data.trim();
+    String tex = data.replaceAll('\r\n', '\n').replaceAll('\r', '\n').trim();
     if (useDollarSignsForLatex) {
       tex = tex.replaceAllMapped(
         RegExp(r"(?<!\\)\$\$(.*?)(?<!\\)\$\$", dotAll: true),
