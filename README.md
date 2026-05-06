@@ -9,7 +9,7 @@
 
 Render ChatGPT, Gemini, and Claude responses beautifully in your Flutter app. Drop-in replacement for `flutter_markdown` with full LaTeX support, streaming-friendly rendering, and rich customization via builder callbacks.
 
-> 🎮 **[Try the live playground →](https://42fe2acd-b62a-4237-93d8-a26456dd8460-00-374qs6753kf2e.janeway.replit.dev)**
+> 🌐 **[Visit gptmarkdown.com →](https://gptmarkdown.com/)**
 
 ⭐ If this package saves you time, please [like it on pub.dev](https://pub.dev/packages/gpt_markdown) — it helps others find it!
 
@@ -373,4 +373,4 @@ Here is the quadratic formula: \( x = \frac{-b \pm \sqrt{b^2 - 4ac}}{2a} \)
 - 📦 [pub.dev](https://pub.dev/packages/gpt_markdown)
 - 🐛 [Issue tracker](https://github.com/Infinitix-LLC/gpt_markdown/issues)
 - 💬 [Publisher](https://infinitix.tech)
-- 🎮 [Live playground](https://42fe2acd-b62a-4237-93d8-a26456dd8460-00-374qs6753kf2e.janeway.replit.dev)
+- 🌐 [Website](https://gptmarkdown.com/)
