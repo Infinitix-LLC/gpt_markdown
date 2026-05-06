@@ -9,7 +9,7 @@
 
 Render ChatGPT, Gemini, and Claude responses beautifully in your Flutter app. Supports the full Markdown spec plus inline and block LaTeX math, with a simple drop-in widget.
 
-> 🎮 **[Try the live playground →](https://gptmarkdown.com/examples)**
+> 🎮 **[Try the live playground →](https://gptmarkdown.com/playground)**
 
 ---
 
@@ -31,7 +31,7 @@ GptMarkdown(
 
 That's it. LaTeX, bold, italic, tables, code blocks, and more all work out of the box.
 
-For full examples, visit the [live playground](https://gptmarkdown.com/examples) or the [Example tab](https://pub.dev/packages/gpt_markdown/example) on pub.dev.
+For full examples, visit the [live playground](https://gptmarkdown.com/playground) or the [Example tab](https://pub.dev/packages/gpt_markdown/example) on pub.dev.
 
 ---
 
@@ -90,5 +90,5 @@ For full examples, visit the [live playground](https://gptmarkdown.com/examples)
 - 📦 [pub.dev](https://pub.dev/packages/gpt_markdown)
 - 🐛 [Issue tracker](https://github.com/Infinitix-LLC/gpt_markdown/issues)
 - 💬 [Publisher](https://infinitix.tech)
-- 🎮 [Live playground](https://gptmarkdown.com/examples)
+- 🎮 [Live playground](https://gptmarkdown.com/playground)
 - 🌐 [Website](https://gptmarkdown.com/)
