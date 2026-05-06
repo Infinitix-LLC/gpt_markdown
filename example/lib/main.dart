@@ -1,541 +1,736 @@
 import 'package:flutter/material.dart';
-import 'package:gpt_markdown/custom_widgets/selectable_adapter.dart';
+import 'package:flutter/services.dart';
 import 'package:gpt_markdown/gpt_markdown.dart';
 import 'package:flutter_math_fork/flutter_math.dart';
+import 'package:gpt_markdown/custom_widgets/selectable_adapter.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(const PlaygroundApp());
 }
 
-class MyApp extends StatefulWidget {
-  const MyApp({super.key});
+const _samples = {
+  'Overview': r'''## Welcome to gpt_markdown Playground
+
+Type any Markdown or LaTeX in the editor and see it rendered instantly.
+
+**Bold**, *italic*, ~~strikethrough~~, `inline code`, and <u>underline</u> all work.
+
+---
+
+### LaTeX Math
+
+Inline: \( E = mc^2 \) and \( x = \frac{-b \pm \sqrt{b^2 - 4ac}}{2a} \)
+
+Block:
+\[
+\int_{-\infty}^{\infty} e^{-x^2}\,dx = \sqrt{\pi}
+\]
+
+### Table
+
+| Feature | Supported |
+|---|:---:|
+| Markdown | ✅ |
+| LaTeX | ✅ |
+| Tables | ✅ |
+| Code blocks | ✅ |
+| Selectable | ✅ |
+
+### Code Block
+
+```dart
+GptMarkdown(
+  '**Hello** from _gpt_markdown_!',
+  style: TextStyle(fontSize: 16),
+)
+```
+
+### Task List
+- [x] Install gpt_markdown
+- [x] Render Markdown
+- [ ] Ship your AI app
+''',
+  'LaTeX': r'''## LaTeX Examples
+
+### Inline Math
+The quadratic formula: \( x = \frac{-b \pm \sqrt{b^2-4ac}}{2a} \)
+
+Euler's identity: \( e^{i\pi} + 1 = 0 \)
+
+### Block Math
+
+\[
+\sum_{n=1}^{\infty} \frac{1}{n^2} = \frac{\pi^2}{6}
+\]
+
+\[
+\begin{bmatrix}
+1 & 2 & 3 \\
+4 & 5 & 6 \\
+7 & 8 & 9
+\end{bmatrix}
+\]
+
+\[
+\nabla \cdot \mathbf{E} = \frac{\rho}{\varepsilon_0}
+\]
+
+### Maxwell's Equations
+\[ \nabla \times \mathbf{B} = \mu_0 \mathbf{J} + \mu_0\varepsilon_0 \frac{\partial \mathbf{E}}{\partial t} \]
+''',
+  'AI Chat': r'''## ChatGPT-style Response
+
+Here is how to **reverse a linked list** in Python:
+
+```python
+class ListNode:
+    def __init__(self, val=0, next=None):
+        self.val = val
+        self.next = next
+
+def reverse_list(head: ListNode) -> ListNode:
+    prev = None
+    curr = head
+    while curr:
+        next_node = curr.next
+        curr.next = prev
+        prev = curr
+        curr = next_node
+    return prev
+```
+
+**Time complexity**: \( O(n) \)
+**Space complexity**: \( O(1) \)
+
+### Steps
+
+1. Initialize `prev = None` and `curr = head`
+2. On each iteration, save `curr.next` before overwriting it
+3. Point `curr.next` backwards to `prev`
+4. Advance both pointers forward
+5. Return `prev` — the new head
+
+> **Tip**: This is one of the most common interview questions. Practice until it's automatic.
+''',
+  'Tables': r'''## Table Examples
+
+### Basic Table
+
+| Name | Language | Stars |
+|---|---|---|
+| Flutter | Dart | ⭐ 170k |
+| React | JS | ⭐ 225k |
+| SwiftUI | Swift | ⭐ 7k |
+
+### Aligned Columns
+
+| Left | Center | Right |
+|:---|:---:|---:|
+| Apple | 🍎 | $1.20 |
+| Banana | 🍌 | $0.50 |
+| Cherry | 🍒 | $3.00 |
+
+### Mixed Content
+
+| Syntax | Example | Result |
+|---|---|---|
+| Bold | `**text**` | **text** |
+| Italic | `*text*` | *text* |
+| Code | `` `code` `` | `code` |
+| Strike | `~~text~~` | ~~text~~ |
+''',
+};
+
+class PlaygroundApp extends StatefulWidget {
+  const PlaygroundApp({super.key});
 
   @override
-  State<MyApp> createState() => _MyAppState();
+  State<PlaygroundApp> createState() => _PlaygroundAppState();
 }
 
-class _MyAppState extends State<MyApp> {
+class _PlaygroundAppState extends State<PlaygroundApp> {
   ThemeMode _themeMode = ThemeMode.dark;
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Flutter Demo',
+      title: 'gpt_markdown Playground',
       themeMode: _themeMode,
       theme: ThemeData(
         useMaterial3: true,
         brightness: Brightness.light,
-        colorSchemeSeed: Colors.blue,
+        colorSchemeSeed: const Color(0xFF6366F1),
         extensions: [
-          GptMarkdownThemeData(
-            brightness: Brightness.light,
-            highlightColor: Colors.red,
-          ),
+          GptMarkdownThemeData(brightness: Brightness.light),
         ],
       ),
       darkTheme: ThemeData(
         useMaterial3: true,
         brightness: Brightness.dark,
-        colorSchemeSeed: Colors.blue,
+        colorSchemeSeed: const Color(0xFF6366F1),
         extensions: [
-          GptMarkdownThemeData(
-            brightness: Brightness.dark,
-            highlightColor: Colors.red,
-          ),
+          GptMarkdownThemeData(brightness: Brightness.dark),
         ],
       ),
-      home: MyHomePage(
-        title: 'GptMarkdown',
-        onPressed: () {
-          setState(() {
-            _themeMode = (_themeMode == ThemeMode.dark)
-                ? ThemeMode.light
-                : ThemeMode.dark;
-          });
-        },
+      home: PlaygroundPage(
+        onToggleTheme: () => setState(() {
+          _themeMode =
+              _themeMode == ThemeMode.dark ? ThemeMode.light : ThemeMode.dark;
+        }),
+        themeMode: _themeMode,
       ),
     );
   }
 }
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title, required this.onPressed});
-  final VoidCallback? onPressed;
-
-  final String title;
+class PlaygroundPage extends StatefulWidget {
+  const PlaygroundPage({
+    super.key,
+    required this.onToggleTheme,
+    required this.themeMode,
+  });
+  final VoidCallback onToggleTheme;
+  final ThemeMode themeMode;
 
   @override
-  State<MyHomePage> createState() => _MyHomePageState();
+  State<PlaygroundPage> createState() => _PlaygroundPageState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
+class _PlaygroundPageState extends State<PlaygroundPage> {
+  late final TextEditingController _controller;
+  String _activeSample = 'Overview';
+  bool _selectable = false;
+  bool _useDollarLatex = false;
   TextDirection _direction = TextDirection.ltr;
-  final TextEditingController _controller = TextEditingController(
-    text: r'''This is a sample markdown document.
-* **bold**
-* *italic*
-* **_bold and italic_**
-* ~~strikethrough~~
-* `code`
-* [link](https://www.google.com)
 
-[![alt text](https://www.google.com/images/branding/googlelogo/1x/googlelogo_color_272x92dp.png)](link_url)
-```markdown
-# Complex Markdown Document for Testing
+  @override
+  void initState() {
+    super.initState();
+    _controller =
+        TextEditingController(text: _samples['Overview']!);
+  }
 
-This document is designed to **challenge** your `gpt_markdown` package by incorporating a wide variety of Markdown components including headers, lists, tables, code blocks, blockquotes, footnotes, and LaTeX math expressions.
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
 
----
-
-## Table of Contents
-1. [Headers and Emphasis](#headers-and-emphasis)
-2. [Lists](#lists)
-3. [Code Blocks and Inline Code](#code-blocks-and-inline-code)
-4. [Tables](#tables)
-5. [Blockquotes and Nested Elements](#blockquotes-and-nested-elements)
-6. [Mathematical Expressions](#mathematical-expressions)
-7. [Links and Images](#links-and-images)
-8. [Footnotes](#footnotes)
-9. [Horizontal Rules and Miscellaneous](#horizontal-rules-and-miscellaneous)
-
----
-
-## Headers and Emphasis
-
-### Header Levels
-Markdown supports multiple header levels:
-- `# Header 1`
-- `## Header 2`
-- `### Header 3`
-- `#### Header 4`
-- `##### Header 5`
-- `###### Header 6`
-
-### Emphasis Examples
-- *Italicized text* using single asterisks or underscores.
-- **Bold text** using double asterisks or underscores.
-- ***Bold and italic*** by combining them.
-- ~~Strikethrough~~ text using two tildes.
-
----
-
-## Lists
-
-### Unordered List
-- Item 1
-  - Nested Item 1.1
-  - Nested Item 1.2
-    - Deeply Nested Item 1.2.1
-- Item 2
-  - [ ] Task not completed
-  - [x] Task completed
-
-### Ordered List
-1. First item
-2. Second item with nested list:
-   1. Subitem 2.1
-   2. Subitem 2.2
-3. Third item
-
-### Mixed List Example
-- **Fruits**
-  1. Apple
-  2. Banana
-  3. Cherry
-- **Vegetables**
-  - Carrot
-  - Lettuce
-  - Spinach
-
----
-
-## Code Blocks and Inline Code
-
-### Inline Code
-Here is an example of inline code: `print("Hello, world!")`.
-
-### Fenced Code Block (Python)
-```python
-def greet(name):
-    """
-    Greets a person with the provided name.
-    """
-    print(f"Hello, {name}!")
-
-greet("Alice")
-```
-
-### Fenced Code Block (JavaScript)
-```javascript
-function greet(name) {
-    console.log(`Hello, ${name}!`);
-}
-greet("Bob");
-```
-
----
-
-## Tables
-
-Here is a table demonstrating various elements:
-
-| Syntax      | Description                              | Example                           |
-| ----------- | ---------------------------------------- | --------------------------------- |
-| Header      | Title                                    | **Bold Header**                   |
-| Paragraph   | Text with *italic* and **bold** elements | This is a sample paragraph.       |
-| Inline Code | `code snippet`                           | `let x = 10;`                     |
-
-Additional table with alignment:
-
-| Left Align | Center Align | Right Align |
-| :--------- |:------------:| ----------:|
-| Row 1      | Row 1        | Row 1      |
-| Row 2      | Row 2        | Row 2      |
-
----
-
-## Blockquotes and Nested Elements
-
-> **Blockquote Header**
-> 
-> This is a blockquote. You can include **bold** and *italic* text, as well as `inline code` within blockquotes.
-> 
-> > ### Nested Blockquote
-> > - Nested list item 1
-> > - Nested list item 2
-> >   1. Numbered subitem 1
-> >   2. Numbered subitem 2
-
----
-
-## Mathematical Expressions
-
-### Inline Math
-You can write inline math using the `\( ... \)` syntax. For example, the quadratic formula is given by:
-\( x = \frac{-b \pm \sqrt{b^2-4ac}}{2a} \).
-
-### Display Math
-Display math can be rendered using the `\[ ... \]` syntax. For example, consider the integral:
-\[
-\int_{-\infty}^{\infty} e^{-x^2} \, dx = \sqrt{\pi}
-\]
-
-More complex display equations:
-\[
-E = mc^2 \quad \text{and} \quad F = ma
-\]
-
----
-
-## Links and Images
-
-### Links
-Here are examples of links:
-- [OpenAI](https://www.openai.com)
-- [GitHub](https://github.com)
-
-### Images
-Inline images can be embedded as follows:
-![Alt Text for Image](https://via.placeholder.com/150 "Image Title")
-
----
-
-## Conclusion
-
-This document was created to test the robustness of Markdown parsers and to ensure that all components, including advanced LaTeX expressions and nested structures, are rendered correctly. Enjoy testing and feel free to extend it further!
-```
-''',
-  );
-
-  bool writingMod = true;
-  bool selectable = false;
-  bool useDollarSignsForLatex = false;
+  void _loadSample(String name) {
+    setState(() {
+      _activeSample = name;
+      _controller.text = _samples[name]!;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
-    return GptMarkdownTheme(
-      gptThemeData: GptMarkdownTheme.of(context).copyWith(
-        highlightColor: Colors.purple,
-        hrLinePadding: const EdgeInsets.symmetric(horizontal: 0, vertical: 0),
-        hrLineColor: Colors.red,
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final isWide = MediaQuery.of(context).size.width > 800;
+
+    return Scaffold(
+      backgroundColor: theme.colorScheme.surface,
+      body: Column(
+        children: [
+          _buildTopBar(theme, isDark),
+          _buildSampleBar(theme),
+          Expanded(
+            child: isWide
+                ? _buildWideLayout(theme)
+                : _buildNarrowLayout(theme),
+          ),
+        ],
       ),
-      child: Scaffold(
-        appBar: AppBar(
-          title: Text(widget.title),
-          actions: [
-            IconButton(
-              onPressed: () {
-                setState(() {
-                  useDollarSignsForLatex = !useDollarSignsForLatex;
-                });
-              },
-              icon: Icon(
-                Icons.monetization_on_outlined,
-                color: useDollarSignsForLatex
-                    ? Theme.of(context).colorScheme.onSurfaceVariant
-                    : Theme.of(context)
-                        .colorScheme
-                        .onSurface
-                        .withValues(alpha: 0.38),
-              ),
-            ),
-            IconButton(
-              onPressed: () {
-                setState(() {
-                  selectable = !selectable;
-                });
-              },
-              icon: Icon(
-                Icons.select_all_outlined,
-                color: selectable
-                    ? Theme.of(context).colorScheme.onSurfaceVariant
-                    : Theme.of(context)
-                        .colorScheme
-                        .onSurface
-                        .withValues(alpha: 0.38),
-              ),
-            ),
-            IconButton(
-              onPressed: () {
-                setState(() {
-                  _direction = TextDirection.values[(_direction.index + 1) % 2];
-                });
-              },
-              icon: const [Text("LTR"), Text("RTL")][_direction.index],
-            ),
-            IconButton(
-              onPressed: widget.onPressed,
-              icon: const Icon(Icons.sunny),
-            ),
-            IconButton(
-              onPressed: () => setState(() {
-                writingMod = !writingMod;
-              }),
-              icon: Icon(
-                  writingMod ? Icons.arrow_drop_down : Icons.arrow_drop_up),
-            ),
-          ],
+    );
+  }
+
+  Widget _buildTopBar(ThemeData theme, bool isDark) {
+    return Container(
+      height: 56,
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+        border: Border(
+          bottom: BorderSide(
+            color: theme.colorScheme.outlineVariant,
+            width: 1,
+          ),
         ),
-        body: Stack(
-          children: [
-            Column(
-              children: [
-                Expanded(
-                  child: ListView(
-                    children: [
-                      ListenableBuilder(
-                        listenable: _controller,
-                        builder: (context, _) {
-                          var data = _controller.text;
-                          return Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              border: Border.all(
-                                  width: 1,
-                                  color:
-                                      Theme.of(context).colorScheme.outline),
-                            ),
-                            child: Theme(
-                              data: Theme.of(context),
-                              child: Builder(
-                                builder: (context) {
-                                  Widget child = GptMarkdown(
-                                    data,
-                                    textDirection: _direction,
-                                    onLinkTap: (url, title) {
-                                      debugPrint(url);
-                                      debugPrint(title);
-                                    },
-                                    useDollarSignsForLatex:
-                                        useDollarSignsForLatex,
-                                    textAlign: TextAlign.justify,
-                                    textScaler: const TextScaler.linear(1),
-                                    style: const TextStyle(),
-                                    highlightBuilder: (context, text, style) {
-                                      return Container(
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 4, vertical: 2),
-                                        decoration: BoxDecoration(
-                                          color: Theme.of(context)
-                                              .colorScheme
-                                              .secondaryContainer,
-                                          borderRadius:
-                                              BorderRadius.circular(4),
-                                          border: Border.all(
-                                            color: Theme.of(context)
-                                                .colorScheme
-                                                .secondary
-                                                .withValues(alpha: 0.5),
-                                            width: 1,
-                                          ),
-                                        ),
-                                        child: Text(
-                                          text,
-                                          style: TextStyle(
-                                            color: Theme.of(context)
-                                                .colorScheme
-                                                .onSecondaryContainer,
-                                            fontFamily: 'monospace',
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: style.fontSize != null
-                                                ? style.fontSize! * 0.9
-                                                : 13.5,
-                                            height: style.height,
-                                          ),
-                                        ),
-                                      );
-                                    },
-                                    latexWorkaround: (tex) {
-                                      List<String> stack = [];
-                                      tex = tex.splitMapJoin(
-                                        RegExp(r"\\text\{|\{|\}|\_"),
-                                        onMatch: (p) {
-                                          String input = p[0] ?? "";
-                                          if (input == r"\text{") {
-                                            stack.add(input);
-                                          }
-                                          if (stack.isNotEmpty) {
-                                            if (input == r"{") {
-                                              stack.add(input);
-                                            }
-                                            if (input == r"}") {
-                                              stack.removeLast();
-                                            }
-                                            if (input == r"_") {
-                                              return r"\_";
-                                            }
-                                          }
-                                          return input;
-                                        },
-                                      );
-                                      return tex.replaceAllMapped(
-                                          RegExp(r"align\*"),
-                                          (match) => "aligned");
-                                    },
-                                    latexBuilder:
-                                        (context, tex, textStyle, inline) {
-                                      if (tex.contains(r"\begin{tabular}")) {
-                                        String tableString = "|${(RegExp(
-                                              r"^\\begin\{tabular\}\{.*?\}(.*?)\\end\{tabular\}$",
-                                              multiLine: true,
-                                              dotAll: true,
-                                            ).firstMatch(tex)?[1] ?? "").trim()}|";
-                                        tableString = tableString
-                                            .replaceAll(r"\\", "|\n|")
-                                            .replaceAll(r"\hline", "")
-                                            .replaceAll(
-                                                RegExp(r"(?<!\\)&"), "|");
-                                        var tableStringList = tableString
-                                            .split("\n")
-                                          ..insert(1, "|---|");
-                                        tableString =
-                                            tableStringList.join("\n");
-                                        return GptMarkdown(tableString);
-                                      }
-                                      var controller = ScrollController();
-                                      Widget child = Math.tex(
-                                        tex,
-                                        textStyle: textStyle,
-                                      );
-                                      if (!inline) {
-                                        child = Padding(
-                                          padding: const EdgeInsets.all(0.0),
-                                          child: Material(
-                                            color: Theme.of(context)
-                                                .colorScheme
-                                                .onInverseSurface,
-                                            child: Padding(
-                                              padding:
-                                                  const EdgeInsets.all(8.0),
-                                              child: Scrollbar(
-                                                controller: controller,
-                                                child: SingleChildScrollView(
-                                                  controller: controller,
-                                                  scrollDirection:
-                                                      Axis.horizontal,
-                                                  child: Math.tex(
-                                                    tex,
-                                                    textStyle: textStyle,
-                                                  ),
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                        );
-                                      }
-                                      child = SelectableAdapter(
-                                        selectedText: tex,
-                                        child: Math.tex(tex),
-                                      );
-                                      child = InkWell(
-                                        onTap: () {
-                                          debugPrint("Hello world");
-                                        },
-                                        child: child,
-                                      );
-                                      return child;
-                                    },
-                                    sourceTagBuilder:
-                                        (buildContext, string, textStyle) {
-                                      var value = int.tryParse(string);
-                                      value ??= -1;
-                                      value += 1;
-                                      return SizedBox(
-                                        height: 20,
-                                        width: 20,
-                                        child: Container(
-                                          decoration: BoxDecoration(
-                                            color: Colors.red,
-                                            borderRadius:
-                                                BorderRadius.circular(10),
-                                          ),
-                                          child:
-                                              Center(child: Text("$value")),
-                                        ),
-                                      );
-                                    },
-                                    linkBuilder:
-                                        (context, label, path, style) {
-                                      return Text.rich(
-                                        label,
-                                        style: style.copyWith(
-                                          color: Colors.blue,
-                                        ),
-                                      );
-                                    },
-                                  );
-                                  if (selectable) {
-                                    child = SelectionArea(
-                                      child: child,
-                                    );
-                                  }
-                                  return child;
-                                },
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    ],
-                  ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 28,
+            height: 28,
+            decoration: BoxDecoration(
+              color: const Color(0xFF6366F1),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: const Center(
+              child: Text(
+                'M',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 15,
                 ),
-                if (writingMod)
-                  ConstrainedBox(
-                    constraints: const BoxConstraints(maxHeight: 400),
-                    child: Padding(
-                      padding: const EdgeInsets.all(8.0),
-                      child: TextField(
-                        decoration: const InputDecoration(
-                            border: OutlineInputBorder(),
-                            label: Text("Type here:")),
-                        maxLines: null,
-                        controller: _controller,
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Text(
+            'gpt_markdown',
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w700,
+              letterSpacing: -0.3,
+            ),
+          ),
+          Text(
+            ' playground',
+            style: theme.textTheme.titleMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w400,
+            ),
+          ),
+          const Spacer(),
+          _ToolbarButton(
+            tooltip: _useDollarLatex ? 'Dollar LaTeX: ON' : 'Dollar LaTeX: OFF',
+            icon: Icons.functions,
+            active: _useDollarLatex,
+            onTap: () => setState(() => _useDollarLatex = !_useDollarLatex),
+            theme: theme,
+          ),
+          const SizedBox(width: 4),
+          _ToolbarButton(
+            tooltip: _selectable ? 'Selectable: ON' : 'Selectable: OFF',
+            icon: Icons.select_all_rounded,
+            active: _selectable,
+            onTap: () => setState(() => _selectable = !_selectable),
+            theme: theme,
+          ),
+          const SizedBox(width: 4),
+          _ToolbarButton(
+            tooltip: _direction == TextDirection.ltr ? 'Switch to RTL' : 'Switch to LTR',
+            label: _direction == TextDirection.ltr ? 'LTR' : 'RTL',
+            active: _direction == TextDirection.rtl,
+            onTap: () => setState(() {
+              _direction = _direction == TextDirection.ltr
+                  ? TextDirection.rtl
+                  : TextDirection.ltr;
+            }),
+            theme: theme,
+          ),
+          const SizedBox(width: 4),
+          _ToolbarButton(
+            tooltip: 'Toggle theme',
+            icon: isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
+            onTap: widget.onToggleTheme,
+            theme: theme,
+          ),
+          const SizedBox(width: 12),
+          _PubBadge(theme: theme),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSampleBar(ThemeData theme) {
+    return Container(
+      height: 40,
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        border: Border(
+          bottom: BorderSide(color: theme.colorScheme.outlineVariant),
+        ),
+      ),
+      child: Row(
+        children: [
+          Text(
+            'Examples:',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(width: 10),
+          ..._samples.keys.map((name) => Padding(
+                padding: const EdgeInsets.only(right: 6),
+                child: _SampleChip(
+                  label: name,
+                  active: _activeSample == name,
+                  onTap: () => _loadSample(name),
+                  theme: theme,
+                ),
+              )),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWideLayout(ThemeData theme) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Expanded(child: _buildEditor(theme)),
+        VerticalDivider(
+          width: 1,
+          color: theme.colorScheme.outlineVariant,
+        ),
+        Expanded(child: _buildPreview(theme)),
+      ],
+    );
+  }
+
+  Widget _buildNarrowLayout(ThemeData theme) {
+    return Column(
+      children: [
+        SizedBox(height: 280, child: _buildEditor(theme)),
+        Divider(height: 1, color: theme.colorScheme.outlineVariant),
+        Expanded(child: _buildPreview(theme)),
+      ],
+    );
+  }
+
+  Widget _buildEditor(ThemeData theme) {
+    final isDark = theme.brightness == Brightness.dark;
+    return Column(
+      children: [
+        _PaneHeader(label: 'Editor', icon: Icons.edit_rounded, theme: theme),
+        Expanded(
+          child: Container(
+            color: isDark
+                ? const Color(0xFF0D1117)
+                : const Color(0xFFF8F9FA),
+            child: TextField(
+              controller: _controller,
+              maxLines: null,
+              expands: true,
+              textAlignVertical: TextAlignVertical.top,
+              style: TextStyle(
+                fontFamily: 'monospace',
+                fontSize: 13.5,
+                height: 1.6,
+                color: isDark
+                    ? const Color(0xFFE6EDF3)
+                    : const Color(0xFF1C2128),
+              ),
+              cursorColor: const Color(0xFF6366F1),
+              decoration: InputDecoration(
+                contentPadding: const EdgeInsets.all(20),
+                border: InputBorder.none,
+                hintText: 'Type Markdown here…',
+                hintStyle: TextStyle(
+                  color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
+                  fontFamily: 'monospace',
+                ),
+              ),
+              onChanged: (_) => setState(() {}),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPreview(ThemeData theme) {
+    return Column(
+      children: [
+        _PaneHeader(
+          label: 'Preview',
+          icon: Icons.preview_rounded,
+          theme: theme,
+          trailing: _CopyButton(text: _controller.text, theme: theme),
+        ),
+        Expanded(
+          child: ListView(
+            padding: const EdgeInsets.all(24),
+            children: [
+              ListenableBuilder(
+                listenable: _controller,
+                builder: (context, _) {
+                  Widget md = GptMarkdown(
+                    _controller.text,
+                    textDirection: _direction,
+                    useDollarSignsForLatex: _useDollarLatex,
+                    latexBuilder: (context, tex, textStyle, inline) {
+                      final widget = Math.tex(
+                        tex,
+                        textStyle: textStyle,
+                        onErrorFallback: (err) => Text(
+                          tex,
+                          style: TextStyle(
+                            color: theme.colorScheme.error,
+                            fontFamily: 'monospace',
+                            fontSize: 12,
+                          ),
+                        ),
+                      );
+                      if (inline) return widget;
+                      final controller = ScrollController();
+                      return Container(
+                        margin: const EdgeInsets.symmetric(vertical: 8),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 12),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.surfaceContainerHighest
+                              .withValues(alpha: 0.5),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Scrollbar(
+                          controller: controller,
+                          child: SingleChildScrollView(
+                            controller: controller,
+                            scrollDirection: Axis.horizontal,
+                            child: widget,
+                          ),
+                        ),
+                      );
+                    },
+                    highlightBuilder: (context, text, style) => Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 5, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF6366F1).withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(
+                          color:
+                              const Color(0xFF6366F1).withValues(alpha: 0.3),
+                        ),
+                      ),
+                      child: Text(
+                        text,
+                        style: style.copyWith(
+                          fontFamily: 'monospace',
+                          color: const Color(0xFF6366F1),
+                          fontSize: (style.fontSize ?? 14) * 0.9,
+                        ),
                       ),
                     ),
-                  ),
-              ],
+                    onLinkTap: (url, title) {},
+                  );
+
+                  if (_selectable) {
+                    md = SelectionArea(child: md);
+                  }
+                  return md;
+                },
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _PaneHeader extends StatelessWidget {
+  const _PaneHeader({
+    required this.label,
+    required this.icon,
+    required this.theme,
+    this.trailing,
+  });
+  final String label;
+  final IconData icon;
+  final ThemeData theme;
+  final Widget? trailing;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 38,
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
+        border: Border(
+          bottom: BorderSide(color: theme.colorScheme.outlineVariant),
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 14, color: theme.colorScheme.onSurfaceVariant),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.5,
             ),
-          ],
+          ),
+          const Spacer(),
+          if (trailing != null) trailing!,
+        ],
+      ),
+    );
+  }
+}
+
+class _ToolbarButton extends StatelessWidget {
+  const _ToolbarButton({
+    required this.theme,
+    required this.onTap,
+    this.icon,
+    this.label,
+    this.tooltip = '',
+    this.active = false,
+  });
+  final ThemeData theme;
+  final VoidCallback onTap;
+  final IconData? icon;
+  final String? label;
+  final String tooltip;
+  final bool active;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: tooltip,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(6),
+        child: Container(
+          height: 32,
+          padding: const EdgeInsets.symmetric(horizontal: 8),
+          decoration: BoxDecoration(
+            color: active
+                ? const Color(0xFF6366F1).withValues(alpha: 0.15)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: Center(
+            child: icon != null
+                ? Icon(
+                    icon,
+                    size: 18,
+                    color: active
+                        ? const Color(0xFF6366F1)
+                        : theme.colorScheme.onSurfaceVariant,
+                  )
+                : Text(
+                    label ?? '',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: active
+                          ? const Color(0xFF6366F1)
+                          : theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SampleChip extends StatelessWidget {
+  const _SampleChip({
+    required this.label,
+    required this.active,
+    required this.onTap,
+    required this.theme,
+  });
+  final String label;
+  final bool active;
+  final VoidCallback onTap;
+  final ThemeData theme;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+        decoration: BoxDecoration(
+          color: active
+              ? const Color(0xFF6366F1)
+              : theme.colorScheme.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
+            color: active
+                ? Colors.white
+                : theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CopyButton extends StatefulWidget {
+  const _CopyButton({required this.text, required this.theme});
+  final String text;
+  final ThemeData theme;
+
+  @override
+  State<_CopyButton> createState() => _CopyButtonState();
+}
+
+class _CopyButtonState extends State<_CopyButton> {
+  bool _copied = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () async {
+        await Clipboard.setData(ClipboardData(text: widget.text));
+        setState(() => _copied = true);
+        await Future.delayed(const Duration(seconds: 2));
+        if (mounted) setState(() => _copied = false);
+      },
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            _copied ? Icons.check_rounded : Icons.copy_rounded,
+            size: 13,
+            color: _copied
+                ? Colors.green
+                : widget.theme.colorScheme.onSurfaceVariant,
+          ),
+          const SizedBox(width: 4),
+          Text(
+            _copied ? 'Copied' : 'Copy',
+            style: TextStyle(
+              fontSize: 11,
+              color: _copied
+                  ? Colors.green
+                  : widget.theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PubBadge extends StatelessWidget {
+  const _PubBadge({required this.theme});
+  final ThemeData theme;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: const Color(0xFF6366F1),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: const Text(
+        'pub.dev ↗',
+        style: TextStyle(
+          color: Colors.white,
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
         ),
       ),
     );
