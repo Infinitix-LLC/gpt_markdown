@@ -856,12 +856,15 @@ class ATagMd extends InlineMd {
       false,
     );
     var theme = GptMarkdownTheme.of(context);
+    final linkStyle = (config.style ?? const TextStyle()).copyWith(
+      color: theme.linkColor,
+      decorationColor: theme.linkColor,
+      decoration: TextDecoration.underline,
+    );
+    final linkConfig = config.copyWith(style: linkStyle);
     var linkTextSpan = TextSpan(
-      children: MarkdownComponent.generate(context, linkText, config, false),
-      style: config.style?.copyWith(
-        color: theme.linkColor,
-        decorationColor: theme.linkColor,
-      ),
+      children: MarkdownComponent.generate(context, linkText, linkConfig, false),
+      style: linkStyle,
     );
 
     // Use custom builder if provided
