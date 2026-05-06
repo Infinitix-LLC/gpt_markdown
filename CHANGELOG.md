@@ -1,3 +1,10 @@
+## 1.1.7
+
+* Refreshed example to showcase all key features: Markdown, inline and block LaTeX math, code blocks, tables, task lists, and mixed AI output.
+* Fixed comparison table in README (`flutter_markdown_plus` → `flutter_markdown`).
+* Updated `homepage` in pubspec to [gptmarkdown.com](https://gptmarkdown.com); added separate `repository` and `issue_tracker` fields.
+* Added `playground.dart` as the dedicated entry point for the interactive web playground.
+
 ## 1.1.6
 
 * Added `hrLinePadding` to `GptMarkdownThemeData` (default `EdgeInsets.zero`), wired through the public factory, `copyWith`, and `lerp`, for padding around horizontal rules and the optional line after `#` headings.
