@@ -1,47 +1,25 @@
-# 📦 gpt_markdown
+# 📦 GPT Markdown & LaTeX for Flutter
 
 [![Pub Version](https://img.shields.io/pub/v/gpt_markdown)](https://pub.dev/packages/gpt_markdown)
 [![Pub Points](https://img.shields.io/pub/points/gpt_markdown)](https://pub.dev/packages/gpt_markdown)
 [![Pub Likes](https://img.shields.io/pub/likes/gpt_markdown)](https://pub.dev/packages/gpt_markdown)
 [![GitHub](https://img.shields.io/badge/github-gpt__markdown-blue?logo=github)](https://github.com/Infinitix-LLC/gpt_markdown)
 
-**Flutter's best Markdown + LaTeX renderer — built for AI-generated text.**
+A comprehensive Flutter package for rendering rich Markdown and LaTeX content in your apps, designed for seamless integration with AI outputs like ChatGPT and Gemini.
 
-Render ChatGPT, Gemini, and Claude responses beautifully in your Flutter app. Drop-in replacement for `flutter_markdown_plus` with full LaTeX support, streaming-friendly rendering, and rich customization via builder callbacks.
+[![gpt_markdown playground](https://github.com/Infinitix-LLC/gpt_markdown/raw/main/screenshots/playground.jpg)](https://gptmarkdown.com/playground)
 
-🌐 [gptmarkdown.com](https://gptmarkdown.com) · 📖 [Docs](https://gptmarkdown.com/docs) · 🎮 [Playground](https://gptmarkdown.com/playground)
+🌐 [gptmarkdown.com](https://gptmarkdown.com) · 📖 [Docs](https://gptmarkdown.com/docs) · 🎮 [Live Playground](https://gptmarkdown.com/playground)
 
 ⭐ If this package saves you time, please [like it on pub.dev](https://pub.dev/packages/gpt_markdown) — it helps others find it!
 
 ---
 
-## Why gpt_markdown?
-
-| Feature | `gpt_markdown` | `flutter_markdown_plus` |
-|---|:---:|:---:|
-| LaTeX / Math rendering | ✅ | ❌ |
-| Streaming-safe (partial text) | ✅ | ⚠️ |
-| Custom code block builder | ✅ | ✅ |
-| Custom LaTeX builder | ✅ | ❌ |
-| Custom link / highlight builder | ✅ | ⚠️ |
-| Radio buttons & checkboxes | ✅ | ⚠️ |
-| RTL text direction | ✅ | ✅ |
-| Selectable text | ✅ | ✅ |
-| Source tag (`[1]`) support | ✅ | ❌ |
-| Dollar sign LaTeX (`$...$`) | ✅ | ❌ |
-| Inline HTML (`<u>`, etc.) | ✅ | ❌ |
-
----
-
-## Installation
+## 🛠️ Installation
 
 ```bash
 flutter pub add gpt_markdown
 ```
-
----
-
-## Quick Start
 
 ```dart
 import 'package:gpt_markdown/gpt_markdown.dart';
@@ -49,323 +27,163 @@ import 'package:gpt_markdown/gpt_markdown.dart';
 GptMarkdown('**Hello** from _gpt_markdown_! \$E = mc^2\$')
 ```
 
-That's it. LaTeX, bold, italic, tables, code blocks — all rendered automatically.
+That's it. Drop it in and it just works.
 
 ---
 
-## Streaming AI Responses
+## ✨ What it renders
 
-gpt_markdown handles partial / incomplete markdown safely, making it ideal for streaming LLM output:
+Everything below is rendered by `gpt_markdown` — what you see here is exactly what your users will see in your app.
+
+---
+
+**Bold**, *italic*, ~~strikethrough~~, `inline code`, and <u>underline</u> all work out of the box.
+
+---
+
+### Headings
+
+# Heading 1
+## Heading 2
+### Heading 3
+#### Heading 4
+
+---
+
+### Lists
+
+- Unordered list item
+- Another item
+  - Nested item
+
+1. Ordered list item
+2. Second item
+   1. Nested ordered
+
+---
+
+### Checkboxes & Radio Buttons
+
+- [x] Task complete
+- [ ] Task pending
+- (x) Selected option
+- () Unselected option
+
+---
+
+### Table
+
+| Name  | Score | Grade |
+|-------|-------|-------|
+| Alice | 98    | A+    |
+| Bob   | 87    | B+    |
+| Carol | 92    | A     |
+
+---
+
+### Code Block
+
+```python
+def greet(name: str) -> str:
+    return f"Hello, {name}!"
+
+print(greet("gpt_markdown"))
+```
+
+---
+
+### Blockquote
+
+> gpt_markdown renders everything ChatGPT and Gemini throw at it — math, tables, code, lists, and more.
+
+---
+
+### LaTeX Math
+
+Inline math: \( E = mc^2 \) and \( x = \frac{-b \pm \sqrt{b^2 - 4ac}}{2a} \)
+
+Block math:
+
+\[
+\int_{-\infty}^{\infty} e^{-x^2} \, dx = \sqrt{\pi}
+\]
+
+\[
+\begin{aligned}
+\nabla \cdot \mathbf{E} &= \frac{\rho}{\varepsilon_0} \\
+\nabla \times \mathbf{B} &= \mu_0 \mathbf{J} + \mu_0 \varepsilon_0 \frac{\partial \mathbf{E}}{\partial t}
+\end{aligned}
+\]
+
+---
+
+### Images with size control
+
+```
+![300x200 Flutter logo](https://storage.googleapis.com/cms-storage-bucket/6a07d8a62f4308d2b854.svg)
+```
+
+---
+
+## 🤖 Streaming AI Responses
+
+Works safely with partial / incomplete markdown — ideal for streaming LLM output token by token:
 
 ```dart
 class StreamingMessage extends StatefulWidget {
   final Stream<String> stream;
   const StreamingMessage({required this.stream, super.key});
-
   @override
   State<StreamingMessage> createState() => _StreamingMessageState();
 }
 
 class _StreamingMessageState extends State<StreamingMessage> {
   String _text = '';
-
   @override
   void initState() {
     super.initState();
-    widget.stream.listen((chunk) {
-      setState(() => _text += chunk);
-    });
+    widget.stream.listen((chunk) => setState(() => _text += chunk));
   }
-
   @override
-  Widget build(BuildContext context) {
-    return GptMarkdown(_text);
-  }
+  Widget build(BuildContext context) => GptMarkdown(_text);
 }
 ```
 
 ---
 
-## Supported Syntax
+## 🎨 Customization
 
-| Element | Syntax |
+Every element is overridable via builder callbacks:
+
+| Builder | Controls |
 |---|---|
-| **Bold** | `**text**` or `__text__` |
-| *Italic* | `*text*` or `_text_` |
-| ~~Strike~~ | `~~text~~` |
-| `Inline code` | `` `code` `` |
-| Underline | `<u>text</u>` |
-| Highlighted | `` `=text=` `` |
-| Link | `[label](url)` |
-| Image | `![alt](url)` or `![WxH alt](url)` |
-| Heading | `# H1` through `###### H6` |
-| Unordered list | `- item` |
-| Ordered list | `1. item` |
-| Checkbox | `[ ] todo` / `[x] done` |
-| Radio button | `() option` / `(x) selected` |
-| Table | Standard GFM table |
-| Code block | ```` ```lang ```` |
-| Blockquote | `> text` |
-| Horizontal rule | `---` |
-| Inline LaTeX | `\( expression \)` or `$expression$` |
-| Block LaTeX | `\[ expression \]` or `$$expression$$` |
-| Source tag | `[1]` |
+| `codeBuilder` | Code blocks — add syntax highlighting, copy button |
+| `latexBuilder` | LaTeX — use your own renderer or add scroll |
+| `highlightBuilder` | Inline code / highlighted text |
+| `linkBuilder` | Link appearance and tap handling |
+| `imageBuilder` | Images — use `CachedNetworkImage`, etc. |
+| `tableBuilder` | Full table widget replacement |
+| `sourceTagBuilder` | AI citation markers like `[1]` |
+| `orderedListBuilder` | Ordered list item rendering |
+| `unOrderedListBuilder` | Unordered list item rendering |
+
+Apply global styles via `GptMarkdownTheme`. See the full [documentation](https://gptmarkdown.com/docs) for examples of every builder.
 
 ---
 
-## Customization
+## 🔄 How does it compare?
 
-### Theme
-
-Override colors and styles globally via `GptMarkdownTheme`:
-
-```dart
-GptMarkdownTheme(
-  gptThemeData: GptMarkdownThemeData(
-    highlightColor: Colors.amber,
-    hrLineColor: Colors.grey,
-    hrLinePadding: const EdgeInsets.symmetric(vertical: 8),
-    autoAddDividerLineAfterH1: true,
-    // h1–h6 styles via Flutter's TextTheme
-  ),
-  child: GptMarkdown(data),
-)
-```
-
----
-
-### Code Blocks
-
-Add syntax highlighting, a copy button, or any custom widget:
-
-```dart
-GptMarkdown(
-  data,
-  codeBuilder: (context, language, code, closed) {
-    return MyCodeHighlighter(language: language, code: code);
-  },
-)
-```
-
----
-
-### LaTeX
-
-Use your own LaTeX renderer or add scroll/copy behavior:
-
-```dart
-GptMarkdown(
-  data,
-  latexBuilder: (context, tex, textStyle, inline) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Math.tex(tex, textStyle: textStyle),
-    );
-  },
-  // Clean up model output before rendering
-  latexWorkaround: (tex) => tex.replaceAll('align*', 'aligned'),
-)
-```
-
-Enable `$...$` / `$$...$$` syntax (off by default to avoid conflicts):
-
-```dart
-GptMarkdown(data, useDollarSignsForLatex: true)
-```
-
----
-
-### Links
-
-```dart
-GptMarkdown(
-  data,
-  onLinkTap: (url, title) => launchUrl(Uri.parse(url)),
-  linkBuilder: (context, label, url, style) {
-    return Text.rich(label, style: style.copyWith(color: Colors.blue));
-  },
-)
-```
-
----
-
-### Images
-
-```dart
-GptMarkdown(
-  data,
-  imageBuilder: (context, url) {
-    return CachedNetworkImage(imageUrl: url);
-  },
-)
-```
-
----
-
-### Lists
-
-```dart
-GptMarkdown(
-  data,
-  orderedListBuilder: (context, index, child) {
-    return Row(children: [
-      Text('${index + 1}. ', style: const TextStyle(fontWeight: FontWeight.bold)),
-      Expanded(child: child),
-    ]);
-  },
-  unOrderedListBuilder: (context, depth, child) {
-    return Row(children: [
-      Text(['•', '◦', '▪'][depth % 3] + ' '),
-      Expanded(child: child),
-    ]);
-  },
-)
-```
-
----
-
-### Tables
-
-```dart
-GptMarkdown(
-  data,
-  tableBuilder: (context, rows, textStyle, config) {
-    return Table(
-      border: TableBorder.all(color: Colors.grey.shade300),
-      children: rows.map((row) => TableRow(
-        children: row.fields.map((cell) => Padding(
-          padding: const EdgeInsets.all(8),
-          child: GptMarkdown(cell.data),
-        )).toList(),
-      )).toList(),
-    );
-  },
-)
-```
-
----
-
-### Highlighted / Inline Code
-
-```dart
-GptMarkdown(
-  data,
-  highlightBuilder: (context, text, style) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.secondaryContainer,
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Text(text, style: style.copyWith(fontFamily: 'monospace')),
-    );
-  },
-)
-```
-
----
-
-### Source Tags
-
-Render AI citation markers like `[1]` as custom widgets:
-
-```dart
-GptMarkdown(
-  data,
-  sourceTagBuilder: (context, index, textStyle) {
-    return GestureDetector(
-      onTap: () => openSource(int.parse(index)),
-      child: Chip(label: Text(index)),
-    );
-  },
-)
-```
-
----
-
-### Selectable Text
-
-Wrap in Flutter's standard `SelectionArea`:
-
-```dart
-SelectionArea(
-  child: GptMarkdown(data),
-)
-```
-
----
-
-### Custom Components
-
-Disable built-in components or inject your own parsers:
-
-```dart
-GptMarkdown(
-  data,
-  components: [
-    CodeBlockMd(),
-    TableMd(),
-    HTag(),
-    BoldMd(),
-    ItalicMd(),
-    LatexMath(),
-    // ... pick only what you need
-  ],
-)
-```
-
----
-
-## Migration from flutter_markdown_plus
-
-`gpt_markdown` is a drop-in replacement. The key differences:
-
-```dart
-// flutter_markdown_plus
-MarkdownBody(data: text, onTapLink: (text, href, title) { })
-
-// gpt_markdown — same result + LaTeX support
-GptMarkdown(text, onLinkTap: (url, title) { })
-```
-
----
-
-## Full Example
-
-```dart
-import 'package:flutter/material.dart';
-import 'package:gpt_markdown/gpt_markdown.dart';
-
-void main() => runApp(const MyApp());
-
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      home: Scaffold(
-        body: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: GptMarkdown(
-            r'''
-## Hello from gpt_markdown!
-
-Here is the quadratic formula: \( x = \frac{-b \pm \sqrt{b^2 - 4ac}}{2a} \)
-
-| Name  | Score |
-|-------|-------|
-| Alice | 98    |
-| Bob   | 87    |
-            ''',
-            onLinkTap: (url, title) => debugPrint('Tapped: $url'),
-          ),
-        ),
-      ),
-    );
-  }
-}
-```
+| Feature | `gpt_markdown` | `flutter_markdown_plus` |
+|---|:---:|:---:|
+| LaTeX / Math rendering | ✅ | ❌ |
+| Streaming-safe (partial text) | ✅ | ⚠️ |
+| Inline HTML (`<u>`, `<br>`, etc.) | ✅ | ❌ |
+| Radio buttons & checkboxes | ✅ | ⚠️ |
+| Source tag (`[1]`) support | ✅ | ❌ |
+| Dollar sign LaTeX (`$...$`) | ✅ | ❌ |
+| RTL text direction | ✅ | ✅ |
+| Selectable text | ✅ | ✅ |
+| Custom builder callbacks | ✅ | ✅ |
 
 ---
 
