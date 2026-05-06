@@ -13,7 +13,7 @@ A Flutter package for rendering rich Markdown and LaTeX in your app — built fo
 - **Optimized for AI Outputs**: Render ChatGPT and Gemini responses flawlessly in your Flutter apps.
 - **LaTeX out of the box**: No extra setup — math rendering works from the first line.
 - **Rich Customization**: Easily apply custom styles using Flutter widgets like `TextStyle`.
-- **Selectable Content**: Enable content selection with `SelectionArea`.
+- **Selectable Content**: Pass `selectable: true` to make text highlightable and copyable on desktop and web.
 - **Seamless Integration**: Works out of the box with minimal setup.
 
 ---
@@ -31,7 +31,7 @@ A Flutter package for rendering rich Markdown and LaTeX in your app — built fo
 | ➖ Horizontal Line | ✅ |  |
 | 🔢 Latex Math | ✅ |  |
 | ↩️ Indent | ✅ |
-| ↩️ BlockQuote | ✅ |
+| 💬 BlockQuote | ✅ |
 | 🖼️ Image | ✅ |
 | ✨ Highlighted Text | ✅ |
 | ✂️ Strike Text | ✅ |
@@ -64,7 +64,7 @@ Render a wide variety of content with full Markdown and LaTeX support, including
 
 - Images with size 
 ```
-![<with>x<hight> someText](url)
+![<width>x<height> someText](url)
 ```
 - Table
 
@@ -124,7 +124,11 @@ Render a wide variety of content with full Markdown and LaTeX support, including
 [x] Checked checkbox
 ```
 
-- You can also make the content selectable using `SelectionArea` widget.
+- Enable text selection on desktop and web:
+
+```dart
+GptMarkdown(markdownText, selectable: true)
+```
 
 ---
 
