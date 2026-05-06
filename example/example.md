@@ -1,11 +1,47 @@
 # example
-``` dart
+
+```dart
 import 'package:flutter/material.dart';
-import 'package:tex_markdown/tex_markdown.dart';
+import 'package:gpt_markdown/gpt_markdown.dart';
 
 void main() {
   runApp(const MyApp());
 }
+
+const _demoContent = '''
+## Markdown & LaTeX Demo
+
+**Bold**, *italic*, ~~strikethrough~~, and `inline code` all work out of the box.
+
+Inline LaTeX: \$E = mc^2\$ and block LaTeX:
+
+\$\$
+\\int_0^\\infty e^{-x^2}\\,dx = \\frac{\\sqrt{\\pi}}{2}
+\$\$
+
+### Code block
+
+```python
+def greet(name: str) -> str:
+    return f"Hello, {name}!"
+```
+
+### Table
+
+| Feature     | Supported |
+|-------------|-----------|
+| Markdown    | ✅        |
+| LaTeX       | ✅        |
+| Code blocks | ✅        |
+| Tables      | ✅        |
+| Task lists  | ✅        |
+
+### Task list
+
+- [x] Install gpt_markdown
+- [x] Render AI responses beautifully
+- [ ] Ship to production
+''';
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -13,68 +49,48 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: 'GPT Markdown Demo',
       theme: ThemeData(
         useMaterial3: true,
+        brightness: Brightness.light,
         colorSchemeSeed: Colors.blue,
+        extensions: [
+          GptMarkdownThemeData(brightness: Brightness.light),
+        ],
       ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      darkTheme: ThemeData(
+        useMaterial3: true,
+        brightness: Brightness.dark,
+        colorSchemeSeed: Colors.blue,
+        extensions: [
+          GptMarkdownThemeData(brightness: Brightness.dark),
+        ],
+      ),
+      home: const DemoPage(),
     );
   }
 }
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
+class DemoPage extends StatelessWidget {
+  const DemoPage({super.key});
 
-  final String title;
-
-  @override
-  State<MyHomePage> createState() => _MyHomePageState();
-}
-
-class _MyHomePageState extends State<MyHomePage> {
-  final TextEditingController _controller = TextEditingController();
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.title),
-      ),
-      body: Column(
-        children: [
-          Expanded(
-            child: ListView(
-              children: [
-                AnimatedBuilder(
-                    animation: _controller,
-                    builder: (context, _) {
-                      return GptMarkdown(
-                        _controller.text,
-                        style: const TextStyle(
-                          color: Colors.red,
-                        ),
-                      );
-                    }),
-              ],
-            ),
-          ),
-          ConstrainedBox(
-            constraints: const BoxConstraints(maxHeight: 300),
-            child: TextField(
-              decoration: const InputDecoration(border: OutlineInputBorder()),
-              maxLines: null,
-              controller: _controller,
-            ),
-          ),
-        ],
+      appBar: AppBar(title: const Text('GPT Markdown')),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: GptMarkdown(
+          _demoContent,
+          onLinkTap: (url) => debugPrint('Link tapped: $url'),
+        ),
       ),
     );
   }
 }
-
 ```
 
-Use `SelectableAdapter` to make any non selectable widget selectable.
+Use `SelectableAdapter` to make any non-selectable widget selectable.
 
 ```dart
 SelectableAdapter(
@@ -90,9 +106,7 @@ GptMarkdownTheme(
   data: GptMarkdownThemeData.of(context).copyWith(
     highlightColor: Colors.red,
   ),
-  child: GptMarkdown(
-    text,
-  ),
+  child: GptMarkdown(text),
 );
 ```
 
@@ -130,15 +144,10 @@ GptMarkdown(
   markdownText,
   tableBuilder: (context, tableRows, textStyle, config) {
     return Table(
-      border: TableBorder.all(
-        width: 1,
-        color: Colors.red,
-      ),
-      children: tableRows.map((e) {
+      border: TableBorder.all(width: 1, color: Colors.blue),
+      children: tableRows.map((row) {
         return TableRow(
-          children: e.fields.map((e) {
-            return Text(e.data);
-          }).toList(),
+          children: row.fields.map((cell) => Text(cell.data)).toList(),
         );
       }).toList(),
     );
@@ -146,5 +155,4 @@ GptMarkdown(
 );
 ```
 
-Please see the [README.md](https://github.com/Infinitix-LLC/gpt_markdown) and also [example](https://github.com/Infinitix-LLC/gpt_markdown/tree/main/example/lib/main.dart) app for more details.
-
+See the [README](https://github.com/Infinitix-LLC/gpt_markdown) and try the live [playground](https://gptmarkdown.com/playground) for more details.
