@@ -356,11 +356,6 @@ Here is the quadratic formula: \( x = \frac{-b \pm \sqrt{b^2 - 4ac}}{2a} \)
 |-------|-------|
 | Alice | 98    |
 | Bob   | 87    |
-
-```python
-def greet(name):
-    print(f"Hello, {name}!")
-```
             ''',
             onLinkTap: (url, title) => debugPrint('Tapped: $url'),
           ),
