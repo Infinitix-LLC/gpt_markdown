@@ -27,3 +27,9 @@ migrate_working_dir/
 **/doc/api/
 .dart_tool/
 build/
+
+# Replit
+.replit
+replit.nix
+replit.md
+attached_assets/
