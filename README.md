@@ -1,15 +1,37 @@
-# 📦 gpt_markdown
+# gpt_markdown
 
 [![Pub Version](https://img.shields.io/pub/v/gpt_markdown)](https://pub.dev/packages/gpt_markdown)
 [![Pub Points](https://img.shields.io/pub/points/gpt_markdown)](https://pub.dev/packages/gpt_markdown)
 [![Pub Likes](https://img.shields.io/pub/likes/gpt_markdown)](https://pub.dev/packages/gpt_markdown)
 [![GitHub](https://img.shields.io/badge/github-gpt__markdown-blue?logo=github)](https://github.com/Infinitix-LLC/gpt_markdown)
 
-A Flutter package for rendering rich Markdown and LaTeX content, designed for seamless integration with AI outputs like ChatGPT and Gemini.
+**Markdown and LaTeX renderer for Flutter — built for AI-generated content.**
+
+Render ChatGPT, Gemini, and Claude responses beautifully in your Flutter app. Supports the full Markdown spec plus inline and block LaTeX math, with a simple drop-in widget.
 
 > 🎮 **[Try the live playground →](https://infinitix-llc.github.io/gpt_markdown/)**
 
-⭐ If you find this package helpful, please give it a like on [pub.dev](https://pub.dev/packages/gpt_markdown)!
+---
+
+## Installation
+
+```
+flutter pub add gpt_markdown
+```
+
+## Usage
+
+```dart
+import 'package:gpt_markdown/gpt_markdown.dart';
+
+GptMarkdown(
+  r'**Hello!** Here is the quadratic formula: \( x = \frac{-b \pm \sqrt{b^2-4ac}}{2a} \)',
+)
+```
+
+That's it. LaTeX, bold, italic, tables, code blocks, and more all work out of the box.
+
+For full examples, visit the [live playground](https://infinitix-llc.github.io/gpt_markdown/) or the [Example tab](https://pub.dev/packages/gpt_markdown/example) on pub.dev.
 
 ---
 
@@ -18,9 +40,9 @@ A Flutter package for rendering rich Markdown and LaTeX content, designed for se
 | Feature | Supported |
 |---|:---:|
 | Headings (H1–H6) | ✅ |
-| Bold, Italic, Strikethrough | ✅ |
+| Bold, italic, strikethrough | ✅ |
 | Underline (`<u>`) | ✅ |
-| Inline & block LaTeX | ✅ |
+| Inline & block LaTeX math | ✅ |
 | Code blocks | ✅ |
 | Tables | ✅ |
 | Ordered & unordered lists | ✅ |
@@ -30,26 +52,8 @@ A Flutter package for rendering rich Markdown and LaTeX content, designed for se
 | Highlighted text | ✅ |
 | Radio buttons & checkboxes | ✅ |
 | Horizontal rule | ✅ |
-| Selectable content | ✅ |
+| Selectable text | ✅ |
 | Custom components | ✅ |
-
----
-
-## Getting Started
-
-```
-flutter pub add gpt_markdown
-```
-
-```dart
-import 'package:gpt_markdown/gpt_markdown.dart';
-
-GptMarkdown(
-  '**Hello** from *gpt_markdown*! \( E = mc^2 \)',
-)
-```
-
-For more examples, see the [Example tab](https://pub.dev/packages/gpt_markdown/example) on pub.dev or the [live playground](https://infinitix-llc.github.io/gpt_markdown/).
 
 ---
 
@@ -58,9 +62,9 @@ For more examples, see the [Example tab](https://pub.dev/packages/gpt_markdown/e
 | Parameter | Type | Description |
 |---|---|---|
 | `style` | `TextStyle?` | Base text style |
-| `textDirection` | `TextDirection` | LTR or RTL |
+| `textDirection` | `TextDirection` | LTR or RTL support |
 | `useDollarSignsForLatex` | `bool` | Enable `$...$` LaTeX syntax |
-| `onLinkTap` | `Function?` | Link tap callback |
+| `onLinkTap` | `Function?` | Handle link taps |
 | `latexBuilder` | `Widget Function?` | Custom LaTeX renderer |
 | `codeBuilder` | `Widget Function?` | Custom code block renderer |
 | `highlightBuilder` | `Widget Function?` | Custom inline code renderer |
@@ -68,8 +72,6 @@ For more examples, see the [Example tab](https://pub.dev/packages/gpt_markdown/e
 ---
 
 ## How does it compare?
-
-`gpt_markdown` vs `flutter_markdown_plus` — the current community-maintained alternative:
 
 | Feature | `gpt_markdown` | `flutter_markdown_plus` |
 |---|:---:|:---:|
