@@ -142,15 +142,28 @@ Check the documentation [here.](https://gptmarkdown.com/docs)
 import 'package:flutter/material.dart';
 import 'package:gpt_markdown/gpt_markdown.dart';
 
-return GptMarkdown(
-    '''
-    * This is a unordered list.
-    ''',
-    style: const TextStyle(
-      color: Colors.red,
-    ),
-),
+GptMarkdown(
+  r'''
+## Hello from gpt_markdown!
 
+Render **bold**, *italic*, ~~strikethrough~~, `inline code`, and <u>underline</u>.
+
+Inline LaTeX: \( E = mc^2 \) and block math:
+
+\[
+x = \frac{-b \pm \sqrt{b^2 - 4ac}}{2a}
+\]
+
+| Name  | Score |
+|-------|-------|
+| Alice | 98    |
+| Bob   | 87    |
+
+- [x] Task complete
+- [ ] Task pending
+  ''',
+  onLinkTap: (url, title) => debugPrint('Tapped: $url'),
+)
 ```
 
 ## 💡 ChatGPT Response Examples
