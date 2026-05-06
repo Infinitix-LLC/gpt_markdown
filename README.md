@@ -71,7 +71,7 @@ That's it. LaTeX, bold, italic, tables, code blocks, and more all work out of th
 
 ## How does it compare?
 
-| Feature | `gpt_markdown` | `flutter_markdown` |
+| Feature | `gpt_markdown` | `flutter_markdown_plus` |
 |---|:---:|:---:|
 | LaTeX math (built-in) | ✅ | ❌ |
 | Inline HTML (`<u>`, etc.) | ✅ | ❌ |
