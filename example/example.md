@@ -8,38 +8,16 @@ void main() {
   runApp(const MyApp());
 }
 
-const _demoContent = \'\'\'
-# GPT Markdown Demo
+const _demoContent = '''
+## Markdown & LaTeX Demo
 
 **Bold**, *italic*, ~~strikethrough~~, and `inline code` all work out of the box.
 
-[Visit pub.dev](https://pub.dev/packages/gpt_markdown)
+Inline LaTeX: \$E = mc^2\$ and block LaTeX:
 
-> Block quotes are supported too — great for AI-generated citations.
-
----
-
-### Lists
-
-Unordered:
-
-- Flutter
-- Dart
-- gpt_markdown
-
-Ordered:
-
-1. Install the package
-2. Pass your markdown string
-3. Profit 🎉
-
-### LaTeX
-
-Inline: \\(E = mc^2\\) and block:
-
-\\[
+\$\$
 \\int_0^\\infty e^{-x^2}\\,dx = \\frac{\\sqrt{\\pi}}{2}
-\\]
+\$\$
 
 ### Code block
 
@@ -56,14 +34,14 @@ def greet(name: str) -> str:
 | LaTeX       | ✅        |
 | Code blocks | ✅        |
 | Tables      | ✅        |
-| Links       | ✅        |
+| Task lists  | ✅        |
 
 ### Task list
 
-- [x] Install gpt\_markdown
+- [x] Install gpt_markdown
 - [x] Render AI responses beautifully
 - [ ] Ship to production
-\'\'\';
+''';
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -76,13 +54,17 @@ class MyApp extends StatelessWidget {
         useMaterial3: true,
         brightness: Brightness.light,
         colorSchemeSeed: Colors.blue,
-        extensions: [GptMarkdownThemeData(brightness: Brightness.light)],
+        extensions: [
+          GptMarkdownThemeData(brightness: Brightness.light),
+        ],
       ),
       darkTheme: ThemeData(
         useMaterial3: true,
         brightness: Brightness.dark,
         colorSchemeSeed: Colors.blue,
-        extensions: [GptMarkdownThemeData(brightness: Brightness.dark)],
+        extensions: [
+          GptMarkdownThemeData(brightness: Brightness.dark),
+        ],
       ),
       home: const DemoPage(),
     );
@@ -100,8 +82,7 @@ class DemoPage extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         child: GptMarkdown(
           _demoContent,
-          selectable: true,
-          onLinkTap: (url, title) => debugPrint('Link tapped: $url'),
+          onLinkTap: (url) => debugPrint('Link tapped: $url'),
         ),
       ),
     );
@@ -109,51 +90,69 @@ class DemoPage extends StatelessWidget {
 }
 ```
 
-Enable text selection on desktop and web with `selectable: true`:
+Use `SelectableAdapter` to make any non-selectable widget selectable.
 
 ```dart
-GptMarkdown(
-  markdownText,
-  selectable: true,
-)
+SelectableAdapter(
+  selectedText: 'sin(x^2)',
+  child: Math.tex('sin(x^2)'),
+);
 ```
 
-Customize colours with `GptMarkdownTheme`:
+Use `GptMarkdownTheme` widget and `GptMarkdownThemeData` to customize the GptMarkdown.
 
 ```dart
 GptMarkdownTheme(
-  gptThemeData: GptMarkdownThemeData.of(context).copyWith(
-    highlightColor: Colors.amber,
-    linkColor: Colors.blue,
+  data: GptMarkdownThemeData.of(context).copyWith(
+    highlightColor: Colors.red,
   ),
-  child: GptMarkdown(markdownText),
-)
+  child: GptMarkdown(text),
+);
 ```
 
-Use `tableBuilder` to fully control table rendering:
+In theme extension you can use `GptMarkdownThemeData` to customize the GptMarkdown.
+
+```dart
+theme: ThemeData(
+  useMaterial3: true,
+  brightness: Brightness.light,
+  colorSchemeSeed: Colors.blue,
+  extensions: [
+    GptMarkdownThemeData(
+      brightness: Brightness.light,
+      highlightColor: Colors.red,
+    ),
+  ],
+),
+darkTheme: ThemeData(
+  useMaterial3: true,
+  brightness: Brightness.dark,
+  colorSchemeSeed: Colors.blue,
+  extensions: [
+    GptMarkdownThemeData(
+      brightness: Brightness.dark,
+      highlightColor: Colors.red,
+    ),
+  ],
+),
+```
+
+Use `tableBuilder` to customize table rendering:
 
 ```dart
 GptMarkdown(
   markdownText,
   tableBuilder: (context, tableRows, textStyle, config) {
     return Table(
-      border: TableBorder.all(color: Colors.grey),
+      border: TableBorder.all(width: 1, color: Colors.blue),
       children: tableRows.map((row) {
         return TableRow(
-          decoration: row.isHeader
-              ? const BoxDecoration(color: Color(0xFFEEEEEE))
-              : null,
-          children: row.fields
-              .map((cell) => Padding(
-                    padding: const EdgeInsets.all(8),
-                    child: Text(cell.data, textAlign: cell.alignment),
-                  ))
-              .toList(),
+          children: row.fields.map((cell) => Text(cell.data)).toList(),
         );
       }).toList(),
     );
   },
-)
+);
 ```
 
-See the [README](https://github.com/Infinitix-LLC/gpt_markdown) and try the live [playground](https://gptmarkdown.com/playground) for more.
+See the [README](https://github.com/Infinitix-LLC/gpt_markdown) and try the live [playground](https://gptmarkdown.com/playground) for more details.
