@@ -856,17 +856,21 @@ class ATagMd extends InlineMd {
       false,
     );
     var theme = GptMarkdownTheme.of(context);
-    var linkTextSpan = TextSpan(
-      children: MarkdownComponent.generate(context, linkText, config, false),
-      style: config.style?.copyWith(
-        color: theme.linkColor,
-        decorationColor: theme.linkColor,
-      ),
-    );
 
     // Use custom builder if provided
     WidgetSpan? child;
     if (builder != null) {
+      // Build a styled span to hand off to the custom linkBuilder.
+      final linkStyle = (config.style ?? const TextStyle()).copyWith(
+        color: theme.linkColor,
+        decorationColor: theme.linkColor,
+        decoration: TextDecoration.underline,
+      );
+      final linkConfig = config.copyWith(style: linkStyle);
+      final linkTextSpan = TextSpan(
+        children: MarkdownComponent.generate(context, linkText, linkConfig, false),
+        style: linkStyle,
+      );
       child = WidgetSpan(
         baseline: TextBaseline.alphabetic,
         alignment: PlaceholderAlignment.baseline,
@@ -882,7 +886,8 @@ class ATagMd extends InlineMd {
       );
     }
 
-    // Default rendering
+    // Default rendering — LinkButton rebuilds the span on every hover change
+    // so bold/italic text inside a link also picks up the hover colour.
     child ??= WidgetSpan(
       alignment: PlaceholderAlignment.baseline,
       baseline: TextBaseline.alphabetic,
@@ -894,7 +899,22 @@ class ATagMd extends InlineMd {
         },
         text: linkText,
         config: config,
-        child: config.getRich(linkTextSpan),
+        spanBuilder: (color) {
+          final spanStyle = (config.style ?? const TextStyle()).copyWith(
+            color: color,
+            decorationColor: color,
+            decoration: TextDecoration.underline,
+          );
+          return TextSpan(
+            children: MarkdownComponent.generate(
+              context,
+              linkText,
+              config.copyWith(style: spanStyle),
+              false,
+            ),
+            style: spanStyle,
+          );
+        },
       ),
     );
     var textSpan = TextSpan(children: [child, ...endingSpans]);
