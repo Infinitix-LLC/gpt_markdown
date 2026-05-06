@@ -13,22 +13,6 @@ A Flutter package for rendering rich Markdown and LaTeX content, designed for se
 
 ---
 
-## Why gpt_markdown?
-
-`flutter_markdown_plus` is the community continuation of Google's discontinued `flutter_markdown`. It's a solid package — but it wasn't built for AI. `gpt_markdown` was.
-
-| Feature | `gpt_markdown` | `flutter_markdown_plus` |
-|---|:---:|:---:|
-| LaTeX math (built-in) | ✅ | ❌ (separate package) |
-| Inline HTML (`<u>`, etc.) | ✅ | ❌ |
-| AI output optimized | ✅ | ❌ |
-| Custom builder callbacks | ✅ | ✅ |
-| Selectable text | ✅ | ✅ |
-| RTL support | ✅ | ❌ |
-| Radio & checkbox inputs | ✅ | ❌ |
-
----
-
 ## Supported Features
 
 | Feature | Supported |
@@ -80,6 +64,22 @@ For more examples, see the [Example tab](https://pub.dev/packages/gpt_markdown/e
 | `latexBuilder` | `Widget Function?` | Custom LaTeX renderer |
 | `codeBuilder` | `Widget Function?` | Custom code block renderer |
 | `highlightBuilder` | `Widget Function?` | Custom inline code renderer |
+
+---
+
+## How does it compare?
+
+`gpt_markdown` vs `flutter_markdown_plus` — the current community-maintained alternative:
+
+| Feature | `gpt_markdown` | `flutter_markdown_plus` |
+|---|:---:|:---:|
+| LaTeX math (built-in) | ✅ | ❌ (separate package) |
+| Inline HTML (`<u>`, etc.) | ✅ | ❌ |
+| AI output optimized | ✅ | ❌ |
+| Custom builder callbacks | ✅ | ✅ |
+| Selectable text | ✅ | ✅ |
+| RTL support | ✅ | ❌ |
+| Radio & checkbox inputs | ✅ | ❌ |
 
 ---
 
