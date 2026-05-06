@@ -82,7 +82,7 @@ class DemoPage extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         child: GptMarkdown(
           _demoContent,
-          onLinkTap: (url) => debugPrint('Link tapped: $url'),
+          onLinkTap: (url, title) => debugPrint('Link tapped: $url'),
         ),
       ),
     );
