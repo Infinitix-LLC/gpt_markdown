@@ -2,13 +2,19 @@
 
 [![Pub Version](https://img.shields.io/pub/v/gpt_markdown)](https://pub.dev/packages/gpt_markdown) [![Pub Likes](https://img.shields.io/pub/likes/gpt_markdown)](https://pub.dev/packages/gpt_markdown) [![Pub Points](https://img.shields.io/pub/points/gpt_markdown)](https://pub.dev/packages/gpt_markdown) [![GitHub](https://img.shields.io/badge/github-gpt__markdown-blue?logo=github)](https://github.com/Infinitix-LLC/gpt_markdown)
 
-A comprehensive Flutter package for rendering rich Markdown and LaTeX content in your apps, designed for seamless integration with AI outputs like ChatGPT and Gemini.
-
-gpt_markdown is a drop-in replacement for flutter_markdown, offering extended support for LaTeX, custom builders, and better AI integration for Flutter apps.
-
-⭐ If you find this package helpful, please give it a like on [pub.dev](https://pub.dev/packages/gpt_markdown)! Your support means a lot! ⭐
+A Flutter package for rendering rich Markdown and LaTeX in your app — built for AI outputs like ChatGPT and Gemini. Drop-in replacement for flutter_markdown with full LaTeX support and better AI integration.
 
 🌐 [gptmarkdown.com](https://gptmarkdown.com) · 📖 [Docs](https://gptmarkdown.com/docs) · 🎮 [Live Playground](https://gptmarkdown.com/playground)
+
+---
+
+## 🚀 Why Use GPT Markdown?
+
+- **Optimized for AI Outputs**: Render ChatGPT and Gemini responses flawlessly in your Flutter apps.
+- **LaTeX out of the box**: No extra setup — math rendering works from the first line.
+- **Rich Customization**: Easily apply custom styles using Flutter widgets like `TextStyle`.
+- **Selectable Content**: Enable content selection with `SelectionArea`.
+- **Seamless Integration**: Works out of the box with minimal setup.
 
 ---
 
@@ -120,12 +126,7 @@ Render a wide variety of content with full Markdown and LaTeX support, including
 
 - You can also make the content selectable using `SelectionArea` widget.
 
-## 🚀 Why Use GPT Markdown?
-
-- **Optimized for AI Outputs**: Render ChatGPT and Gemini responses flawlessly in your Flutter apps.
-- **Rich Customization**: Easily apply custom styles using Flutter widgets like `TextStyle`.
-- **Selectable Content**: Enable content selection with `SelectionArea`.
-- **Seamless Integration**: Works out of the box with minimal setup.
+---
 
 ## 🛠️ Getting Started
 
@@ -210,6 +211,10 @@ Markdown and LaTeX can be powerful tools for formatting text and mathematical ex
 <img width="614" alt="Screenshot 2024-02-15 at 4 13 59 AM" src="https://github.com/saminsohag/flutter_packages/assets/59507062/8f4a4068-a12c-45d1-a954-ebaf3822e754">
 
 If you're using flutter_markdown and need more customization or LaTeX support, gpt_markdown is a great alternative.
+
+---
+
+⭐ If you find this package helpful, please give it a like on [pub.dev](https://pub.dev/packages/gpt_markdown)! Your support means a lot! ⭐
 
 ## 🔗 Additional Information
 
