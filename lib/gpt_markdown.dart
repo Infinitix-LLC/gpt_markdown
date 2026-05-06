@@ -44,6 +44,7 @@ class GptMarkdown extends StatelessWidget {
     this.components,
     this.inlineComponents,
     this.useDollarSignsForLatex = false,
+    this.selectable = false,
   });
 
   /// The direction of the text.
@@ -100,6 +101,14 @@ class GptMarkdown extends StatelessWidget {
 
   /// Whether to use dollar signs for LaTeX.
   final bool useDollarSignsForLatex;
+
+  /// Whether to make the rendered content selectable.
+  ///
+  /// When `true`, the markdown output is wrapped in a [SelectionArea] so users
+  /// can highlight and copy text on any platform.
+  /// Non-text content such as code blocks participates in selection via the
+  /// built-in [SelectableAdapter] widget.
+  final bool selectable;
 
   /// The table builder.
   final TableBuilder? tableBuilder;
@@ -181,7 +190,7 @@ class GptMarkdown extends StatelessWidget {
       }
     }
     // tex = _removeExtraLinesInsideBlockLatex(tex);
-    return ClipRRect(
+    final Widget content = ClipRRect(
       child: MdWidget(
         context,
         tex,
@@ -210,5 +219,9 @@ class GptMarkdown extends StatelessWidget {
         ),
       ),
     );
+    if (selectable) {
+      return SelectionArea(child: content);
+    }
+    return content;
   }
 }
