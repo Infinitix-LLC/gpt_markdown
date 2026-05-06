@@ -9,7 +9,7 @@
 
 Render ChatGPT, Gemini, and Claude responses beautifully in your Flutter app. Supports the full Markdown spec plus inline and block LaTeX math, with a simple drop-in widget.
 
-> 🎮 **[Try the live playground →](https://gptmarkdown.com/playground)**
+🌐 [gptmarkdown.com](https://gptmarkdown.com) · 📖 [Docs](https://gptmarkdown.com/docs) · 🎮 [Playground](https://gptmarkdown.com/playground)
 
 ---
 
@@ -30,8 +30,6 @@ GptMarkdown(
 ```
 
 That's it. LaTeX, bold, italic, tables, code blocks, and more all work out of the box.
-
-For full examples, visit the [live playground](https://gptmarkdown.com/playground) or the [Example tab](https://pub.dev/packages/gpt_markdown/example) on pub.dev.
 
 ---
 
@@ -73,9 +71,9 @@ For full examples, visit the [live playground](https://gptmarkdown.com/playgroun
 
 ## How does it compare?
 
-| Feature | `gpt_markdown` | `flutter_markdown_plus` |
+| Feature | `gpt_markdown` | `flutter_markdown` |
 |---|:---:|:---:|
-| LaTeX math (built-in) | ✅ | ❌ (separate package) |
+| LaTeX math (built-in) | ✅ | ❌ |
 | Inline HTML (`<u>`, etc.) | ✅ | ❌ |
 | AI output optimized | ✅ | ❌ |
 | Custom builder callbacks | ✅ | ✅ |
@@ -87,8 +85,10 @@ For full examples, visit the [live playground](https://gptmarkdown.com/playgroun
 
 ## Additional Information
 
+- 🌐 [Website](https://gptmarkdown.com)
+- 📖 [Documentation](https://gptmarkdown.com/docs)
+- 🎮 [Live playground](https://gptmarkdown.com/playground)
 - 📦 [pub.dev](https://pub.dev/packages/gpt_markdown)
 - 🐛 [Issue tracker](https://github.com/Infinitix-LLC/gpt_markdown/issues)
 - 💬 [Publisher](https://infinitix.tech)
-- 🎮 [Live playground](https://gptmarkdown.com/playground)
-- 🌐 [Website](https://gptmarkdown.com/)
+
