@@ -499,7 +499,8 @@ class HighlightedText extends InlineMd {
 /// Bold text component
 class BoldMd extends InlineMd {
   @override
-  RegExp get exp => RegExp(r"(?<!\*)\*\*(?<!\s)(.+?)(?<!\s)\*\*(?!\*)", dotAll: true);
+  RegExp get exp =>
+      RegExp(r"(?<!\*)\*\*(?<!\s)(.+?)(?<!\s)\*\*(?!\*)", dotAll: true);
 
   @override
   InlineSpan span(
@@ -863,7 +864,12 @@ class ATagMd extends InlineMd {
     );
     final linkConfig = config.copyWith(style: linkStyle);
     var linkTextSpan = TextSpan(
-      children: MarkdownComponent.generate(context, linkText, linkConfig, false),
+      children: MarkdownComponent.generate(
+        context,
+        linkText,
+        linkConfig,
+        false,
+      ),
       style: linkStyle,
     );
 
@@ -962,7 +968,7 @@ class ImageMd extends InlineMd {
 
     final Widget image;
     if (config.imageBuilder != null) {
-      image = config.imageBuilder!(context, url);
+      image = config.imageBuilder!(context, url, width, height);
     } else {
       image = SizedBox(
         width: width,
