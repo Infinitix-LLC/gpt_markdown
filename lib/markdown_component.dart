@@ -499,7 +499,8 @@ class HighlightedText extends InlineMd {
 /// Bold text component
 class BoldMd extends InlineMd {
   @override
-  RegExp get exp => RegExp(r"(?<!\*)\*\*(?<!\s)(.+?)(?<!\s)\*\*(?!\*)");
+  RegExp get exp =>
+      RegExp(r"(?<!\*)\*\*(?<!\s)(.+?)(?<!\s)\*\*(?!\*)", dotAll: true);
 
   @override
   InlineSpan span(
@@ -979,7 +980,7 @@ class ImageMd extends InlineMd {
 
     final Widget image;
     if (config.imageBuilder != null) {
-      image = config.imageBuilder!(context, url);
+      image = config.imageBuilder!(context, url, width, height);
     } else {
       image = SizedBox(
         width: width,
