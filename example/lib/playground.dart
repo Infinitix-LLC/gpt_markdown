@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:gpt_markdown/gpt_markdown.dart';
 import 'package:flutter_math_fork/flutter_math.dart';
-import 'package:gpt_markdown/custom_widgets/selectable_adapter.dart';
+// import 'package:gpt_markdown/custom_widgets/selectable_adapter.dart';
 
 void main() {
   runApp(const PlaygroundApp());
@@ -207,8 +207,7 @@ class _PlaygroundPageState extends State<PlaygroundPage> {
   @override
   void initState() {
     super.initState();
-    _controller =
-        TextEditingController(text: _samples['Overview']!);
+    _controller = TextEditingController(text: _samples['Overview']!);
   }
 
   @override
@@ -237,9 +236,7 @@ class _PlaygroundPageState extends State<PlaygroundPage> {
           _buildTopBar(theme, isDark),
           _buildSampleBar(theme),
           Expanded(
-            child: isWide
-                ? _buildWideLayout(theme)
-                : _buildNarrowLayout(theme),
+            child: isWide ? _buildWideLayout(theme) : _buildNarrowLayout(theme),
           ),
         ],
       ),
@@ -312,7 +309,9 @@ class _PlaygroundPageState extends State<PlaygroundPage> {
           ),
           const SizedBox(width: 4),
           _ToolbarButton(
-            tooltip: _direction == TextDirection.ltr ? 'Switch to RTL' : 'Switch to LTR',
+            tooltip: _direction == TextDirection.ltr
+                ? 'Switch to RTL'
+                : 'Switch to LTR',
             label: _direction == TextDirection.ltr ? 'LTR' : 'RTL',
             active: _direction == TextDirection.rtl,
             onTap: () => setState(() {
@@ -400,9 +399,7 @@ class _PlaygroundPageState extends State<PlaygroundPage> {
         _PaneHeader(label: 'Editor', icon: Icons.edit_rounded, theme: theme),
         Expanded(
           child: Container(
-            color: isDark
-                ? const Color(0xFF0D1117)
-                : const Color(0xFFF8F9FA),
+            color: isDark ? const Color(0xFF0D1117) : const Color(0xFFF8F9FA),
             child: TextField(
               controller: _controller,
               maxLines: null,
@@ -412,9 +409,8 @@ class _PlaygroundPageState extends State<PlaygroundPage> {
                 fontFamily: 'monospace',
                 fontSize: 13.5,
                 height: 1.6,
-                color: isDark
-                    ? const Color(0xFFE6EDF3)
-                    : const Color(0xFF1C2128),
+                color:
+                    isDark ? const Color(0xFFE6EDF3) : const Color(0xFF1C2128),
               ),
               cursorColor: const Color(0xFF6366F1),
               decoration: InputDecoration(
@@ -422,7 +418,8 @@ class _PlaygroundPageState extends State<PlaygroundPage> {
                 border: InputBorder.none,
                 hintText: 'Type Markdown here…',
                 hintStyle: TextStyle(
-                  color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
+                  color:
+                      theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
                   fontFamily: 'monospace',
                 ),
               ),
@@ -495,8 +492,7 @@ class _PlaygroundPageState extends State<PlaygroundPage> {
                         color: const Color(0xFF6366F1).withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(4),
                         border: Border.all(
-                          color:
-                              const Color(0xFF6366F1).withValues(alpha: 0.3),
+                          color: const Color(0xFF6366F1).withValues(alpha: 0.3),
                         ),
                       ),
                       child: Text(
@@ -656,9 +652,7 @@ class _SampleChip extends StatelessWidget {
           style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w500,
-            color: active
-                ? Colors.white
-                : theme.colorScheme.onSurfaceVariant,
+            color: active ? Colors.white : theme.colorScheme.onSurfaceVariant,
           ),
         ),
       ),
