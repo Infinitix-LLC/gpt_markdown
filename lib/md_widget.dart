@@ -66,13 +66,15 @@ class _MdWidgetState extends State<MdWidget> {
 }
 
 /// A custom table column width.
+///
+/// Uses [RenderBox.getMaxIntrinsicWidth] rather than a full [RenderBox.layout]
+/// call so the table is safe to use inside [IntrinsicWidth] widgets.
 class CustomTableColumnWidth extends TableColumnWidth {
   @override
   double maxIntrinsicWidth(Iterable<RenderBox> cells, double containerWidth) {
     double width = 50;
-    for (var each in cells) {
-      each.layout(const BoxConstraints(), parentUsesSize: true);
-      width = max(width, each.size.width);
+    for (final RenderBox cell in cells) {
+      width = max(width, cell.getMaxIntrinsicWidth(double.infinity));
     }
     return min(containerWidth, width);
   }
