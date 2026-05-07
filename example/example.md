@@ -1,52 +1,45 @@
-# example
+# gpt_markdown example
+
+Run `flutter run` inside the `example/` directory to see the interactive demo.
+
+## main.dart
 
 ```dart
 import 'package:flutter/material.dart';
 import 'package:gpt_markdown/gpt_markdown.dart';
 
-void main() {
-  runApp(const MyApp());
-}
+void main() => runApp(const MyApp());
 
-const _demoContent = \'\'\'
+const _demoContent = r'''
 # GPT Markdown Demo
 
 **Bold**, *italic*, ~~strikethrough~~, and `inline code` all work out of the box.
 
-[Visit pub.dev](https://pub.dev/packages/gpt_markdown)
+[Visit pub.dev](https://pub.dev/packages/gpt_markdown "gpt_markdown on pub.dev")
 
-> Block quotes are supported too — great for AI-generated citations.
+> Block quotes are great for AI-generated citations.
 
 ---
 
-### Lists
-
-Unordered:
+### Unordered list
 
 - Flutter
 - Dart
 - gpt_markdown
 
-Ordered:
+### Ordered list
 
 1. Install the package
 2. Pass your markdown string
-3. Profit 🎉
+3. Done ✅
 
 ### LaTeX
 
-Inline: \\(E = mc^2\\) and block:
+Inline: \(E = mc^2\) and display:
 
-\\[
-\\int_0^\\infty e^{-x^2}\\,dx = \\frac{\\sqrt{\\pi}}{2}
-\\]
-
-### Code block
-
-```python
-def greet(name: str) -> str:
-    return f"Hello, {name}!"
-```
+\[
+\int_0^\infty e^{-x^2}\,dx = \frac{\sqrt{\pi}}{2}
+\]
 
 ### Table
 
@@ -60,10 +53,10 @@ def greet(name: str) -> str:
 
 ### Task list
 
-- [x] Install gpt\_markdown
+- [x] Install gpt_markdown
 - [x] Render AI responses beautifully
 - [ ] Ship to production
-\'\'\';
+''';
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -100,7 +93,6 @@ class DemoPage extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         child: GptMarkdown(
           _demoContent,
-          selectable: true,
           onLinkTap: (url, title) => debugPrint('Link tapped: $url'),
         ),
       ),
@@ -109,32 +101,47 @@ class DemoPage extends StatelessWidget {
 }
 ```
 
-Enable text selection on desktop and web with `selectable: true`:
+## Code blocks
 
-```dart
-GptMarkdown(
-  markdownText,
-  selectable: true,
-)
+Fenced code blocks with language tags are syntax-highlighted automatically:
+
+````markdown
+```python
+def greet(name: str) -> str:
+    return f"Hello, {name}!"
 ```
+````
 
-Customize colours with `GptMarkdownTheme`:
+## Theme customisation
+
+Wrap with `GptMarkdownTheme` to override colours:
 
 ```dart
 GptMarkdownTheme(
-  gptThemeData: GptMarkdownThemeData.of(context).copyWith(
-    highlightColor: Colors.amber,
+  gptThemeData: GptMarkdownThemeData(
+    brightness: Brightness.light,
     linkColor: Colors.blue,
+    highlightColor: Colors.amber,
   ),
-  child: GptMarkdown(markdownText),
+  child: GptMarkdown(markdownContent),
 )
 ```
 
-Use `tableBuilder` to fully control table rendering:
+## Text selection
+
+Wrap with Flutter's built-in `SelectionArea` to enable text selection on desktop and web:
+
+```dart
+SelectionArea(
+  child: GptMarkdown(markdownContent),
+)
+```
+
+## Custom table builder
 
 ```dart
 GptMarkdown(
-  markdownText,
+  markdownContent,
   tableBuilder: (context, tableRows, textStyle, config) {
     return Table(
       border: TableBorder.all(color: Colors.grey),
@@ -156,4 +163,4 @@ GptMarkdown(
 )
 ```
 
-See the [README](https://github.com/Infinitix-LLC/gpt_markdown) and try the live [playground](https://gptmarkdown.com/playground) for more.
+See the [README](https://github.com/Infinitix-LLC/gpt_markdown) and the live [playground](https://gptmarkdown.com/playground).
