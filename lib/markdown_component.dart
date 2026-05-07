@@ -845,7 +845,7 @@ class ATagMd extends InlineMd {
 
     final rawUrl = text.substring(urlStart, urlEnd).trim();
     // Strip optional title attribute: [text](url "title") or [text](url 'title')
-    final url = rawUrl.replaceFirst(RegExp(r'\s+["'][^"']*["']\s*
+    final url = rawUrl.replaceFirst(RegExp(r"""\s+(?:"[^"]*"|'[^']*')\s*$"""), '');
 
     var builder = config.linkBuilder;
 
