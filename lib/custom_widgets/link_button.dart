@@ -2,19 +2,27 @@ import 'package:flutter/material.dart';
 
 import 'markdown_config.dart';
 
-/// A custom button widget that displays a link with customizable colors and styles.
+/// A builder that creates a styled [InlineSpan] for the given link [color].
 ///
-/// The [LinkButton] widget is used to create a button that displays a link in the UI.
-/// It takes a [text] parameter which is the text of the link,
-/// a [config] parameter which is the configuration for the link,
-/// a [color] parameter to set the color of the link,
+/// [LinkButton] calls this on every rebuild so the span is always coloured
+/// with the current hover state — normal [LinkButton.color] or
+/// [LinkButton.hoverColor].
+typedef LinkSpanBuilder = InlineSpan Function(Color color);
 
+/// A custom button widget that displays a link with customisable colours.
 class LinkButton extends StatefulWidget {
-  /// The text of the link.
+  /// The raw link text (used only as fallback when neither [child] nor
+  /// [spanBuilder] is provided).
   final String text;
 
-  /// The child of the link.
+  /// A pre-built child widget (used by [linkBuilder] custom rendering).
   final Widget? child;
+
+  /// Builds a colour-aware [InlineSpan] for the link text.
+  ///
+  /// Called with the current colour on every rebuild so hover transitions
+  /// update all inline spans, including bold and italic content inside links.
+  final LinkSpanBuilder? spanBuilder;
 
   /// The callback function to be called when the link is pressed.
   final VoidCallback? onPressed;
@@ -28,10 +36,10 @@ class LinkButton extends StatefulWidget {
   /// The configuration for the link.
   final GptMarkdownConfig config;
 
-  /// The color of the link.
+  /// The colour used for the link in its default (non-hover) state.
   final Color color;
 
-  /// The color of the link when hovering.
+  /// The colour used for the link when the cursor is hovering over it.
   final Color hoverColor;
 
   const LinkButton({
@@ -44,6 +52,7 @@ class LinkButton extends StatefulWidget {
     this.textStyle,
     this.url,
     this.child,
+    this.spanBuilder,
   });
 
   @override
@@ -55,11 +64,25 @@ class _LinkButtonState extends State<LinkButton> {
 
   @override
   Widget build(BuildContext context) {
-    var style = (widget.config.style ?? const TextStyle()).copyWith(
-      color: _isHovering ? widget.hoverColor : widget.color,
-      decoration: TextDecoration.underline,
-      decorationColor: _isHovering ? widget.hoverColor : widget.color,
-    );
+    final currentColor = _isHovering ? widget.hoverColor : widget.color;
+
+    Widget content;
+    if (widget.child != null) {
+      // Custom linkBuilder — use the pre-built widget as-is.
+      content = widget.child!;
+    } else if (widget.spanBuilder != null) {
+      // Default path — rebuild the span with the current hover colour.
+      content = widget.config.getRich(widget.spanBuilder!(currentColor));
+    } else {
+      // Fallback plain text path (no inline formatting in link text).
+      final style = (widget.config.style ?? const TextStyle()).copyWith(
+        color: currentColor,
+        decoration: TextDecoration.underline,
+        decorationColor: currentColor,
+      );
+      content = widget.config.getRich(TextSpan(text: widget.text, style: style));
+    }
+
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       onEnter: (_) => _handleHover(true),
@@ -69,9 +92,7 @@ class _LinkButtonState extends State<LinkButton> {
         onTapUp: (_) => _handlePress(false),
         onTapCancel: () => _handlePress(false),
         onTap: widget.onPressed,
-        child:
-            widget.child ??
-            widget.config.getRich(TextSpan(text: widget.text, style: style)),
+        child: content,
       ),
     );
   }
