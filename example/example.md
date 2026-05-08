@@ -1,30 +1,45 @@
-# example
+# gpt_markdown example
+
+Run `flutter run` inside the `example/` directory to see the interactive demo.
+
+## main.dart
 
 ```dart
 import 'package:flutter/material.dart';
 import 'package:gpt_markdown/gpt_markdown.dart';
 
-void main() {
-  runApp(const MyApp());
-}
+void main() => runApp(const MyApp());
 
-const _demoContent = '''
-## Markdown & LaTeX Demo
+const _demoContent = r'''
+# GPT Markdown Demo
 
 **Bold**, *italic*, ~~strikethrough~~, and `inline code` all work out of the box.
 
-Inline LaTeX: \$E = mc^2\$ and block LaTeX:
+[Visit pub.dev](https://pub.dev/packages/gpt_markdown "gpt_markdown on pub.dev")
 
-\$\$
-\\int_0^\\infty e^{-x^2}\\,dx = \\frac{\\sqrt{\\pi}}{2}
-\$\$
+> Block quotes are great for AI-generated citations.
 
-### Code block
+---
 
-```python
-def greet(name: str) -> str:
-    return f"Hello, {name}!"
-```
+### Unordered list
+
+- Flutter
+- Dart
+- gpt_markdown
+
+### Ordered list
+
+1. Install the package
+2. Pass your markdown string
+3. Done ✅
+
+### LaTeX
+
+Inline: \(E = mc^2\) and display:
+
+\[
+\int_0^\infty e^{-x^2}\,dx = \frac{\sqrt{\pi}}{2}
+\]
 
 ### Table
 
@@ -34,7 +49,7 @@ def greet(name: str) -> str:
 | LaTeX       | ✅        |
 | Code blocks | ✅        |
 | Tables      | ✅        |
-| Task lists  | ✅        |
+| Links       | ✅        |
 
 ### Task list
 
@@ -54,17 +69,13 @@ class MyApp extends StatelessWidget {
         useMaterial3: true,
         brightness: Brightness.light,
         colorSchemeSeed: Colors.blue,
-        extensions: [
-          GptMarkdownThemeData(brightness: Brightness.light),
-        ],
+        extensions: [GptMarkdownThemeData(brightness: Brightness.light)],
       ),
       darkTheme: ThemeData(
         useMaterial3: true,
         brightness: Brightness.dark,
         colorSchemeSeed: Colors.blue,
-        extensions: [
-          GptMarkdownThemeData(brightness: Brightness.dark),
-        ],
+        extensions: [GptMarkdownThemeData(brightness: Brightness.dark)],
       ),
       home: const DemoPage(),
     );
@@ -82,7 +93,7 @@ class DemoPage extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         child: GptMarkdown(
           _demoContent,
-          onLinkTap: (url) => debugPrint('Link tapped: $url'),
+          onLinkTap: (url, title) => debugPrint('Link tapped: $url'),
         ),
       ),
     );
@@ -90,69 +101,66 @@ class DemoPage extends StatelessWidget {
 }
 ```
 
-Use `SelectableAdapter` to make any non-selectable widget selectable.
+## Code blocks
 
-```dart
-SelectableAdapter(
-  selectedText: 'sin(x^2)',
-  child: Math.tex('sin(x^2)'),
-);
+Fenced code blocks with language tags are syntax-highlighted automatically:
+
+````markdown
+```python
+def greet(name: str) -> str:
+    return f"Hello, {name}!"
 ```
+````
 
-Use `GptMarkdownTheme` widget and `GptMarkdownThemeData` to customize the GptMarkdown.
+## Theme customisation
+
+Wrap with `GptMarkdownTheme` to override colours:
 
 ```dart
 GptMarkdownTheme(
-  data: GptMarkdownThemeData.of(context).copyWith(
-    highlightColor: Colors.red,
+  gptThemeData: GptMarkdownThemeData(
+    brightness: Brightness.light,
+    linkColor: Colors.blue,
+    highlightColor: Colors.amber,
   ),
-  child: GptMarkdown(text),
-);
+  child: GptMarkdown(markdownContent),
+)
 ```
 
-In theme extension you can use `GptMarkdownThemeData` to customize the GptMarkdown.
+## Text selection
+
+Wrap with Flutter's built-in `SelectionArea` to enable text selection on desktop and web:
 
 ```dart
-theme: ThemeData(
-  useMaterial3: true,
-  brightness: Brightness.light,
-  colorSchemeSeed: Colors.blue,
-  extensions: [
-    GptMarkdownThemeData(
-      brightness: Brightness.light,
-      highlightColor: Colors.red,
-    ),
-  ],
-),
-darkTheme: ThemeData(
-  useMaterial3: true,
-  brightness: Brightness.dark,
-  colorSchemeSeed: Colors.blue,
-  extensions: [
-    GptMarkdownThemeData(
-      brightness: Brightness.dark,
-      highlightColor: Colors.red,
-    ),
-  ],
-),
+SelectionArea(
+  child: GptMarkdown(markdownContent),
+)
 ```
 
-Use `tableBuilder` to customize table rendering:
+## Custom table builder
 
 ```dart
 GptMarkdown(
-  markdownText,
+  markdownContent,
   tableBuilder: (context, tableRows, textStyle, config) {
     return Table(
-      border: TableBorder.all(width: 1, color: Colors.blue),
+      border: TableBorder.all(color: Colors.grey),
       children: tableRows.map((row) {
         return TableRow(
-          children: row.fields.map((cell) => Text(cell.data)).toList(),
+          decoration: row.isHeader
+              ? const BoxDecoration(color: Color(0xFFEEEEEE))
+              : null,
+          children: row.fields
+              .map((cell) => Padding(
+                    padding: const EdgeInsets.all(8),
+                    child: Text(cell.data, textAlign: cell.alignment),
+                  ))
+              .toList(),
         );
       }).toList(),
     );
   },
-);
+)
 ```
 
-See the [README](https://github.com/Infinitix-LLC/gpt_markdown) and try the live [playground](https://gptmarkdown.com/playground) for more details.
+See the [README](https://github.com/Infinitix-LLC/gpt_markdown) and the live [playground](https://gptmarkdown.com/playground).
