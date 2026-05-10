@@ -783,7 +783,7 @@ class SourceTag extends InlineMd {
 /// Link text component
 class ATagMd extends InlineMd {
   @override
-  RegExp get exp => RegExp(r"(?<!\!)\[.*\]\([^\s]*\)");
+  RegExp get exp => RegExp(r"(?<!\!)\[.*\]\([^)]*\)");
 
   @override
   InlineSpan span(
@@ -844,7 +844,9 @@ class ATagMd extends InlineMd {
       return const TextSpan();
     }
 
-    final url = text.substring(urlStart, urlEnd).trim();
+    final rawUrl = text.substring(urlStart, urlEnd).trim();
+    // Strip optional title attribute: [text](url "title") or [text](url 'title')
+    final url = rawUrl.replaceFirst(RegExp(r"""\s+(?:"[^"]*"|'[^']*')\s*$"""), '');
 
     var builder = config.linkBuilder;
 
@@ -1268,3 +1270,4 @@ class CustomTableRow {
 
   CustomTableRow({this.isHeader = false, required this.fields});
 }
+
