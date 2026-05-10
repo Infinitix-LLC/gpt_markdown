@@ -869,7 +869,12 @@ class ATagMd extends InlineMd {
       );
       final linkConfig = config.copyWith(style: linkStyle);
       final linkTextSpan = TextSpan(
-        children: MarkdownComponent.generate(context, linkText, linkConfig, false),
+        children: MarkdownComponent.generate(
+          context,
+          linkText,
+          linkConfig,
+          false,
+        ),
         style: linkStyle,
       );
       child = WidgetSpan(

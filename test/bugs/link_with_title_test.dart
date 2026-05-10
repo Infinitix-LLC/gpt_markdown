@@ -21,65 +21,66 @@ void main() {
       '[BUG: ATagMd regex does not support title attribute]',
       skip: true,
       (tester) async {
-      await pumpMarkdown(
-        tester,
-        '[Link Text](/path/to/page "Link Title")',
-      );
-      final output = getSerializedOutput(tester);
+        await pumpMarkdown(tester, '[Link Text](/path/to/page "Link Title")');
+        final output = getSerializedOutput(tester);
 
-      // The link should be recognized and rendered
-      expect(output, contains('LINK'));
-      expect(output, contains('Link Text'));
-    });
+        // The link should be recognized and rendered
+        expect(output, contains('LINK'));
+        expect(output, contains('Link Text'));
+      },
+    );
 
     testWidgets(
       'link with title in sentence context '
       '[BUG: ATagMd regex does not support title attribute]',
       skip: true,
       (tester) async {
-      await pumpMarkdown(
-        tester,
-        'Check out [Projects](/page/projects "Project Overview") for more info.',
-      );
-      final output = getSerializedOutput(tester);
+        await pumpMarkdown(
+          tester,
+          'Check out [Projects](/page/projects "Project Overview") for more info.',
+        );
+        final output = getSerializedOutput(tester);
 
-      // The link should be recognized
-      expect(output, contains('LINK'));
-      expect(output, contains('Projects'));
-      // Surrounding text should be present
-      expect(output, contains('Check out'));
-      expect(output, contains('for more info'));
-    });
+        // The link should be recognized
+        expect(output, contains('LINK'));
+        expect(output, contains('Projects'));
+        // Surrounding text should be present
+        expect(output, contains('Check out'));
+        expect(output, contains('for more info'));
+      },
+    );
 
     testWidgets(
       'link with title containing special characters '
       '[BUG: ATagMd regex does not support title attribute]',
       skip: true,
       (tester) async {
-      await pumpMarkdown(
-        tester,
-        '[Features](/features "App Features: Overview")',
-      );
-      final output = getSerializedOutput(tester);
+        await pumpMarkdown(
+          tester,
+          '[Features](/features "App Features: Overview")',
+        );
+        final output = getSerializedOutput(tester);
 
-      expect(output, contains('LINK'));
-      expect(output, contains('Features'));
-    });
+        expect(output, contains('LINK'));
+        expect(output, contains('Features'));
+      },
+    );
 
     testWidgets(
       'multiple links with titles '
       '[BUG: ATagMd regex does not support title attribute]',
       skip: true,
       (tester) async {
-      await pumpMarkdown(
-        tester,
-        '[First](/a "Title A") and [Second](/b "Title B")',
-      );
-      final output = getSerializedOutput(tester);
+        await pumpMarkdown(
+          tester,
+          '[First](/a "Title A") and [Second](/b "Title B")',
+        );
+        final output = getSerializedOutput(tester);
 
-      // Both links should be recognized
-      expect(output, contains('LINK'));
-      expect(output, contains('and'));
-    });
+        // Both links should be recognized
+        expect(output, contains('LINK'));
+        expect(output, contains('and'));
+      },
+    );
   });
 }

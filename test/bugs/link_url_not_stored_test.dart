@@ -19,31 +19,33 @@ void main() {
       '[BUG: LinkButton.url not populated in ATagMd.build()]',
       skip: true,
       (tester) async {
-      await pumpMarkdown(tester, '[click here](https://example.com)');
-      final output = getSerializedOutput(tester);
+        await pumpMarkdown(tester, '[click here](https://example.com)');
+        final output = getSerializedOutput(tester);
 
-      // BUG: This test fails because the URL is not passed to LinkButton
-      // Expected: LINK("click here", url="https://example.com")
-      // Actual: LINK("click here")
-      expect(
-        output,
-        contains('LINK("click here", url="https://example.com")'),
-      );
-    });
+        // BUG: This test fails because the URL is not passed to LinkButton
+        // Expected: LINK("click here", url="https://example.com")
+        // Actual: LINK("click here")
+        expect(
+          output,
+          contains('LINK("click here", url="https://example.com")'),
+        );
+      },
+    );
 
     testWidgets(
       'link with path should include full URL '
       '[BUG: LinkButton.url not populated in ATagMd.build()]',
       skip: true,
       (tester) async {
-      await pumpMarkdown(tester, '[docs](https://example.com/docs/page)');
-      final output = getSerializedOutput(tester);
+        await pumpMarkdown(tester, '[docs](https://example.com/docs/page)');
+        final output = getSerializedOutput(tester);
 
-      // BUG: URL is not included in the output
-      expect(
-        output,
-        contains('LINK("docs", url="https://example.com/docs/page")'),
-      );
-    });
+        // BUG: URL is not included in the output
+        expect(
+          output,
+          contains('LINK("docs", url="https://example.com/docs/page")'),
+        );
+      },
+    );
   });
 }

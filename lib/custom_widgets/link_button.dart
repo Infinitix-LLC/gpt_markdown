@@ -80,7 +80,9 @@ class _LinkButtonState extends State<LinkButton> {
         decoration: TextDecoration.underline,
         decorationColor: currentColor,
       );
-      content = widget.config.getRich(TextSpan(text: widget.text, style: style));
+      content = widget.config.getRich(
+        TextSpan(text: widget.text, style: style),
+      );
     }
 
     return MouseRegion(

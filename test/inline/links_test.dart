@@ -19,7 +19,10 @@ void main() {
     });
 
     testWidgets('link in middle of sentence', (tester) async {
-      await pumpMarkdown(tester, 'Check out [this link](https://example.com) for more');
+      await pumpMarkdown(
+        tester,
+        'Check out [this link](https://example.com) for more',
+      );
       final output = getSerializedOutput(tester);
       expect(output, contains('LINK'));
       expect(output, contains('Check out'));
@@ -27,7 +30,10 @@ void main() {
     });
 
     testWidgets('multiple links', (tester) async {
-      await pumpMarkdown(tester, '[first](https://a.com) and [second](https://b.com)');
+      await pumpMarkdown(
+        tester,
+        '[first](https://a.com) and [second](https://b.com)',
+      );
       final output = getSerializedOutput(tester);
       expect(output, contains('LINK'));
       expect(output, contains('and'));

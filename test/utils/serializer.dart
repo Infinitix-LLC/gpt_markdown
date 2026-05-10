@@ -5,7 +5,8 @@ import 'package:gpt_markdown/custom_widgets/custom_rb_cb.dart';
 import 'package:gpt_markdown/custom_widgets/indent_widget.dart';
 import 'package:gpt_markdown/custom_widgets/link_button.dart';
 import 'package:gpt_markdown/custom_widgets/unordered_ordered_list.dart';
-import 'package:gpt_markdown/gpt_markdown.dart' show MarkdownComponent, MdWidget;
+import 'package:gpt_markdown/gpt_markdown.dart'
+    show MarkdownComponent, MdWidget;
 
 /// Serializes a Flutter span tree into a stable, comparable string format.
 ///
@@ -213,7 +214,8 @@ class MarkdownSerializer {
 
     // Link button
     if (widget is LinkButton) {
-      final urlPart = widget.url != null ? ', url="${_escapeText(widget.url!)}"' : '';
+      final urlPart =
+          widget.url != null ? ', url="${_escapeText(widget.url!)}"' : '';
       _write('LINK("${_escapeText(widget.text)}"$urlPart)');
       return;
     }
@@ -308,7 +310,7 @@ class MarkdownSerializer {
   void _serializeTable(Table table) {
     _write('TABLE(');
     _depth++;
-    
+
     bool isFirstRow = true;
     for (final row in table.children) {
       final cells = <String>[];
@@ -323,7 +325,7 @@ class MarkdownSerializer {
         _write('ROW(${cells.map((c) => '"$c"').join(', ')})');
       }
     }
-    
+
     _depth--;
     _write(')');
   }

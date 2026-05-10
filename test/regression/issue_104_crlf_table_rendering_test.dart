@@ -19,10 +19,7 @@ void main() {
     testWidgets('table with \\r\\n separators renders as a table', (
       tester,
     ) async {
-      await pumpMarkdown(
-        tester,
-        '| a | b |\r\n| --- | --- |\r\n| 1 | 2 |',
-      );
+      await pumpMarkdown(tester, '| a | b |\r\n| --- | --- |\r\n| 1 | 2 |');
       final output = getSerializedOutput(tester);
       expect(output, contains('TABLE'));
     });
@@ -30,23 +27,21 @@ void main() {
     testWidgets('table with bare \\r separators renders as a table', (
       tester,
     ) async {
-      await pumpMarkdown(
-        tester,
-        '| a | b |\r| --- | --- |\r| 1 | 2 |',
-      );
+      await pumpMarkdown(tester, '| a | b |\r| --- | --- |\r| 1 | 2 |');
       final output = getSerializedOutput(tester);
       expect(output, contains('TABLE'));
     });
 
-    testWidgets('table with mixed \\r\\n and \\n separators renders as a table', (
-      tester,
-    ) async {
-      await pumpMarkdown(
-        tester,
-        '| Name | Value |\r\n|------|-------|\n| foo  | bar   |\r\n',
-      );
-      final output = getSerializedOutput(tester);
-      expect(output, contains('TABLE'));
-    });
+    testWidgets(
+      'table with mixed \\r\\n and \\n separators renders as a table',
+      (tester) async {
+        await pumpMarkdown(
+          tester,
+          '| Name | Value |\r\n|------|-------|\n| foo  | bar   |\r\n',
+        );
+        final output = getSerializedOutput(tester);
+        expect(output, contains('TABLE'));
+      },
+    );
   });
 }

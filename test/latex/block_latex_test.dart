@@ -16,14 +16,24 @@ void main() {
     });
 
     testWidgets('block math with text before', (tester) async {
-      await pumpMarkdown(tester, r'Equation:' '\n' r'\[E = mc^2\]');
+      await pumpMarkdown(
+        tester,
+        r'Equation:'
+        '\n'
+        r'\[E = mc^2\]',
+      );
       final output = getSerializedOutput(tester);
       expect(output, contains('Equation'));
       expect(output, contains('LATEX'));
     });
 
     testWidgets('block math with text after', (tester) async {
-      await pumpMarkdown(tester, r'\[E = mc^2\]' '\n' 'is famous');
+      await pumpMarkdown(
+        tester,
+        r'\[E = mc^2\]'
+        '\n'
+        'is famous',
+      );
       final output = getSerializedOutput(tester);
       expect(output, contains('LATEX'));
       expect(output, contains('is famous'));
@@ -42,13 +52,21 @@ void main() {
     });
 
     testWidgets('block matrix', (tester) async {
-      await pumpMarkdown(tester, r'\[\begin{bmatrix} 1 & 2 \\ 3 & 4 \end{bmatrix}\]');
+      await pumpMarkdown(
+        tester,
+        r'\[\begin{bmatrix} 1 & 2 \\ 3 & 4 \end{bmatrix}\]',
+      );
       final output = getSerializedOutput(tester);
       expect(output, contains('LATEX'));
     });
 
     testWidgets('multiple block equations', (tester) async {
-      await pumpMarkdown(tester, r'\[a = b\]' '\n\n' r'\[c = d\]');
+      await pumpMarkdown(
+        tester,
+        r'\[a = b\]'
+        '\n\n'
+        r'\[c = d\]',
+      );
       final output = getSerializedOutput(tester);
       // Should have multiple LATEX entries
       expect('LATEX'.allMatches(output).length, greaterThanOrEqualTo(1));

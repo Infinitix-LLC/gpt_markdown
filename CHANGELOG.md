@@ -1,9 +1,13 @@
 ## 1.1.7
 
-* Refreshed example to showcase all key features: Markdown, inline and block LaTeX math, code blocks, tables, task lists, and mixed AI output.
-* Fixed comparison table in README (`flutter_markdown_plus` → `flutter_markdown`).
-* Updated `homepage` in pubspec to [gptmarkdown.com](https://gptmarkdown.com); added separate `repository` and `issue_tracker` fields.
-* Added `playground.dart` as the dedicated entry point for the interactive web playground.
+* Added/updated the interactive playground and pub.dev example flow, with `playground.dart` as a dedicated playground entry and improved demo content for links, lists, blockquotes, tables, and LaTeX.
+* Updated package metadata: bumped to `1.1.7`, set `homepage` to [gptmarkdown.com](https://gptmarkdown.com), and added `repository` + `issue_tracker`.
+* Bumped `flutter_math_fork` to `^0.7.4` for Flutter 3.35+ compatibility.
+* Fixed bold markdown rendering across newlines by enabling `dotAll` in `BoldMd`.
+* Fixed link styling so underline/color (including hover color) apply consistently across nested inline spans (bold/italic) inside links via `LinkSpanBuilder`.
+* Extended `imageBuilder` to receive parsed size metadata from markdown image syntax (`context, imageUrl, width, height`).
+* Resolved deprecated radio API usage by wrapping `Radio<bool>` with `RadioGroup` in custom radio rendering.
+* Cleaned up and corrected docs/example markdown content for the updated API and examples.
 
 ## 1.1.6
 

@@ -4,11 +4,7 @@ import '../utils/test_helpers.dart';
 void main() {
   group('Bold text', () {
     testWidgets('single bold word', (tester) async {
-      await expectMarkdownContains(
-        tester,
-        '**bold**',
-        'TEXT("bold")[bold]',
-      );
+      await expectMarkdownContains(tester, '**bold**', 'TEXT("bold")[bold]');
     });
 
     testWidgets('bold phrase', (tester) async {

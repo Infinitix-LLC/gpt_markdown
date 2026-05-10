@@ -30,7 +30,10 @@ void main() {
     });
 
     testWidgets('image in text', (tester) async {
-      await pumpMarkdown(tester, 'Check this ![img](https://example.com/image.png) out');
+      await pumpMarkdown(
+        tester,
+        'Check this ![img](https://example.com/image.png) out',
+      );
       final output = getSerializedOutput(tester);
       expect(output, contains('Check this'));
       expect(output, contains('IMAGE'));
@@ -38,13 +41,19 @@ void main() {
     });
 
     testWidgets('multiple images', (tester) async {
-      await pumpMarkdown(tester, '![a](https://example.com/a.png) ![b](https://example.com/b.png)');
+      await pumpMarkdown(
+        tester,
+        '![a](https://example.com/a.png) ![b](https://example.com/b.png)',
+      );
       final output = getSerializedOutput(tester);
       expect('IMAGE'.allMatches(output).length, greaterThanOrEqualTo(2));
     });
 
     testWidgets('image with complex URL', (tester) async {
-      await pumpMarkdown(tester, '![alt](https://example.com/path/to/image.png?query=1&foo=bar)');
+      await pumpMarkdown(
+        tester,
+        '![alt](https://example.com/path/to/image.png?query=1&foo=bar)',
+      );
       final output = getSerializedOutput(tester);
       expect(output, contains('IMAGE'));
     });
