@@ -74,6 +74,24 @@ typedef ImageBuilder =
       double? height,
     );
 
+/// A builder function for the checkbox.
+typedef CheckBoxBuilder =
+    Widget Function(
+      BuildContext context,
+      bool isChecked,
+      Widget child,
+      GptMarkdownConfig config,
+    );
+
+/// A builder function for the radio button.
+typedef RadioButtonBuilder =
+    Widget Function(
+      BuildContext context,
+      bool isSelected,
+      Widget child,
+      GptMarkdownConfig config,
+    );
+
 /// A configuration class for the GPT Markdown component.
 ///
 /// The [GptMarkdownConfig] class is used to configure the GPT Markdown component.
@@ -102,6 +120,9 @@ class GptMarkdownConfig {
     this.components,
     this.inlineComponents,
     this.tableBuilder,
+    this.checkBoxBuilder,
+    this.radioButtonBuilder,
+    this.rawText,
   });
 
   /// The direction of the text.
@@ -164,6 +185,19 @@ class GptMarkdownConfig {
   /// The table builder.
   final TableBuilder? tableBuilder;
 
+  /// The checkbox builder.
+  final CheckBoxBuilder? checkBoxBuilder;
+
+  /// The radio button builder.
+  final RadioButtonBuilder? radioButtonBuilder;
+
+  /// The raw markdown text content of the current element.
+  ///
+  /// This is populated by component builders (e.g., checkbox, radio button)
+  /// before calling custom builders, enabling identification and interaction
+  /// with specific elements.
+  final String? rawText;
+
   /// A copy of the configuration with the specified parameters.
   GptMarkdownConfig copyWith({
     TextStyle? style,
@@ -186,6 +220,9 @@ class GptMarkdownConfig {
     final List<MarkdownComponent>? components,
     final List<MarkdownComponent>? inlineComponents,
     final TableBuilder? tableBuilder,
+    final CheckBoxBuilder? checkBoxBuilder,
+    final RadioButtonBuilder? radioButtonBuilder,
+    final String? rawText,
   }) {
     return GptMarkdownConfig(
       style: style ?? this.style,
@@ -208,6 +245,9 @@ class GptMarkdownConfig {
       components: components ?? this.components,
       inlineComponents: inlineComponents ?? this.inlineComponents,
       tableBuilder: tableBuilder ?? this.tableBuilder,
+      checkBoxBuilder: checkBoxBuilder ?? this.checkBoxBuilder,
+      radioButtonBuilder: radioButtonBuilder ?? this.radioButtonBuilder,
+      rawText: rawText ?? this.rawText,
     );
   }
 

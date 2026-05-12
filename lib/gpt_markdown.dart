@@ -44,6 +44,8 @@ class GptMarkdown extends StatelessWidget {
     this.components,
     this.inlineComponents,
     this.useDollarSignsForLatex = false,
+    this.checkBoxBuilder,
+    this.radioButtonBuilder,
   });
 
   /// The direction of the text.
@@ -103,6 +105,12 @@ class GptMarkdown extends StatelessWidget {
 
   /// The table builder.
   final TableBuilder? tableBuilder;
+
+  /// The checkbox builder.
+  final CheckBoxBuilder? checkBoxBuilder;
+
+  /// The radio button builder.
+  final RadioButtonBuilder? radioButtonBuilder;
 
   /// The list of components.
   ///  ```dart
@@ -207,6 +215,8 @@ class GptMarkdown extends StatelessWidget {
           components: components,
           inlineComponents: inlineComponents,
           tableBuilder: tableBuilder,
+          checkBoxBuilder: checkBoxBuilder,
+          radioButtonBuilder: radioButtonBuilder,
         ),
       ),
     );
