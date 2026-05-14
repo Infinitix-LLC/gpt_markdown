@@ -104,6 +104,9 @@ class RenderDivider extends RenderBox {
   }
 
   @override
+  double? computeDryBaseline(BoxConstraints constraints, TextBaseline baseline) => null;
+
+  @override
   Size computeDryLayout(BoxConstraints constraints) {
     final double w = constraints.constrainWidth(
       constraints.hasBoundedWidth ? constraints.maxWidth : _width,
