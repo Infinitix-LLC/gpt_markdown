@@ -1,12 +1,20 @@
 # 📦 GPT Markdown & LaTeX for Flutter
 
-[![Pub Version](https://img.shields.io/pub/v/gpt_markdown)](https://pub.dev/packages/gpt_markdown) [![Pub Points](https://img.shields.io/pub/points/gpt_markdown)](https://pub.dev/packages/gpt_markdown) [![GitHub](https://img.shields.io/badge/github-gpt__markdown-blue?logo=github)](https://github.com/Infinitix-LLC/gpt_markdown)
+[![Pub Version](https://img.shields.io/pub/v/gpt_markdown)](https://pub.dev/packages/gpt_markdown) [![Pub Likes](https://img.shields.io/pub/likes/gpt_markdown)](https://pub.dev/packages/gpt_markdown) [![Pub Points](https://img.shields.io/pub/points/gpt_markdown)](https://pub.dev/packages/gpt_markdown) [![GitHub](https://img.shields.io/badge/github-gpt__markdown-blue?logo=github)](https://github.com/Infinitix-LLC/gpt_markdown)
 
-A comprehensive Flutter package for rendering rich Markdown and LaTeX content in your apps, designed for seamless integration with AI outputs like ChatGPT and Gemini.
+A Flutter package for rendering rich Markdown and LaTeX in your app — built for AI outputs like ChatGPT and Gemini. Drop-in replacement for flutter_markdown with full LaTeX support and better AI integration.
 
-gpt_markdown is a drop-in replacement for flutter_markdown, offering extended support for LaTeX, custom builders, and better AI integration for Flutter apps.
+🌐 [gptmarkdown.com](https://gptmarkdown.com) · 📖 [Docs](https://gptmarkdown.com/docs) · 🎮 [Live Playground](https://gptmarkdown.com/playground)
 
-⭐ If you find this package helpful, please give it a like on [pub.dev](https://pub.dev/packages/gpt_markdown)! Your support means a lot! ⭐
+---
+
+## 🚀 Why Use GPT Markdown?
+
+- **Optimized for AI Outputs**: Render ChatGPT and Gemini responses flawlessly in your Flutter apps.
+- **LaTeX out of the box**: No extra setup — math rendering works from the first line.
+- **Rich Customization**: Easily apply custom styles using Flutter widgets like `TextStyle`.
+- **Selectable Content**: Pass `selectable: true` to make text highlightable and copyable on desktop and web.
+- **Seamless Integration**: Works out of the box with minimal setup.
 
 ---
 
@@ -23,7 +31,7 @@ gpt_markdown is a drop-in replacement for flutter_markdown, offering extended su
 | ➖ Horizontal Line | ✅ |  |
 | 🔢 Latex Math | ✅ |  |
 | ↩️ Indent | ✅ |
-| ↩️ BlockQuote | ✅ |
+| 💬 BlockQuote | ✅ |
 | 🖼️ Image | ✅ |
 | ✨ Highlighted Text | ✅ |
 | ✂️ Strike Text | ✅ |
@@ -56,7 +64,7 @@ Render a wide variety of content with full Markdown and LaTeX support, including
 
 - Images with size 
 ```
-![<with>x<hight> someText](url)
+![<width>x<height> someText](url)
 ```
 - Table
 
@@ -116,14 +124,13 @@ Render a wide variety of content with full Markdown and LaTeX support, including
 [x] Checked checkbox
 ```
 
-- You can also make the content selectable using `SelectionArea` widget.
+- Enable text selection on desktop and web:
 
-## 🚀 Why Use GPT Markdown?
+```dart
+GptMarkdown(markdownText, selectable: true)
+```
 
-- **Optimized for AI Outputs**: Render ChatGPT and Gemini responses flawlessly in your Flutter apps.
-- **Rich Customization**: Easily apply custom styles using Flutter widgets like `TextStyle`.
-- **Selectable Content**: Enable content selection with `SelectionArea`.
-- **Seamless Integration**: Works out of the box with minimal setup.
+---
 
 ## 🛠️ Getting Started
 
@@ -134,21 +141,34 @@ flutter pub add gpt_markdown
 
 ## 📖 Usage
 
-Check the documentation [here.](https://github.com/Infinitix-LLC/gpt_markdown/tree/main/example)
+Check the documentation [here.](https://gptmarkdown.com/docs)
 
 ```dart
 import 'package:flutter/material.dart';
 import 'package:gpt_markdown/gpt_markdown.dart';
 
-return GptMarkdown(
-    '''
-    * This is a unordered list.
-    ''',
-    style: const TextStyle(
-      color: Colors.red,
-    ),
-),
+GptMarkdown(
+  r'''
+## Hello from gpt_markdown!
 
+Render **bold**, *italic*, ~~strikethrough~~, `inline code`, and <u>underline</u>.
+
+Inline LaTeX: \( E = mc^2 \) and block math:
+
+\[
+x = \frac{-b \pm \sqrt{b^2 - 4ac}}{2a}
+\]
+
+| Name  | Score |
+|-------|-------|
+| Alice | 98    |
+| Bob   | 87    |
+
+- [x] Task complete
+- [ ] Task pending
+  ''',
+  onLinkTap: (url, title) => debugPrint('Tapped: $url'),
+)
 ```
 
 ## 💡 ChatGPT Response Examples
@@ -192,11 +212,19 @@ Markdown and LaTeX can be powerful tools for formatting text and mathematical ex
 ```
 ### Output from gpt_markdown
 
-<img width="614" alt="Screenshot 2024-02-15 at 4 13 59 AM" src="https://github.com/saminsohag/flutter_packages/assets/59507062/8f4a4068-a12c-45d1-a954-ebaf3822e754">
+<img width="614" alt="Screenshot 2024-02-15 at 4 13 59 AM" src="https://github.com/saminsohag/flutter_packages/assets/59507062/8f4a4068-a12c-45d1-a954-ebaf3822e754">
 
 If you're using flutter_markdown and need more customization or LaTeX support, gpt_markdown is a great alternative.
 
+---
+
+⭐ If you find this package helpful, please give it a like on [pub.dev](https://pub.dev/packages/gpt_markdown)! Your support means a lot! ⭐
+
 ## 🔗 Additional Information
 
-You can find the source code [here.](https://github.com/Infinitix-LLC/gpt_markdown)
-
+- 🌐 [Website](https://gptmarkdown.com)
+- 📖 [Documentation](https://gptmarkdown.com/docs)
+- 🎮 [Live playground](https://gptmarkdown.com/playground)
+- 📦 [pub.dev](https://pub.dev/packages/gpt_markdown)
+- 🐛 [Issue tracker](https://github.com/Infinitix-LLC/gpt_markdown/issues)
+- 💬 [Publisher](https://infinitix.tech)

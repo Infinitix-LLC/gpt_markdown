@@ -2,7 +2,15 @@ part of 'gpt_markdown.dart';
 
 /// Markdown components
 abstract class MarkdownComponent {
-  static List<MarkdownComponent> get globalComponents => [
+  static const int _matcherCacheLimit = 32;
+  static final LinkedHashMap<List<MarkdownComponent>, _MarkdownComponentMatcher>
+  _matcherCache =
+      LinkedHashMap<
+        List<MarkdownComponent>,
+        _MarkdownComponentMatcher
+      >.identity();
+
+  static final List<MarkdownComponent> globalComponents = [
     CodeBlockMd(),
     LatexMathMultiLine(),
     NewLines(),
@@ -31,6 +39,31 @@ abstract class MarkdownComponent {
     SourceTag(),
   ];
 
+  @visibleForTesting
+  static int get debugMatcherCacheLength => _matcherCache.length;
+
+  @visibleForTesting
+  static void debugClearMatcherCache() {
+    _matcherCache.clear();
+  }
+
+  static _MarkdownComponentMatcher _matcherFor(
+    List<MarkdownComponent> components,
+  ) {
+    final cached = _matcherCache.remove(components);
+    if (cached != null) {
+      _matcherCache[components] = cached;
+      return cached;
+    }
+
+    final matcher = _MarkdownComponentMatcher(components);
+    if (_matcherCache.length >= _matcherCacheLimit) {
+      _matcherCache.remove(_matcherCache.keys.first);
+    }
+    _matcherCache[components] = matcher;
+    return matcher;
+  }
+
   /// Generate widget for markdown widget
   static List<InlineSpan> generate(
     BuildContext context,
@@ -42,26 +75,15 @@ abstract class MarkdownComponent {
         includeGlobalComponents
             ? config.components ?? MarkdownComponent.globalComponents
             : config.inlineComponents ?? MarkdownComponent.inlineComponents;
+    final matcher = _matcherFor(components);
     List<InlineSpan> spans = [];
-    Iterable<String> regexes = components.map<String>((e) => e.exp.pattern);
-    final combinedRegex = RegExp(
-      regexes.join("|"),
-      multiLine: true,
-      dotAll: true,
-    );
     text.splitMapJoin(
-      combinedRegex,
+      matcher.combinedRegex,
       onMatch: (p0) {
         String element = p0[0] ?? "";
-        for (var each in components) {
-          var p = each.exp.pattern;
-          var exp = RegExp(
-            '^$p\$',
-            multiLine: each.exp.isMultiLine,
-            dotAll: each.exp.isDotAll,
-          );
-          if (exp.hasMatch(element)) {
-            spans.add(each.span(context, element, config));
+        for (var i = 0; i < matcher.components.length; i++) {
+          if (matcher.anchoredRegexes[i].hasMatch(element)) {
+            spans.add(matcher.components[i].span(context, element, config));
             return "";
           }
         }
@@ -92,6 +114,29 @@ abstract class MarkdownComponent {
 
   RegExp get exp;
   bool get inline;
+}
+
+class _MarkdownComponentMatcher {
+  final List<MarkdownComponent> components;
+  final RegExp combinedRegex;
+  final List<RegExp> anchoredRegexes;
+
+  _MarkdownComponentMatcher(this.components)
+    : combinedRegex = RegExp(
+        components.map((component) => component.exp.pattern).join("|"),
+        multiLine: true,
+        dotAll: true,
+      ),
+      anchoredRegexes = [
+        for (final component in components)
+          RegExp(
+            '^${component.exp.pattern}\$',
+            multiLine: component.exp.isMultiLine,
+            dotAll: component.exp.isDotAll,
+            caseSensitive: component.exp.isCaseSensitive,
+            unicode: component.exp.isUnicode,
+          ),
+      ];
 }
 
 /// Inline component
@@ -231,9 +276,8 @@ class HTag extends BlockMd {
               WidgetSpan(
                 child: CustomDivider(
                   height: theme.hrLineThickness,
-                  color:
-                      config.style?.color ??
-                      Theme.of(context).colorScheme.outline,
+                  color: config.style?.color ?? theme.hrLineColor,
+                  padding: theme.hrLinePadding,
                 ),
               ),
           ],
@@ -266,28 +310,26 @@ class NewLines extends InlineMd {
 /// Horizontal line component
 class HrLine extends BlockMd {
   @override
-  String get expString => (r"^( *(?:- *){3,}|⸻)$");
+  String get expString => (r"( *(?:- *){3,}|⸻)");
   @override
   Widget build(
     BuildContext context,
     String text,
     final GptMarkdownConfig config,
   ) {
-    var thickness = GptMarkdownTheme.of(context).hrLineThickness;
-    var color = GptMarkdownTheme.of(context).hrLineColor;
-    final height = GptMarkdownTheme.of(context).hrHeight;
-    if (height == null) {
-      return CustomDivider(
-        height: thickness,
-        color: config.style?.color ?? color,
-      );
+    final gptTheme = GptMarkdownTheme.of(context);
+    final height = gptTheme.hrHeight;
+    final divider = CustomDivider(
+      height: gptTheme.hrLineThickness,
+      color: config.style?.color ?? gptTheme.hrLineColor,
+      padding: gptTheme.hrLinePadding,
+    );
+    if (height == null || height <= gptTheme.hrLineThickness) {
+      return divider;
     }
     return SizedBox(
       height: height,
-      child: CustomDivider(
-        height: thickness,
-        color: config.style?.color ?? color,
-      ),
+      child: divider,
     );
   }
 }
@@ -511,7 +553,8 @@ class HighlightedText extends InlineMd {
 /// Bold text component
 class BoldMd extends InlineMd {
   @override
-  RegExp get exp => RegExp(r"(?<!\*)\*\*(?<!\s)(.+?)(?<!\s)\*\*(?!\*)");
+  RegExp get exp =>
+      RegExp(r"(?<!\*)\*\*(?<!\s)(.+?)(?<!\s)\*\*(?!\*)", dotAll: true);
 
   @override
   InlineSpan span(
@@ -868,17 +911,26 @@ class ATagMd extends InlineMd {
       false,
     );
     var theme = GptMarkdownTheme.of(context);
-    var linkTextSpan = TextSpan(
-      children: MarkdownComponent.generate(context, linkText, config, false),
-      style: config.style?.copyWith(
-        color: theme.linkColor,
-        decorationColor: theme.linkColor,
-      ),
-    );
 
     // Use custom builder if provided
     WidgetSpan? child;
     if (builder != null) {
+      // Build a styled span to hand off to the custom linkBuilder.
+      final linkStyle = (config.style ?? const TextStyle()).copyWith(
+        color: theme.linkColor,
+        decorationColor: theme.linkColor,
+        decoration: TextDecoration.underline,
+      );
+      final linkConfig = config.copyWith(style: linkStyle);
+      final linkTextSpan = TextSpan(
+        children: MarkdownComponent.generate(
+          context,
+          linkText,
+          linkConfig,
+          false,
+        ),
+        style: linkStyle,
+      );
       child = WidgetSpan(
         baseline: TextBaseline.alphabetic,
         alignment: PlaceholderAlignment.baseline,
@@ -894,7 +946,8 @@ class ATagMd extends InlineMd {
       );
     }
 
-    // Default rendering
+    // Default rendering — LinkButton rebuilds the span on every hover change
+    // so bold/italic text inside a link also picks up the hover colour.
     child ??= WidgetSpan(
       alignment: PlaceholderAlignment.baseline,
       baseline: TextBaseline.alphabetic,
@@ -906,7 +959,22 @@ class ATagMd extends InlineMd {
         },
         text: linkText,
         config: config,
-        child: config.getRich(linkTextSpan),
+        spanBuilder: (color) {
+          final spanStyle = (config.style ?? const TextStyle()).copyWith(
+            color: color,
+            decorationColor: color,
+            decoration: TextDecoration.underline,
+          );
+          return TextSpan(
+            children: MarkdownComponent.generate(
+              context,
+              linkText,
+              config.copyWith(style: spanStyle),
+              false,
+            ),
+            style: spanStyle,
+          );
+        },
       ),
     );
     var textSpan = TextSpan(children: [child, ...endingSpans]);
@@ -971,7 +1039,7 @@ class ImageMd extends InlineMd {
 
     final Widget image;
     if (config.imageBuilder != null) {
-      image = config.imageBuilder!(context, url);
+      image = config.imageBuilder!(context, url, width, height);
     } else {
       image = SizedBox(
         width: width,

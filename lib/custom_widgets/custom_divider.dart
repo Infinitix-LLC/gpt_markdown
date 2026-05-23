@@ -4,10 +4,16 @@ import 'package:flutter/material.dart';
 ///
 /// The [CustomDivider] widget is used to create a horizontal divider line in the UI.
 /// It takes an optional [color] parameter to specify the color of the divider,
-/// and an optional [height] parameter to set the height of the divider.
+/// an optional [height] parameter to set the height of the divider,
+/// and optional [padding] around the line (default [EdgeInsets.zero]).
 ///
 class CustomDivider extends LeafRenderObjectWidget {
-  const CustomDivider({super.key, this.height, this.color});
+  const CustomDivider({
+    super.key,
+    this.height,
+    this.color,
+    this.padding = EdgeInsets.zero,
+  });
 
   /// The color of the divider.
   ///
@@ -19,12 +25,16 @@ class CustomDivider extends LeafRenderObjectWidget {
   /// If not provided, the divider will have a default height of 2.
   final double? height;
 
+  /// Insets around the divider line. The painted line sits inside this padding.
+  final EdgeInsets padding;
+
   @override
   RenderObject createRenderObject(BuildContext context) {
     return RenderDivider(
       color ?? Theme.of(context).colorScheme.outline,
       MediaQuery.sizeOf(context).width,
       height ?? 2,
+      padding,
     );
   }
 
@@ -36,6 +46,7 @@ class CustomDivider extends LeafRenderObjectWidget {
     renderObject.color = color ?? Theme.of(context).colorScheme.outline;
     renderObject.height = height ?? 2;
     renderObject.width = MediaQuery.sizeOf(context).width;
+    renderObject.padding = padding;
   }
 }
 
@@ -46,13 +57,15 @@ class CustomDivider extends LeafRenderObjectWidget {
 /// and uses them to draw a horizontal line in the UI.
 ///
 class RenderDivider extends RenderBox {
-  RenderDivider(Color color, double width, double height)
+  RenderDivider(Color color, double width, double height, EdgeInsets padding)
     : _color = color,
       _height = height,
-      _width = width;
+      _width = width,
+      _padding = padding;
   Color _color;
   double _height;
   double _width;
+  EdgeInsets _padding;
 
   /// The color of the divider.
   set color(Color value) {
@@ -81,12 +94,22 @@ class RenderDivider extends RenderBox {
     markNeedsLayout();
   }
 
+  /// Insets around the divider line.
+  set padding(EdgeInsets value) {
+    if (value == _padding) {
+      return;
+    }
+    _padding = value;
+    markNeedsLayout();
+  }
+
   @override
   Size computeDryLayout(BoxConstraints constraints) {
-    return BoxConstraints.tightFor(
-      width: null,
-      height: _height,
-    ).enforce(constraints).smallest;
+    final double w = constraints.constrainWidth(
+      constraints.hasBoundedWidth ? constraints.maxWidth : _width,
+    );
+    final double h = constraints.constrainHeight(_padding.vertical + _height);
+    return Size(w, h);
   }
 
   @override
@@ -96,9 +119,16 @@ class RenderDivider extends RenderBox {
 
   @override
   void paint(PaintingContext context, Offset offset) {
-    context.canvas.drawRect(
-      offset & Size(Rect.largest.size.width, _height),
-      Paint()..color = _color,
+    final double lineWidth = size.width - _padding.horizontal;
+    if (lineWidth <= 0 || _height <= 0) {
+      return;
+    }
+    final Rect rect = Rect.fromLTWH(
+      offset.dx + _padding.left,
+      offset.dy + _padding.top,
+      lineWidth,
+      _height,
     );
+    context.canvas.drawRect(rect, Paint()..color = _color);
   }
 }

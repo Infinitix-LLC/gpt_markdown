@@ -63,7 +63,16 @@ typedef HighlightBuilder =
     Widget Function(BuildContext context, String text, TextStyle style);
 
 /// A builder function for the image.
-typedef ImageBuilder = Widget Function(BuildContext context, String imageUrl);
+///
+/// [width] and [height] come from the image alt text when parsed as `WxH`
+/// (for example `![100x200](url)`); otherwise they are null.
+typedef ImageBuilder =
+    Widget Function(
+      BuildContext context,
+      String imageUrl,
+      double? width,
+      double? height,
+    );
 
 /// A configuration class for the GPT Markdown component.
 ///
