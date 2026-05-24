@@ -2,7 +2,15 @@ part of 'gpt_markdown.dart';
 
 /// Markdown components
 abstract class MarkdownComponent {
-  static List<MarkdownComponent> get globalComponents => [
+  static const int _matcherCacheLimit = 32;
+  static final LinkedHashMap<List<MarkdownComponent>, _MarkdownComponentMatcher>
+  _matcherCache =
+      LinkedHashMap<
+        List<MarkdownComponent>,
+        _MarkdownComponentMatcher
+      >.identity();
+
+  static final List<MarkdownComponent> globalComponents = [
     CodeBlockMd(),
     LatexMathMultiLine(),
     NewLines(),
@@ -31,6 +39,31 @@ abstract class MarkdownComponent {
     SourceTag(),
   ];
 
+  @visibleForTesting
+  static int get debugMatcherCacheLength => _matcherCache.length;
+
+  @visibleForTesting
+  static void debugClearMatcherCache() {
+    _matcherCache.clear();
+  }
+
+  static _MarkdownComponentMatcher _matcherFor(
+    List<MarkdownComponent> components,
+  ) {
+    final cached = _matcherCache.remove(components);
+    if (cached != null) {
+      _matcherCache[components] = cached;
+      return cached;
+    }
+
+    final matcher = _MarkdownComponentMatcher(components);
+    if (_matcherCache.length >= _matcherCacheLimit) {
+      _matcherCache.remove(_matcherCache.keys.first);
+    }
+    _matcherCache[components] = matcher;
+    return matcher;
+  }
+
   /// Generate widget for markdown widget
   static List<InlineSpan> generate(
     BuildContext context,
@@ -42,26 +75,15 @@ abstract class MarkdownComponent {
         includeGlobalComponents
             ? config.components ?? MarkdownComponent.globalComponents
             : config.inlineComponents ?? MarkdownComponent.inlineComponents;
+    final matcher = _matcherFor(components);
     List<InlineSpan> spans = [];
-    Iterable<String> regexes = components.map<String>((e) => e.exp.pattern);
-    final combinedRegex = RegExp(
-      regexes.join("|"),
-      multiLine: true,
-      dotAll: true,
-    );
     text.splitMapJoin(
-      combinedRegex,
+      matcher.combinedRegex,
       onMatch: (p0) {
         String element = p0[0] ?? "";
-        for (var each in components) {
-          var p = each.exp.pattern;
-          var exp = RegExp(
-            '^$p\$',
-            multiLine: each.exp.isMultiLine,
-            dotAll: each.exp.isDotAll,
-          );
-          if (exp.hasMatch(element)) {
-            spans.add(each.span(context, element, config));
+        for (var i = 0; i < matcher.components.length; i++) {
+          if (matcher.anchoredRegexes[i].hasMatch(element)) {
+            spans.add(matcher.components[i].span(context, element, config));
             return "";
           }
         }
@@ -92,6 +114,29 @@ abstract class MarkdownComponent {
 
   RegExp get exp;
   bool get inline;
+}
+
+class _MarkdownComponentMatcher {
+  final List<MarkdownComponent> components;
+  final RegExp combinedRegex;
+  final List<RegExp> anchoredRegexes;
+
+  _MarkdownComponentMatcher(this.components)
+    : combinedRegex = RegExp(
+        components.map((component) => component.exp.pattern).join("|"),
+        multiLine: true,
+        dotAll: true,
+      ),
+      anchoredRegexes = [
+        for (final component in components)
+          RegExp(
+            '^${component.exp.pattern}\$',
+            multiLine: component.exp.isMultiLine,
+            dotAll: component.exp.isDotAll,
+            caseSensitive: component.exp.isCaseSensitive,
+            unicode: component.exp.isUnicode,
+          ),
+      ];
 }
 
 /// Inline component
@@ -221,19 +266,20 @@ class HTag extends BlockMd {
             conf,
             false,
           )),
-          if (match.namedGroup('hash')!.length == 1 &&
-              theme.autoAddDividerLineAfterH1) ...[
-            const TextSpan(
-              text: "\n ",
-              style: TextStyle(fontSize: 0, height: 0),
-            ),
-            WidgetSpan(
-              child: CustomDivider(
-                height: theme.hrLineThickness,
-                color: theme.hrLineColor,
-                padding: theme.hrLinePadding,
+          if (match.namedGroup('hash')!.length == 1) ...[
+            if (config.addNewLineAfterH1)
+              const TextSpan(
+                text: "\n ",
+                style: TextStyle(fontSize: 0, height: 0),
               ),
-            ),
+            if (config.addDividerAfterH1)
+              WidgetSpan(
+                child: CustomDivider(
+                  height: theme.hrLineThickness,
+                  color: config.style?.color ?? theme.hrLineColor,
+                  padding: theme.hrLinePadding,
+                ),
+              ),
           ],
         ],
       ),
@@ -264,7 +310,7 @@ class NewLines extends InlineMd {
 /// Horizontal line component
 class HrLine extends BlockMd {
   @override
-  String get expString => (r"⸻|((--)[-]+)$");
+  String get expString => (r"( *(?:- *){3,}|⸻)");
   @override
   Widget build(
     BuildContext context,
@@ -272,10 +318,18 @@ class HrLine extends BlockMd {
     final GptMarkdownConfig config,
   ) {
     final gptTheme = GptMarkdownTheme.of(context);
-    return CustomDivider(
+    final height = gptTheme.hrHeight;
+    final divider = CustomDivider(
       height: gptTheme.hrLineThickness,
-      color: gptTheme.hrLineColor,
+      color: config.style?.color ?? gptTheme.hrLineColor,
       padding: gptTheme.hrLinePadding,
+    );
+    if (height == null || height <= gptTheme.hrLineThickness) {
+      return divider;
+    }
+    return SizedBox(
+      height: height,
+      child: divider,
     );
   }
 }

@@ -102,6 +102,8 @@ class GptMarkdownConfig {
     this.components,
     this.inlineComponents,
     this.tableBuilder,
+    this.addNewLineAfterH1 = true,
+    this.addDividerAfterH1 = false,
   });
 
   /// The direction of the text.
@@ -164,6 +166,11 @@ class GptMarkdownConfig {
   /// The table builder.
   final TableBuilder? tableBuilder;
 
+  /// Whether to add a new line after the h1 tag.
+  final bool addNewLineAfterH1;
+
+  final bool addDividerAfterH1;
+
   /// A copy of the configuration with the specified parameters.
   GptMarkdownConfig copyWith({
     TextStyle? style,
@@ -186,6 +193,8 @@ class GptMarkdownConfig {
     final List<MarkdownComponent>? components,
     final List<MarkdownComponent>? inlineComponents,
     final TableBuilder? tableBuilder,
+    final bool? addNewLineAfterH1,
+    final bool? addDividerAfterH1,
   }) {
     return GptMarkdownConfig(
       style: style ?? this.style,
@@ -208,6 +217,8 @@ class GptMarkdownConfig {
       components: components ?? this.components,
       inlineComponents: inlineComponents ?? this.inlineComponents,
       tableBuilder: tableBuilder ?? this.tableBuilder,
+      addNewLineAfterH1: addNewLineAfterH1 ?? this.addNewLineAfterH1,
+      addDividerAfterH1: addDividerAfterH1 ?? this.addDividerAfterH1,
     );
   }
 
@@ -231,6 +242,8 @@ class GptMarkdownConfig {
         maxLines == other.maxLines &&
         overflow == other.overflow &&
         followLinkColor == other.followLinkColor &&
+        addNewLineAfterH1 == other.addNewLineAfterH1 &&
+        addDividerAfterH1 == other.addDividerAfterH1 &&
         // latexWorkaround == other.latexWorkaround &&
         // components == other.components &&
         // inlineComponents == other.inlineComponents &&

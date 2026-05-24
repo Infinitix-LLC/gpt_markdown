@@ -1,14 +1,15 @@
-import 'package:flutter/material.dart';
-import 'package:gpt_markdown/custom_widgets/markdown_config.dart';
+import 'dart:collection';
+import 'dart:math';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_math_fork/flutter_math.dart';
 import 'package:gpt_markdown/custom_widgets/custom_divider.dart';
 import 'package:gpt_markdown/custom_widgets/custom_error_image.dart';
 import 'package:gpt_markdown/custom_widgets/custom_rb_cb.dart';
+import 'package:gpt_markdown/custom_widgets/markdown_config.dart';
 import 'package:gpt_markdown/custom_widgets/selectable_adapter.dart';
 import 'package:gpt_markdown/custom_widgets/unordered_ordered_list.dart';
-import 'dart:math';
 
 import 'custom_widgets/code_field.dart';
 import 'custom_widgets/indent_widget.dart';
@@ -44,6 +45,8 @@ class GptMarkdown extends StatelessWidget {
     this.components,
     this.inlineComponents,
     this.useDollarSignsForLatex = false,
+    this.addNewLineAfterH1 = true,
+    this.addDividerAfterH1 = false,
   });
 
   /// The direction of the text.
@@ -103,6 +106,12 @@ class GptMarkdown extends StatelessWidget {
 
   /// The table builder.
   final TableBuilder? tableBuilder;
+
+  /// Whether to add a new line after the h1 tag.
+  final bool addNewLineAfterH1;
+
+  /// Whether to add a divider after the h1 tag.
+  final bool addDividerAfterH1;
 
   /// The list of components.
   ///  ```dart
@@ -207,6 +216,8 @@ class GptMarkdown extends StatelessWidget {
           components: components,
           inlineComponents: inlineComponents,
           tableBuilder: tableBuilder,
+          addNewLineAfterH1: addNewLineAfterH1,
+          addDividerAfterH1: addDividerAfterH1,
         ),
       ),
     );
