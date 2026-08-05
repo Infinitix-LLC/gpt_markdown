@@ -288,6 +288,18 @@ class MarkdownSerializer {
       return;
     }
 
+    // Text / Text.rich (produced by config.getRich in the plusparse
+    // renderer). Must be handled before the type-name heuristics below —
+    // 'Text'.contains('Tex') would otherwise mislabel it as LATEX.
+    if (widget is Text) {
+      if (widget.textSpan != null) {
+        _visitSpan(widget.textSpan!);
+      } else if (widget.data != null && widget.data!.trim().isNotEmpty) {
+        _writeTextWithStyle(widget.data!, widget.style);
+      }
+      return;
+    }
+
     // LaTeX - Math widget from flutter_math_fork
     // We detect it by checking the widget type name since we can't import the type
     final typeName = widget.runtimeType.toString();

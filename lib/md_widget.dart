@@ -26,15 +26,32 @@ class MdWidget extends StatefulWidget {
 
 class _MdWidgetState extends State<MdWidget> {
   List<InlineSpan> list = [];
+
+  /// Builds the span list with the plusparse AST parser (single-pass,
+  /// regex-free). The legacy regex pipeline is only used when the caller
+  /// injects custom [MarkdownComponent]s, which plusparse cannot honor.
+  List<InlineSpan> _generate(BuildContext context) {
+    if (widget.config.components != null ||
+        widget.config.inlineComponents != null) {
+      return MarkdownComponent.generate(
+        context,
+        widget.exp,
+        widget.config,
+        widget.includeGlobalComponents,
+      );
+    }
+    return PlusparseRenderer.render(
+      context,
+      widget.exp,
+      widget.config,
+      inlineOnly: !widget.includeGlobalComponents,
+    );
+  }
+
   @override
   void initState() {
     super.initState();
-    list = MarkdownComponent.generate(
-      widget.context,
-      widget.exp,
-      widget.config,
-      widget.includeGlobalComponents,
-    );
+    list = _generate(widget.context);
   }
 
   @override
@@ -42,12 +59,7 @@ class _MdWidgetState extends State<MdWidget> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.exp != widget.exp ||
         !oldWidget.config.isSame(widget.config)) {
-      list = MarkdownComponent.generate(
-        context,
-        widget.exp,
-        widget.config,
-        widget.includeGlobalComponents,
-      );
+      list = _generate(context);
     }
   }
 

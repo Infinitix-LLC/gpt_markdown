@@ -14,9 +14,15 @@ import 'custom_widgets/code_field.dart';
 import 'custom_widgets/indent_widget.dart';
 import 'custom_widgets/link_button.dart';
 
+import 'plusparse/plusparse.dart';
+
+export 'plusparse/plusparse.dart';
+
 part 'theme.dart';
 part 'markdown_component.dart';
 part 'md_widget.dart';
+part 'plusparse/renderer.dart';
+part 'plusparse/incremental.dart';
 
 /// This widget create a full markdown widget as a column view.
 class GptMarkdown extends StatelessWidget {
@@ -34,6 +40,7 @@ class GptMarkdown extends StatelessWidget {
     this.latexBuilder,
     this.codeBuilder,
     this.sourceTagBuilder,
+    this.genUiBuilder,
     this.highlightBuilder,
     this.linkBuilder,
     this.maxLines,
@@ -44,6 +51,7 @@ class GptMarkdown extends StatelessWidget {
     this.components,
     this.inlineComponents,
     this.useDollarSignsForLatex = false,
+    this.incremental = false,
   });
 
   /// The direction of the text.
@@ -83,6 +91,9 @@ class GptMarkdown extends StatelessWidget {
   /// The source tag builder.
   final SourceTagBuilder? sourceTagBuilder;
 
+  /// The Gen UI builder for `genui{...}` directives.
+  final GenUiBuilder? genUiBuilder;
+
   /// The highlight builder.
   final HighlightBuilder? highlightBuilder;
 
@@ -100,6 +111,14 @@ class GptMarkdown extends StatelessWidget {
 
   /// Whether to use dollar signs for LaTeX.
   final bool useDollarSignsForLatex;
+
+  /// Incremental rendering for streaming content: the document is split into
+  /// top-level segments, each rendered as its own cached widget, so appending
+  /// text only rebuilds and re-lays-out the tail segment instead of the whole
+  /// message. Recommended for chat UIs that re-render while a reply streams.
+  /// Ignored when custom [components]/[inlineComponents] are provided (those
+  /// force the legacy single-text pipeline).
+  final bool incremental;
 
   /// The table builder.
   final TableBuilder? tableBuilder;
@@ -181,34 +200,34 @@ class GptMarkdown extends StatelessWidget {
       }
     }
     // tex = _removeExtraLinesInsideBlockLatex(tex);
+    final config = GptMarkdownConfig(
+      textDirection: textDirection,
+      style: style,
+      onLinkTap: onLinkTap,
+      textAlign: textAlign,
+      textScaler: textScaler,
+      followLinkColor: followLinkColor,
+      latexWorkaround: latexWorkaround,
+      latexBuilder: latexBuilder,
+      codeBuilder: codeBuilder,
+      maxLines: maxLines,
+      overflow: overflow,
+      sourceTagBuilder: sourceTagBuilder,
+      genUiBuilder: genUiBuilder,
+      highlightBuilder: highlightBuilder,
+      linkBuilder: linkBuilder,
+      imageBuilder: imageBuilder,
+      orderedListBuilder: orderedListBuilder,
+      unOrderedListBuilder: unOrderedListBuilder,
+      components: components,
+      inlineComponents: inlineComponents,
+      tableBuilder: tableBuilder,
+    );
+    if (incremental && components == null && inlineComponents == null) {
+      return ClipRRect(child: _IncrementalMdView(text: tex, config: config));
+    }
     return ClipRRect(
-      child: MdWidget(
-        context,
-        tex,
-        true,
-        config: GptMarkdownConfig(
-          textDirection: textDirection,
-          style: style,
-          onLinkTap: onLinkTap,
-          textAlign: textAlign,
-          textScaler: textScaler,
-          followLinkColor: followLinkColor,
-          latexWorkaround: latexWorkaround,
-          latexBuilder: latexBuilder,
-          codeBuilder: codeBuilder,
-          maxLines: maxLines,
-          overflow: overflow,
-          sourceTagBuilder: sourceTagBuilder,
-          highlightBuilder: highlightBuilder,
-          linkBuilder: linkBuilder,
-          imageBuilder: imageBuilder,
-          orderedListBuilder: orderedListBuilder,
-          unOrderedListBuilder: unOrderedListBuilder,
-          components: components,
-          inlineComponents: inlineComponents,
-          tableBuilder: tableBuilder,
-        ),
-      ),
+      child: MdWidget(context, tex, true, config: config),
     );
   }
 }

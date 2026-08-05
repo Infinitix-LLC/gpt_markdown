@@ -226,8 +226,11 @@ Some introductory text with **bold** and *italic* formatting.
       // 1 blockquote
       expect('BLOCKQUOTE'.allMatches(output).length, equals(1));
 
-      // 1 horizontal rule
-      expect('HR'.allMatches(output).length, equals(1));
+      // 2 horizontal rules: the literal `---` plus the automatic divider
+      // under the H1 (autoAddDividerLineAfterH1 defaults to true). The old
+      // count of 1 was an artifact of the serializer not looking inside
+      // heading Text widgets.
+      expect('HR'.allMatches(output).length, equals(2));
     });
   });
 
