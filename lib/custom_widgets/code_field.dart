@@ -14,9 +14,19 @@ import 'package:flutter/services.dart';
 /// - Visual feedback when code is copied
 /// - Themed colors that adapt to light/dark mode
 class CodeField extends StatefulWidget {
-  const CodeField({super.key, required this.name, required this.codes});
+  const CodeField({
+    super.key,
+    required this.name,
+    required this.codes,
+    this.backgroundColor,
+    this.textColor,
+  });
+
   final String name;
   final String codes;
+
+  final Color? backgroundColor;
+  final Color? textColor;
 
   @override
   State<CodeField> createState() => _CodeFieldState();
@@ -27,7 +37,9 @@ class _CodeFieldState extends State<CodeField> {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: Theme.of(context).colorScheme.onInverseSurface,
+      color:
+          widget.backgroundColor ??
+          Theme.of(context).colorScheme.onInverseSurface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -39,12 +51,21 @@ class _CodeFieldState extends State<CodeField> {
                   horizontal: 16.0,
                   vertical: 8,
                 ),
-                child: Text(widget.name),
+                child: Text(
+                  widget.name,
+                  style: TextStyle(
+                    color:
+                        widget.textColor ??
+                        Theme.of(context).colorScheme.onSurface,
+                  ),
+                ),
               ),
               const Spacer(),
               TextButton.icon(
                 style: TextButton.styleFrom(
-                  foregroundColor: Theme.of(context).colorScheme.onSurface,
+                  foregroundColor:
+                      widget.textColor ??
+                      Theme.of(context).colorScheme.onSurface,
                   textStyle: const TextStyle(fontWeight: FontWeight.normal),
                 ),
                 onPressed: () async {
@@ -64,7 +85,14 @@ class _CodeFieldState extends State<CodeField> {
                   (_copied) ? Icons.done : Icons.content_paste,
                   size: 15,
                 ),
-                label: Text((_copied) ? "Copied!" : "Copy code"),
+                label: Text(
+                  (_copied) ? "Copied!" : "Copy code",
+                  style: TextStyle(
+                    color:
+                        widget.textColor ??
+                        Theme.of(context).colorScheme.onSurface,
+                  ),
+                ),
               ),
             ],
           ),
@@ -75,6 +103,8 @@ class _CodeFieldState extends State<CodeField> {
             child: Text(
               widget.codes,
               style: TextStyle(
+                color:
+                    widget.textColor ?? Theme.of(context).colorScheme.onSurface,
                 fontFamily: 'JetBrainsMono',
                 package: "gpt_markdown",
               ),

@@ -12,6 +12,7 @@ class GptMarkdownThemeData extends ThemeExtension<GptMarkdownThemeData> {
     required this.h6,
     required this.hrLineThickness,
     required this.hrLineColor,
+    required this.hrHeight,
     required this.hrLinePadding,
     required this.linkColor,
     required this.linkHoverColor,
@@ -30,6 +31,7 @@ class GptMarkdownThemeData extends ThemeExtension<GptMarkdownThemeData> {
     TextStyle? h6,
     double? hrLineThickness,
     Color? hrLineColor,
+    double? hrHeight,
     EdgeInsets? hrLinePadding,
     Color? linkColor,
     Color? linkHoverColor,
@@ -70,6 +72,7 @@ class GptMarkdownThemeData extends ThemeExtension<GptMarkdownThemeData> {
       h6: h6,
       hrLineThickness: hrLineThickness,
       hrLineColor: hrLineColor,
+      hrHeight: hrHeight,
       hrLinePadding: hrLinePadding,
       linkColor: linkColor,
       linkHoverColor: linkHoverColor,
@@ -91,6 +94,7 @@ class GptMarkdownThemeData extends ThemeExtension<GptMarkdownThemeData> {
       h6: textTheme.titleSmall,
       hrLineThickness: 1,
       hrLineColor: theme.colorScheme.outline,
+      hrHeight: 1,
       hrLinePadding: EdgeInsets.zero,
       linkColor: Colors.blue,
       linkHoverColor: Colors.red,
@@ -118,19 +122,24 @@ class GptMarkdownThemeData extends ThemeExtension<GptMarkdownThemeData> {
 
   /// The style of the h6 text.
   TextStyle? h6;
+
+  /// The thickness of the horizontal line.
   double hrLineThickness;
 
   /// The color of the horizontal line.
   Color hrLineColor;
 
+  /// The height of the horizontal line.
+  double? hrHeight;
+
   /// Padding around horizontal rules and the h1 follow-up divider line.
   EdgeInsets hrLinePadding;
 
   /// The color of the link.
-  Color linkColor;
+  final Color linkColor;
 
   /// The color of the link when hovering.
-  Color linkHoverColor;
+  final Color linkHoverColor;
 
   /// Whether to insert a horizontal divider after `#` (h1) headings.
   bool autoAddDividerLineAfterH1;
@@ -147,6 +156,7 @@ class GptMarkdownThemeData extends ThemeExtension<GptMarkdownThemeData> {
     TextStyle? h6,
     double? hrLineThickness,
     Color? hrLineColor,
+    double? hrHeight,
     EdgeInsets? hrLinePadding,
     Color? linkColor,
     Color? linkHoverColor,
@@ -162,6 +172,7 @@ class GptMarkdownThemeData extends ThemeExtension<GptMarkdownThemeData> {
       h6: h6 ?? this.h6,
       hrLineThickness: hrLineThickness ?? this.hrLineThickness,
       hrLineColor: hrLineColor ?? this.hrLineColor,
+      hrHeight: hrHeight ?? this.hrHeight,
       hrLinePadding: hrLinePadding ?? this.hrLinePadding,
       linkColor: linkColor ?? this.linkColor,
       linkHoverColor: linkHoverColor ?? this.linkHoverColor,
@@ -181,6 +192,7 @@ class GptMarkdownThemeData extends ThemeExtension<GptMarkdownThemeData> {
         h6 == other.h6 &&
         hrLineThickness == other.hrLineThickness &&
         hrLineColor == other.hrLineColor &&
+        hrHeight == other.hrHeight &&
         hrLinePadding == other.hrLinePadding &&
         linkColor == other.linkColor &&
         linkHoverColor == other.linkHoverColor &&
@@ -204,6 +216,10 @@ class GptMarkdownThemeData extends ThemeExtension<GptMarkdownThemeData> {
       hrLineThickness: Tween(
         begin: hrLineThickness,
         end: other.hrLineThickness,
+      ).transform(t),
+      hrHeight: Tween(
+        begin: hrHeight,
+        end: other.hrHeight,
       ).transform(t),
       hrLineColor: Color.lerp(hrLineColor, other.hrLineColor, t) ?? hrLineColor,
       hrLinePadding:
