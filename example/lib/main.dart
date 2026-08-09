@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:gpt_markdown/gpt_markdown.dart';
 
+import 'chat_demo.dart';
+
 /// Minimal example for gpt_markdown — Markdown & LaTeX renderer for Flutter.
 ///
 /// For the full interactive playground visit https://gptmarkdown.com/playground
@@ -101,7 +103,18 @@ class ExamplePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('gpt_markdown')),
+      appBar: AppBar(
+        title: const Text('gpt_markdown'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.chat_bubble_outline),
+            tooltip: 'Chat demo',
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (context) => const ChatDemoPage()),
+            ),
+          ),
+        ],
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
         child: GptMarkdown(

@@ -1,0 +1,35 @@
+/// Chat UI for the Plusfinity Gateway, rendered with `gpt_markdown`.
+library;
+
+export 'data/models/artifact_frame.dart';
+export 'data/models/chat_exception.dart';
+export 'data/models/chat_message.dart';
+export 'data/models/chat_role.dart';
+export 'data/models/chat_session.dart';
+export 'data/models/completion_chunk.dart';
+export 'data/models/gateway_model.dart';
+export 'data/models/plusfinity_config.dart';
+export 'data/models/val_artifact.dart';
+export 'data/repositories/artifact_repository.dart';
+export 'data/repositories/chat_repository.dart';
+export 'data/repositories/gateway_chat_repository.dart';
+export 'data/repositories/model_repository.dart';
+export 'data/repositories/session_repository.dart';
+export 'data/services/artifact_service.dart';
+export 'data/services/gateway_chat_service.dart';
+export 'data/services/gateway_client.dart';
+export 'data/services/genui_parser.dart';
+export 'data/services/session_store.dart';
+export 'ui/view_models/artifact_view_model.dart';
+export 'ui/view_models/chat_state.dart';
+export 'ui/view_models/chat_view_model.dart';
+export 'ui/view_models/model_view_model.dart';
+export 'ui/widgets/chat_bubble.dart';
+export 'ui/widgets/chat_input_box.dart';
+export 'ui/widgets/chat_message_list.dart';
+export 'ui/widgets/chat_scope.dart';
+export 'ui/widgets/chat_view.dart';
+export 'ui/widgets/gpt_chat_widget.dart';
+export 'ui/widgets/model_selector.dart';
+export 'ui/widgets/session_drawer.dart';
+export 'ui/widgets/val_artifact_card.dart';
