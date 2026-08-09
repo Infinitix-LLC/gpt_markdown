@@ -109,6 +109,10 @@ class GenUiRegistry {
       unknownBuilder: unknownBuilder,
       errorBuilder: errorBuilder,
     )..registerAll({
+        // Always registered, regardless of which widgets a host wires up: the
+        // gateway sends this precisely when something else could not be
+        // rendered, so leaving it out would reinstate the gap it exists to fill.
+        'genui_error': (context, model) => GenUiError(attributes: model.attributes),
         'text': (context, model) => GenText(attributes: model.attributes),
         'image': (context, model) => GenImage(attributes: model.attributes),
         'button': (context, model) =>

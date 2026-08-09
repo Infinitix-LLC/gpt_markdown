@@ -17,10 +17,13 @@ void main() {
   }
 
   test('the embedded const matches example/gen_ui_mock.md', () {
-    final onDisk = File('example/gen_ui_mock.md').readAsStringSync();
+    // Line endings are a checkout artifact, not content: git hands Windows a
+    // CRLF file while the Dart const is always LF, so comparing them raw fails
+    // for every Windows developer regardless of whether the content matches.
+    final onDisk = File('example/gen_ui_mock.md').readAsStringSync().replaceAll('\r\n', '\n');
 
     expect(
-      kGenUiMockDocument,
+      kGenUiMockDocument.replaceAll('\r\n', '\n'),
       onDisk,
       reason: 'Regenerate lib/gen_ui/gen_ui_mock_document.dart from '
           'example/gen_ui_mock.md',
@@ -39,7 +42,10 @@ void main() {
   testWidgets('lists the registered types', (tester) async {
     await pumpPage(tester);
 
-    expect(find.text('12 registered widget types'), findsOneWidget);
+    // Derived, not hardcoded: adding a builder should not fail a test that is
+    // about the label being wired up at all.
+    final count = GenUiRegistry.defaults().types.length;
+    expect(find.text('$count registered widget types'), findsOneWidget);
   });
 
   testWidgets('unregistered types show a host-owned marker', (tester) async {
@@ -98,8 +104,9 @@ void main() {
       ),
     );
 
+    final count = GenUiRegistry.defaults().types.length + 1; // + the host's video
     expect(find.text('Custom'), findsOneWidget);
     expect(find.text('fake video'), findsOneWidget);
-    expect(find.text('13 registered widget types'), findsOneWidget);
+    expect(find.text('$count registered widget types'), findsOneWidget);
   });
 }

@@ -23,6 +23,50 @@ class GenText extends StatelessWidget {
   }
 }
 
+/// `genui_error`: a widget the gateway could not render.
+///
+/// Emitted in place of a widget rather than leaving a gap, because the prose
+/// around it has usually already said "as the chart shows" — a missing chart
+/// makes the answer look wrong, while a quiet notice makes it make sense. It is
+/// deliberately unobtrusive: this is our failure, not something the reader can
+/// act on.
+class GenUiError extends StatelessWidget {
+  const GenUiError({super.key, required this.attributes});
+
+  final Map<String, dynamic> attributes;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final message =
+        genUiString(attributes['message']) ?? 'This content could not be displayed.';
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.error_outline,
+            size: 15,
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+          const SizedBox(width: 6),
+          Flexible(
+            child: Text(
+              message,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 /// `image`: a network image with a loading placeholder and an error box.
 class GenImage extends StatelessWidget {
   const GenImage({super.key, required this.attributes});

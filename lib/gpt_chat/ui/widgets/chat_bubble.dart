@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:gpt_markdown/gpt_markdown.dart';
 
 import '../../data/models/chat_message.dart';
+import '../../data/models/val_artifact.dart';
 import '../../data/services/genui_parser.dart';
 import 'typing_dots.dart';
 import 'val_artifact_card.dart';
@@ -84,14 +85,32 @@ class _Content extends StatelessWidget {
     );
   }
 
-  /// Inline widgets sit inside a text span, so the card needs an explicit width.
+  /// Inline widgets sit inside a text span, so they need an explicit width.
+  ///
+  /// Animations and widgets go through the SAME registry, because the gateway
+  /// emits an animation as a `val_scene` widget like any other. Handling only
+  /// the animation here — as this did until 2026-08 — silently dropped every
+  /// chart, timeline and 3D surface the gateway sent, and a payload holding
+  /// both could never render both.
   Widget _buildGenUi(BuildContext context, String payload) {
-    final artifact = parseGenUiArtifact(payload);
-    if (artifact == null) return const SizedBox.shrink();
+    // The pre-2026-08 form was a flat object with no widget key to dispatch on,
+    // so it cannot go through the registry. Persisted sessions still hold them.
+    final legacy = parseGenUiArtifact(payload);
+    final child = legacy != null && !payload.contains('val_scene')
+        ? ValArtifactCard(initial: legacy)
+        : GenUiView(payload: payload, registry: _registry);
 
-    return SizedBox(width: contentWidth, child: ValArtifactCard(initial: artifact));
+    return SizedBox(width: contentWidth, child: child);
   }
 }
+
+/// Built once: a registry is a plain map, and rebuilding it per bubble would
+/// re-register every builder on every frame of a streaming reply.
+final GenUiRegistry _registry = GenUiRegistry.defaults()
+  ..register(
+    'val_scene',
+    (context, model) => ValArtifactCard(initial: ValArtifact.fromJson(model.attributes)),
+  );
 
 class _FailureNote extends StatelessWidget {
   const _FailureNote({this.error});
