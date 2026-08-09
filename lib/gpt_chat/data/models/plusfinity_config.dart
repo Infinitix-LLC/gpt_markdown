@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart';
 
 import 'artifact_frame.dart';
+import 'reasoning_effort.dart';
+import 'widget_selection.dart';
 
 /// Connection settings for the Plusfinity Gateway (OpenAI-compatible).
 ///
@@ -14,10 +16,12 @@ class PlusfinityConfig {
     this.systemPrompt,
     this.temperature,
     this.maxTokens,
+    this.reasoningEffort,
     this.stream = true,
     this.headers = const {},
     this.historyLimit = 40,
     this.timeout = const Duration(seconds: 90),
+    this.widgets = WidgetSelection.defaults,
     this.frame = ArtifactFrame.square,
     this.languageCode,
     this.artifactsEnabled = true,
@@ -31,8 +35,13 @@ class PlusfinityConfig {
   final String baseUrl;
   final String model;
   final String? systemPrompt;
+
+  /// Rejected by the reasoning models — use [reasoningEffort] there instead.
   final double? temperature;
   final int? maxTokens;
+
+  /// Thinking depth for reasoning models. Ignored by the others.
+  final ReasoningEffort? reasoningEffort;
 
   /// Server-sent-events streaming. Falls back to a single response when false.
   final bool stream;
@@ -43,6 +52,9 @@ class PlusfinityConfig {
   /// Most recent messages sent as context.
   final int historyLimit;
   final Duration timeout;
+
+  /// Which gen-UI widgets the model may draw.
+  final WidgetSelection widgets;
 
   /// Aspect ratio for generated animations.
   final ArtifactFrame frame;
@@ -73,6 +85,7 @@ class PlusfinityConfig {
   /// The `x_plusfinity` request extension. Omitted when everything is default.
   Map<String, dynamic>? get requestExtension {
     final extension = <String, dynamic>{
+      if (!widgets.isDefault) 'widgets': widgets.toWire(),
       if (frame != ArtifactFrame.square) 'frame': frame.wireName,
       if (languageCode != null) 'languageCode': languageCode,
       if (!artifactsEnabled) 'artifacts': false,
@@ -80,7 +93,13 @@ class PlusfinityConfig {
     return extension.isEmpty ? null : extension;
   }
 
-  PlusfinityConfig copyWith({String? model, ArtifactFrame? frame, String? languageCode}) {
+  PlusfinityConfig copyWith({
+    String? model,
+    ArtifactFrame? frame,
+    String? languageCode,
+    WidgetSelection? widgets,
+    ReasoningEffort? reasoningEffort,
+  }) {
     return PlusfinityConfig(
       apiKey: apiKey,
       baseUrl: baseUrl,
@@ -88,10 +107,12 @@ class PlusfinityConfig {
       systemPrompt: systemPrompt,
       temperature: temperature,
       maxTokens: maxTokens,
+      reasoningEffort: reasoningEffort ?? this.reasoningEffort,
       stream: stream,
       headers: headers,
       historyLimit: historyLimit,
       timeout: timeout,
+      widgets: widgets ?? this.widgets,
       frame: frame ?? this.frame,
       languageCode: languageCode ?? this.languageCode,
       artifactsEnabled: artifactsEnabled,
@@ -108,9 +129,11 @@ class PlusfinityConfig {
       other.systemPrompt == systemPrompt &&
       other.temperature == temperature &&
       other.maxTokens == maxTokens &&
+      other.reasoningEffort == reasoningEffort &&
       other.stream == stream &&
       other.historyLimit == historyLimit &&
       other.timeout == timeout &&
+      other.widgets == widgets &&
       other.frame == frame &&
       other.languageCode == languageCode &&
       other.artifactsEnabled == artifactsEnabled &&
@@ -124,9 +147,11 @@ class PlusfinityConfig {
     systemPrompt,
     temperature,
     maxTokens,
+    reasoningEffort,
     stream,
     historyLimit,
     timeout,
+    widgets,
     frame,
     languageCode,
     artifactsEnabled,

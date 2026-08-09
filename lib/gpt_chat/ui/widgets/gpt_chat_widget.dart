@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../gen_ui/gen_ui_registry.dart';
 import '../../data/models/plusfinity_config.dart';
 import '../../data/repositories/artifact_repository.dart';
 import '../../data/repositories/chat_repository.dart';
@@ -27,6 +28,7 @@ class GptChat extends StatefulWidget {
     this.showSessions = true,
     this.showModelSelector = true,
     this.emptyState,
+    this.genUiRegistry,
     this.artifactBuilder,
     this.sessionStore,
     this.chatRepository,
@@ -41,6 +43,10 @@ class GptChat extends StatefulWidget {
   /// Shows the model picker in the app bar, backed by `GET /models`.
   final bool showModelSelector;
   final Widget? emptyState;
+
+  /// Renders the widgets the gateway draws inside replies. Defaults to
+  /// `GenUiRegistry.defaults()`; pass a clone to add the opt-in types.
+  final GenUiRegistry? genUiRegistry;
 
   /// Draws a finished animation. Without one, the card shows the narration
   /// text and the VAL source.
@@ -61,6 +67,7 @@ class GptChat extends StatefulWidget {
 
 class _GptChatState extends State<GptChat> {
   late _ChatGraph _graph;
+  late GenUiRegistry _genUi = widget.genUiRegistry ?? GenUiRegistry.defaults();
 
   @override
   void initState() {
@@ -76,6 +83,7 @@ class _GptChatState extends State<GptChat> {
     }
     _graph.dispose();
     _graph = _ChatGraph(widget.config, widget.sessionStore, widget.chatRepository);
+    _genUi = widget.genUiRegistry ?? GenUiRegistry.defaults();
   }
 
   @override
@@ -90,6 +98,7 @@ class _GptChatState extends State<GptChat> {
       chat: _graph.chat,
       artifacts: _graph.artifacts,
       models: _graph.models,
+      genUi: _genUi,
       artifactBuilder: widget.artifactBuilder,
       child: ChatView(
         showSessions: widget.showSessions,

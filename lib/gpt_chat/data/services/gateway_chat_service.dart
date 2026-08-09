@@ -38,6 +38,8 @@ class GatewayChatService {
       'messages': messages.map((m) => m.toRequestJson()).toList(),
       if (config.temperature != null) 'temperature': config.temperature,
       if (config.maxTokens != null) 'max_tokens': config.maxTokens,
+      if (config.reasoningEffort != null)
+        'reasoning_effort': config.reasoningEffort!.wireName,
       if (extension != null) 'x_plusfinity': extension,
     };
   }

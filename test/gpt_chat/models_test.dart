@@ -166,9 +166,48 @@ void main() {
       expect(custom.requestExtension, {'frame': 'reels', 'languageCode': 'bn', 'artifacts': false});
     });
 
+    test('widget selection reaches x_plusfinity', () {
+      expect(
+        const PlusfinityConfig(apiKey: 'k', widgets: WidgetSelection.all).requestExtension,
+        {'widgets': 'all'},
+      );
+      expect(
+        const PlusfinityConfig(apiKey: 'k', widgets: WidgetSelection.none).requestExtension,
+        {'widgets': false},
+      );
+      expect(
+        PlusfinityConfig(
+          apiKey: 'k',
+          widgets: WidgetSelection.only(const ['bar_chart', 'surface_3d']),
+        ).requestExtension,
+        {
+          'widgets': ['bar_chart', 'surface_3d'],
+        },
+      );
+    });
+
     test('compares by value', () {
       expect(config, const PlusfinityConfig(apiKey: 'k'));
       expect(config, isNot(config.copyWith(model: 'gemini-3.6-flash')));
+      expect(config, isNot(config.copyWith(widgets: WidgetSelection.all)));
+      expect(
+        config.copyWith(widgets: WidgetSelection.only(const ['bar_chart'])),
+        config.copyWith(widgets: WidgetSelection.only(const ['bar_chart'])),
+      );
+    });
+  });
+
+  group('GenUiWidgetTypes', () {
+    test('nine on by default, nine opt-in', () {
+      expect(GenUiWidgetTypes.defaults, hasLength(9));
+      expect(GenUiWidgetTypes.optIn, hasLength(9));
+      expect(GenUiWidgetTypes.all, hasLength(18));
+    });
+
+    test('knows the documented names', () {
+      expect(GenUiWidgetTypes.isKnown('bar_chart'), isTrue);
+      expect(GenUiWidgetTypes.isKnown('spherical_surface_3d'), isTrue);
+      expect(GenUiWidgetTypes.isKnown('nope'), isFalse);
     });
   });
 }

@@ -3,11 +3,12 @@ import 'package:gpt_markdown/gpt_markdown.dart';
 
 import '../../data/models/chat_message.dart';
 import '../../data/services/genui_parser.dart';
+import 'chat_scope.dart';
 import 'typing_dots.dart';
 import 'val_artifact_card.dart';
 
 /// One message. User text is plain; assistant text renders as markdown, with
-/// `genui{...}` tags turned into animation cards.
+/// gen-UI directives turned into widgets or animation cards.
 class ChatBubble extends StatelessWidget {
   const ChatBubble({super.key, required this.message});
 
@@ -85,11 +86,15 @@ class _Content extends StatelessWidget {
   }
 
   /// Inline widgets sit inside a text span, so the card needs an explicit width.
+  /// Animations are matched first — their payload is flat (`{"type": ...}`),
+  /// unlike a widget payload, which is keyed by widget name.
   Widget _buildGenUi(BuildContext context, String payload) {
     final artifact = parseGenUiArtifact(payload);
-    if (artifact == null) return const SizedBox.shrink();
+    final child = artifact != null
+        ? ValArtifactCard(initial: artifact)
+        : ChatScope.of(context).genUi.build(context, payload);
 
-    return SizedBox(width: contentWidth, child: ValArtifactCard(initial: artifact));
+    return SizedBox(width: contentWidth, child: child);
   }
 }
 

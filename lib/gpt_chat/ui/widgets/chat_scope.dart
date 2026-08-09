@@ -1,5 +1,6 @@
 import 'package:flutter/widgets.dart';
 
+import '../../../gen_ui/gen_ui_registry.dart';
 import '../../data/models/val_artifact.dart';
 import '../view_models/artifact_view_model.dart';
 import '../view_models/chat_view_model.dart';
@@ -16,6 +17,7 @@ class ChatScope extends InheritedWidget {
     required this.chat,
     required this.artifacts,
     required this.models,
+    required this.genUi,
     this.artifactBuilder,
     required super.child,
   });
@@ -23,6 +25,9 @@ class ChatScope extends InheritedWidget {
   final ChatViewModel chat;
   final ArtifactViewModel artifacts;
   final ModelViewModel models;
+
+  /// Renders the gen-UI widgets the gateway draws inside a reply.
+  final GenUiRegistry genUi;
   final ValArtifactBuilder? artifactBuilder;
 
   static ChatScope of(BuildContext context) {
@@ -36,5 +41,6 @@ class ChatScope extends InheritedWidget {
       chat != oldWidget.chat ||
       artifacts != oldWidget.artifacts ||
       models != oldWidget.models ||
+      genUi != oldWidget.genUi ||
       artifactBuilder != oldWidget.artifactBuilder;
 }

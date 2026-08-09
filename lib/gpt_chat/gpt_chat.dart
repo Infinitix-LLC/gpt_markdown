@@ -1,6 +1,8 @@
 /// Chat UI for the Plusfinity Gateway, rendered with `gpt_markdown`.
 library;
 
+// Re-exported so a host can build or extend the registry passed to GptChat.
+export '../gen_ui/gen_ui.dart';
 export 'data/models/artifact_frame.dart';
 export 'data/models/chat_exception.dart';
 export 'data/models/chat_message.dart';
@@ -8,7 +10,10 @@ export 'data/models/chat_role.dart';
 export 'data/models/chat_session.dart';
 export 'data/models/completion_chunk.dart';
 export 'data/models/gateway_model.dart';
+export 'data/models/gen_ui_widget_types.dart';
 export 'data/models/plusfinity_config.dart';
+export 'data/models/reasoning_effort.dart';
+export 'data/models/widget_selection.dart';
 export 'data/models/val_artifact.dart';
 export 'data/repositories/artifact_repository.dart';
 export 'data/repositories/chat_repository.dart';
