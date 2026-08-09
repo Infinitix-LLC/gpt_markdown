@@ -2,13 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:gpt_markdown/gpt_markdown.dart';
 
 import '../../data/models/chat_message.dart';
-import '../../data/models/val_artifact.dart';
 import '../../data/services/genui_parser.dart';
+import 'chat_scope.dart';
 import 'typing_dots.dart';
 import 'val_artifact_card.dart';
 
 /// One message. User text is plain; assistant text renders as markdown, with
-/// `genui{...}` tags turned into animation cards.
+/// gen-UI directives turned into widgets or animation cards.
 class ChatBubble extends StatelessWidget {
   const ChatBubble({super.key, required this.message});
 
@@ -87,30 +87,22 @@ class _Content extends StatelessWidget {
 
   /// Inline widgets sit inside a text span, so they need an explicit width.
   ///
-  /// Animations and widgets go through the SAME registry, because the gateway
-  /// emits an animation as a `val_scene` widget like any other. Handling only
-  /// the animation here — as this did until 2026-08 — silently dropped every
-  /// chart, timeline and 3D surface the gateway sent, and a payload holding
-  /// both could never render both.
+  /// Everything goes through the one registry, animations included: the gateway
+  /// emits an animation as a `val_scene` widget like any other, so a reply
+  /// holding an animation AND a chart renders both. `chatGenUiRegistry` is what
+  /// puts `val_scene` in there.
   Widget _buildGenUi(BuildContext context, String payload) {
-    // The pre-2026-08 form was a flat object with no widget key to dispatch on,
-    // so it cannot go through the registry. Persisted sessions still hold them.
-    final legacy = parseGenUiArtifact(payload);
-    final child = legacy != null && !payload.contains('val_scene')
+    // Replies from before 2026-08 carried a flat `{"type":"val_artifact"}`
+    // payload with no widget key to dispatch on, so they cannot go through the
+    // registry. Persisted sessions still hold them.
+    final legacy = parseLegacyGenUiArtifact(payload);
+    final child = legacy != null
         ? ValArtifactCard(initial: legacy)
-        : GenUiView(payload: payload, registry: _registry);
+        : ChatScope.of(context).genUi.build(context, payload);
 
     return SizedBox(width: contentWidth, child: child);
   }
 }
-
-/// Built once: a registry is a plain map, and rebuilding it per bubble would
-/// re-register every builder on every frame of a streaming reply.
-final GenUiRegistry _registry = GenUiRegistry.defaults()
-  ..register(
-    'val_scene',
-    (context, model) => ValArtifactCard(initial: ValArtifact.fromJson(model.attributes)),
-  );
 
 class _FailureNote extends StatelessWidget {
   const _FailureNote({this.error});

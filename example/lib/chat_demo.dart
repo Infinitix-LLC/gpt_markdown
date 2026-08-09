@@ -1,7 +1,33 @@
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:gpt_markdown/gpt_chat/gpt_chat.dart';
-import 'package:gpt_markdown/gpt_markdown.dart' show GenUiPreviewPage;
+
+/// A few of the models the gateway serves — the chat's own picker reads the
+/// live list from `GET /models`.
+const _models = [
+  'gpt-5.6-luna',
+  'gpt-5.6-sol',
+  'gpt-5.4',
+  'gemini-3.6-flash',
+  'gemini-3.1-pro-preview',
+];
+
+/// The `x_plusfinity.widgets` options, as offered in the demo.
+enum _Widgets {
+  defaults('Default 9', WidgetSelection.defaults),
+  all('All 18', WidgetSelection.all),
+  chartsOnly('Charts only', null),
+  none('None — plain text', WidgetSelection.none);
+
+  const _Widgets(this.label, this._selection);
+
+  final String label;
+  final WidgetSelection? _selection;
+
+  WidgetSelection get selection =>
+      _selection ??
+      WidgetSelection.only(const ['line_chart', 'bar_chart', 'pie_chart']);
+}
 
 /// Setup screen for the Plusfinity Gateway chat. Fill in a key, pick a frame,
 /// and the next page is a working chat UI.
@@ -19,6 +45,8 @@ class _ChatDemoPageState extends State<ChatDemoPage> {
 
   ArtifactFrame _frame = ArtifactFrame.square;
   bool _artifacts = true;
+  _Widgets _widgets = _Widgets.defaults;
+  ReasoningEffort? _effort;
 
   @override
   void dispose() {
@@ -35,6 +63,8 @@ class _ChatDemoPageState extends State<ChatDemoPage> {
       model: _model.text.trim(),
       frame: _frame,
       artifactsEnabled: _artifacts,
+      widgets: _widgets.selection,
+      reasoningEffort: _effort,
     );
 
     Navigator.of(context).push(
@@ -73,7 +103,45 @@ class _ChatDemoPageState extends State<ChatDemoPage> {
           const SizedBox(height: 16),
           _Field(controller: _baseUrl, label: 'Base URL'),
           _Field(controller: _apiKey, label: 'API key'),
-          _Field(controller: _model, label: 'Model', helper: 'Swap gpt-5.4 for gemini-3.6-flash'),
+          _Field(
+            controller: _model,
+            label: 'Model',
+            helper: 'OpenAI or Gemini — same request either way',
+          ),
+          Wrap(
+            spacing: 8,
+            children: [
+              for (final id in _models)
+                ActionChip(
+                  label: Text(id),
+                  onPressed: () => setState(() => _model.text = id),
+                ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          DropdownButtonFormField<_Widgets>(
+            initialValue: _widgets,
+            decoration: const InputDecoration(labelText: 'Gen UI widgets'),
+            items: [
+              for (final option in _Widgets.values)
+                DropdownMenuItem(value: option, child: Text(option.label)),
+            ],
+            onChanged: (value) => setState(() => _widgets = value ?? _widgets),
+          ),
+          const SizedBox(height: 8),
+          DropdownButtonFormField<ReasoningEffort?>(
+            initialValue: _effort,
+            decoration: const InputDecoration(
+              labelText: 'Reasoning effort',
+              helperText: 'Reasoning models reject temperature — use this',
+            ),
+            items: [
+              const DropdownMenuItem(value: null, child: Text('unset')),
+              for (final effort in ReasoningEffort.values)
+                DropdownMenuItem(value: effort, child: Text(effort.wireName)),
+            ],
+            onChanged: (value) => setState(() => _effort = value),
+          ),
           const SizedBox(height: 8),
           DropdownButtonFormField<ArtifactFrame>(
             initialValue: _frame,

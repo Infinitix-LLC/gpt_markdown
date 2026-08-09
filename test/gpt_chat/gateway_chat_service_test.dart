@@ -80,6 +80,24 @@ void main() {
     expect(jsonDecode(body!)['x_plusfinity'], {'frame': 'reels', 'languageCode': 'bn'});
   });
 
+  test('sends widgets and reasoning_effort when set', () async {
+    String? body;
+    await service(
+      PlusfinityConfig(
+        apiKey: 'k',
+        reasoningEffort: ReasoningEffort.high,
+        widgets: WidgetSelection.only(const ['bar_chart']),
+      ),
+      sseClient(['data: [DONE]'], onBody: (b) => body = b),
+    ).complete([user('hi')]).toList();
+
+    final decoded = jsonDecode(body!) as Map<String, dynamic>;
+    expect(decoded['reasoning_effort'], 'high');
+    expect(decoded['x_plusfinity'], {
+      'widgets': ['bar_chart'],
+    });
+  });
+
   test('a per-call model overrides the configured one', () async {
     String? body;
     await service(

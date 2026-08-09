@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:gpt_markdown/gen_ui/gen_ui_markers.dart';
 import 'package:gpt_markdown/gpt_chat/gpt_chat.dart';
 
 import 'fakes.dart';

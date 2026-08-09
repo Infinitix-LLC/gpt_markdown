@@ -81,6 +81,7 @@ Widget scopedChat({
   ChatRepository? chat,
   ArtifactService? artifactService,
   ValArtifactBuilder? artifactBuilder,
+  GenUiRegistry? genUi,
 }) {
   final chatRepository = chat ?? FakeChatRepository();
   final artifacts = ArtifactRepository(service: artifactService ?? FakeArtifactService());
@@ -97,6 +98,7 @@ Widget scopedChat({
         chat: chatRepository,
         initialModel: testConfig.model,
       ),
+      genUi: chatGenUiRegistry(genUi),
       artifactBuilder: artifactBuilder,
       child: Scaffold(body: SingleChildScrollView(child: child)),
     ),
