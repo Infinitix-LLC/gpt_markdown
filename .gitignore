@@ -33,3 +33,6 @@ build/
 replit.nix
 replit.md
 attached_assets/
+
+# Local fork checkout — has its own .git, never part of this package
+/packages/
