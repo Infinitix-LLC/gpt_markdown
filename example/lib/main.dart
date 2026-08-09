@@ -107,6 +107,15 @@ class ExamplePage extends StatelessWidget {
         title: const Text('gpt_markdown'),
         actions: [
           IconButton(
+            icon: const Icon(Icons.dashboard_customize_outlined),
+            tooltip: 'Gen UI preview',
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (context) => const GenUiPreviewPage(),
+              ),
+            ),
+          ),
+          IconButton(
             icon: const Icon(Icons.chat_bubble_outline),
             tooltip: 'Chat demo',
             onPressed: () => Navigator.of(context).push(

@@ -30,6 +30,7 @@ class GptChat extends StatefulWidget {
     this.artifactBuilder,
     this.sessionStore,
     this.chatRepository,
+    this.showGenUiPreview = false,
   });
 
   final PlusfinityConfig config;
@@ -50,6 +51,9 @@ class GptChat extends StatefulWidget {
 
   /// Provider override, mainly for tests.
   final ChatRepository? chatRepository;
+
+  /// Adds an app-bar action opening the gen-UI preview page. Developer tool.
+  final bool showGenUiPreview;
 
   @override
   State<GptChat> createState() => _GptChatState();
@@ -91,6 +95,7 @@ class _GptChatState extends State<GptChat> {
         showSessions: widget.showSessions,
         showModelSelector: widget.showModelSelector,
         emptyState: widget.emptyState,
+        showGenUiPreview: widget.showGenUiPreview,
       ),
     );
   }

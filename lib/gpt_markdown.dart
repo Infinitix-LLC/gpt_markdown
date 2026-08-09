@@ -14,8 +14,10 @@ import 'custom_widgets/code_field.dart';
 import 'custom_widgets/indent_widget.dart';
 import 'custom_widgets/link_button.dart';
 
+import 'gen_ui/gen_ui_markers.dart';
 import 'plusparse/plusparse.dart';
 
+export 'gen_ui/gen_ui.dart';
 export 'plusparse/plusparse.dart';
 
 part 'theme.dart';
@@ -144,6 +146,7 @@ class GptMarkdown extends StatelessWidget {
   ///   LatexMath(),
   ///   LatexMathMultiLine(),
   ///   HighlightedText(),
+  ///   GenUiMd(),
   ///   SourceTag(),
   ///   IndentMd(),
   /// ];
@@ -153,6 +156,7 @@ class GptMarkdown extends StatelessWidget {
   /// The list of inline components.
   ///  ```dart
   /// List<MarkdownComponent> inlineComponents = [
+  ///   GenUiMd(),
   ///   ImageMd(),
   ///   ATagMd(),
   ///   TableMd(),

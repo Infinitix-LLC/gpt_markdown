@@ -6,6 +6,7 @@
 /// fast on Dart's UTF-16 strings).
 library;
 
+import '../gen_ui/gen_ui_markers.dart';
 import 'ast.dart';
 
 const int _bang = 0x21; // '!'
@@ -17,10 +18,7 @@ const int _lt = 0x3C; // '<'
 const int _backslash = 0x5C; // '\'
 const int _dollar = 0x24; // '$'
 const int _openParen = 0x28; // '('
-const int _g = 0x67; // 'g'
-const int _quote = 0x22; // '"'
-const int _openBrace = 0x7B; // '{'
-const int _closeBrace = 0x7D; // '}'
+
 
 List<MdNode> parseInline(String text, bool useDollar) {
   final n = text.length;
@@ -69,6 +67,22 @@ List<MdNode> parseInline(String text, bool useDollar) {
       }
     }
 
+    // U+E200 genui U+E202 {...json...} U+E201. The markers are private-use
+    // code points, so a payload may contain any markdown punctuation. No
+    // closing marker yet (still streaming) leaves the text literal.
+    if (!matched &&
+        c == genUiOpenMarkerRune &&
+        text.startsWith(genUiOpenMarker, i)) {
+      final start = i + genUiOpenMarker.length;
+      final end = text.indexOf(genUiCloseMarker, start);
+      if (end != -1) {
+        flush();
+        nodes.add(MdGenUi(payload: text.substring(start, end)));
+        i = end + genUiCloseMarker.length;
+        matched = true;
+      }
+    }
+
     // **bold**  /  *italic*
     if (!matched && c == _star) {
       if (i + 1 < n && text.codeUnitAt(i + 1) == _star) {
@@ -76,7 +90,9 @@ List<MdNode> parseInline(String text, bool useDollar) {
         if (end != -1) {
           flush();
           nodes.add(
-            MdBold(children: parseInline(text.substring(i + 2, end), useDollar)),
+            MdBold(
+              children: parseInline(text.substring(i + 2, end), useDollar),
+            ),
           );
           i = end + 2;
           matched = true;
@@ -97,12 +113,17 @@ List<MdNode> parseInline(String text, bool useDollar) {
     }
 
     // ~~strike~~
-    if (!matched && c == _tilde && i + 1 < n && text.codeUnitAt(i + 1) == _tilde) {
+    if (!matched &&
+        c == _tilde &&
+        i + 1 < n &&
+        text.codeUnitAt(i + 1) == _tilde) {
       final end = text.indexOf('~~', i + 2);
       if (end != -1) {
         flush();
         nodes.add(
-          MdStrike(children: parseInline(text.substring(i + 2, end), useDollar)),
+          MdStrike(
+            children: parseInline(text.substring(i + 2, end), useDollar),
+          ),
         );
         i = end + 2;
         matched = true;
@@ -116,17 +137,6 @@ List<MdNode> parseInline(String text, bool useDollar) {
         flush();
         nodes.add(MdInlineCode(text: text.substring(i + 1, end)));
         i = end + 1;
-        matched = true;
-      }
-    }
-
-    // genui{...json...}
-    if (!matched && c == _g && text.startsWith('genui{', i)) {
-      final r = _tryGenUi(text, i);
-      if (r != null) {
-        flush();
-        nodes.add(r.node);
-        i = r.next;
         matched = true;
       }
     }
@@ -147,7 +157,10 @@ List<MdNode> parseInline(String text, bool useDollar) {
     }
 
     // \( inline latex \)
-    if (!matched && c == _backslash && i + 1 < n && text.codeUnitAt(i + 1) == _openParen) {
+    if (!matched &&
+        c == _backslash &&
+        i + 1 < n &&
+        text.codeUnitAt(i + 1) == _openParen) {
       final end = text.indexOf('\\)', i + 2);
       if (end != -1) {
         flush();
@@ -271,42 +284,6 @@ _InlineMatch? _tryLink(String text, int i, bool useDollar) {
     node: MdLink(children: parseInline(linkText, useDollar), url: url.trim()),
     next: close + 1,
   );
-}
-
-/// `genui{...}` directive. Scans the balanced `{...}` JSON object (aware of
-/// strings and escapes, so `}` inside a string value doesn't close it) and
-/// returns it, braces included, as the payload. Unterminated → literal text.
-_InlineMatch? _tryGenUi(String text, int i) {
-  final n = text.length;
-  var depth = 0;
-  var inString = false;
-  var k = i + 5; // at '{'
-  while (k < n) {
-    final c = text.codeUnitAt(k);
-    if (inString) {
-      if (c == 0x5C /* backslash */) {
-        k += 2;
-        continue;
-      }
-      if (c == _quote) {
-        inString = false;
-      }
-    } else if (c == _quote) {
-      inString = true;
-    } else if (c == _openBrace) {
-      depth += 1;
-    } else if (c == _closeBrace) {
-      depth -= 1;
-      if (depth == 0) {
-        return (
-          node: MdGenUi(payload: text.substring(i + 5, k + 1)),
-          next: k + 1,
-        );
-      }
-    }
-    k += 1;
-  }
-  return null;
 }
 
 _InlineMatch? _trySourceTag(String text, int i) {

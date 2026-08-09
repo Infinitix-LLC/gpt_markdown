@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:gpt_markdown/gen_ui/gen_ui_markers.dart';
 import 'package:gpt_markdown/gpt_chat/gpt_chat.dart';
 
 import 'fakes.dart';
 
 const _tag =
     'Here is the animation.\n\n'
-    'genui{"type":"val_artifact","id":"a1","name":"Seed Germination",'
-    '"frame":"square","status":"queued","token":"tok"}';
+    '$genUiOpenMarker'
+    '{"type":"val_artifact","id":"a1","name":"Seed Germination",'
+    '"frame":"square","status":"queued","token":"tok"}'
+    '$genUiCloseMarker';
 
 ChatMessage reply(String content) =>
     ChatMessage(id: 'm1', role: ChatRole.assistant, content: content, createdAt: DateTime(2024));

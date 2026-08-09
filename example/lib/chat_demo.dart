@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:gpt_markdown/gpt_chat/gpt_chat.dart';
+import 'package:gpt_markdown/gpt_markdown.dart' show GenUiPreviewPage;
 
 /// Setup screen for the Plusfinity Gateway chat. Fill in a key, pick a frame,
 /// and the next page is a working chat UI.
@@ -37,14 +38,31 @@ class _ChatDemoPageState extends State<ChatDemoPage> {
     );
 
     Navigator.of(context).push(
-      MaterialPageRoute<void>(builder: (context) => GptChat(config: config)),
+      MaterialPageRoute<void>(
+        builder: (context) => GptChat(config: config, showGenUiPreview: true),
+      ),
+    );
+  }
+
+  void _openGenUiPreview() {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(builder: (context) => const GenUiPreviewPage()),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Plusfinity chat demo')),
+      appBar: AppBar(
+        title: const Text('Plusfinity chat demo'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.dashboard_customize_outlined),
+            tooltip: 'Gen UI preview',
+            onPressed: _openGenUiPreview,
+          ),
+        ],
+      ),
       body: ListView(
         padding: const EdgeInsets.all(20),
         children: [
@@ -75,6 +93,12 @@ class _ChatDemoPageState extends State<ChatDemoPage> {
           ),
           const SizedBox(height: 12),
           FilledButton(onPressed: _openChat, child: const Text('Open chat')),
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            onPressed: _openGenUiPreview,
+            icon: const Icon(Icons.dashboard_customize_outlined),
+            label: const Text('Open gen UI preview (no gateway needed)'),
+          ),
           const SizedBox(height: 16),
           const _Hints(),
         ],
