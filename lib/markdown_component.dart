@@ -18,6 +18,8 @@ abstract class MarkdownComponent {
   ];
 
   static final List<MarkdownComponent> inlineComponents = [
+    // First: a payload may contain link or emphasis syntax of its own.
+    GenUiMd(),
     ATagMd(),
     ImageMd(),
     TableMd(),
@@ -493,6 +495,41 @@ class HighlightedText extends InlineMd {
         );
 
     return TextSpan(text: highlightedText, style: style);
+  }
+}
+
+final RegExp _genUiExp = RegExp(
+  '${RegExp.escape(genUiOpenMarker)}(.*?)${RegExp.escape(genUiCloseMarker)}',
+  dotAll: true,
+);
+
+/// Gen UI component, delimited by [genUiOpenMarker] and [genUiCloseMarker].
+///
+/// The payload is everything between the markers — the JSON object with its
+/// braces — handed to [GptMarkdownConfig.genUiBuilder]. The markers are
+/// private-use code points, so the JSON may contain any markdown punctuation.
+class GenUiMd extends InlineMd {
+  @override
+  RegExp get exp => _genUiExp;
+
+  @override
+  InlineSpan span(
+    BuildContext context,
+    String text,
+    final GptMarkdownConfig config,
+  ) {
+    final match = exp.firstMatch(text.trim());
+    final payload = match?[1] ?? "";
+    final builder = config.genUiBuilder;
+
+    if (builder == null) {
+      return TextSpan(text: payload, style: config.style);
+    }
+
+    return WidgetSpan(
+      alignment: PlaceholderAlignment.middle,
+      child: builder(context, payload),
+    );
   }
 }
 

@@ -6,6 +6,7 @@
 library;
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:gpt_markdown/gen_ui/gen_ui_markers.dart';
 import 'package:gpt_markdown/plusparse/plusparse.dart';
 
 import 'sample_documents.dart';
@@ -350,8 +351,10 @@ void main() {
       expect(doc.children.whereType<MdHeading>().length, greaterThan(20));
     });
 
-    test('genui directive captures balanced JSON payload', () {
-      final doc = p('Before genui{"type":"button","label":"Tap"} after');
+    test('genui directive captures the delimited payload', () {
+      final doc = p(
+        'Before ${wrapGenUi('{"type":"button","label":"Tap"}')} after',
+      );
       final para = doc.children[0] as MdParagraph;
       final genUi = para.children.whereType<MdGenUi>().single;
       expect(genUi.payload, '{"type":"button","label":"Tap"}');
@@ -361,7 +364,7 @@ void main() {
 
     test('genui payload with nested braces and braces inside strings', () {
       final doc = p(
-        r'genui{"val_scene": {"id": "a}b", "frame": "wide{x}"}} tail',
+        '${wrapGenUi(r'{"val_scene": {"id": "a}b", "frame": "wide{x}"}}')} tail',
       );
       final para = doc.children[0] as MdParagraph;
       final genUi = para.children.whereType<MdGenUi>().single;
@@ -369,10 +372,11 @@ void main() {
     });
 
     test('unterminated genui stays literal text (streaming)', () {
-      final doc = p('genui{"val_scene": {"id": "x"');
+      const partial = '$genUiOpenMarker{"val_scene": {"id": "x"';
+      final doc = p(partial);
       final para = doc.children[0] as MdParagraph;
       expect(para.children.whereType<MdGenUi>(), isEmpty);
-      expect(inlineText(para.children), 'genui{"val_scene": {"id": "x"');
+      expect(inlineText(para.children), partial);
     });
 
     test('unicode text passes through untouched', () {

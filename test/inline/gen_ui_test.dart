@@ -11,7 +11,7 @@ void main() {
         MaterialApp(
           home: Scaffold(
             body: GptMarkdown(
-              'Before genui{"type":"button","label":"Tap"} after',
+              'Before ${wrapGenUi('{"type":"button","label":"Tap"}')} after',
               genUiBuilder: (context, payload) {
                 capturedPayload = payload;
                 return Text('GEN_UI:$payload');
@@ -31,9 +31,9 @@ void main() {
 
     testWidgets('renders payload as text without a builder', (tester) async {
       await tester.pumpWidget(
-        const MaterialApp(
+        MaterialApp(
           home: Scaffold(
-            body: GptMarkdown('genui{"type":"button"}'),
+            body: GptMarkdown(wrapGenUi('{"type":"button"}')),
           ),
         ),
       );
@@ -48,7 +48,9 @@ void main() {
         MaterialApp(
           home: Scaffold(
             body: GptMarkdown(
-              'Intro text\n\ngenui{"val_scene": {"id": "abc", "frame": "wide"}}\n\nOutro',
+              'Intro text\n\n'
+              '${wrapGenUi('{"val_scene": {"id": "abc", "frame": "wide"}}')}'
+              '\n\nOutro',
               genUiBuilder: (context, payload) {
                 capturedPayload = payload;
                 return const SizedBox(width: 10, height: 10);
