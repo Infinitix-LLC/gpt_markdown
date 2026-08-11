@@ -115,6 +115,64 @@ Scrollable variant (fixed `height`) with alias keys `steps` / `label` / `body`:
 
 ---
 
+## Math Plot
+
+### `plot_latex`
+
+Static preview inline; tap to open a pannable, zoomable dialog.
+
+genui{"plot_latex": {"title": "Parabola", "equation": "x^2"}}
+
+Trigonometric equation:
+
+genui{"plot_latex": {"equation": "\\sin(x)"}}
+
+---
+
+## Media
+
+### `video`
+
+Network video with play/pause and a scrub bar. Shows a spinner while loading
+and a notice tile if the URL fails.
+
+genui{"video": {"title": "Sample clip", "url": "https://flutter.github.io/assets-for-api-docs/assets/videos/bee.mp4"}}
+
+---
+
+## 3D Graphs
+
+Drag to orbit, double-tap to reset the camera, use the buttons to zoom or lock
+rotation. Constant sliders re-mesh the surface without moving the camera.
+
+### `surface_3d`
+
+Explicit Cartesian surface, `z = f(x, y)`, with a live constant:
+
+genui{"surface_3d": {"title": "3D Saddle Surface", "equation": "z = a * (x^2 - y^2)", "constants": [{"name": "a", "label": "Scale a", "value": 0.24, "min": 0.05, "max": 0.6, "step": 0.01}], "xMin": -1.8, "xMax": 1.8, "yMin": -1.8, "yMax": 1.8, "uSteps": 34, "vSteps": 34, "wireframe": "overlay", "height": 320}}
+
+### `polar_surface_3d`
+
+`z = f(radius, theta)`. Compact multiplication like `0.32sin(5theta)` is
+normalised to explicit `*` before compiling:
+
+genui{"polar_surface_3d": {"title": "Polar Ripple Surface", "equation": "z = 0.32sin(5theta)(1 - r / 1.5)", "radiusMax": 1.45, "radiusSteps": 28, "thetaSteps": 72, "colors": ["#6633FF", "#33DDFF", "#FFFFFF"]}}
+
+### `spherical_surface_3d`
+
+The expression returns radius, `r = f(theta, phi)`:
+
+genui{"spherical_surface_3d": {"title": "Spherical Bulge Graph", "radius": "r = 0.82 + 0.16sin(3theta)sin(2phi)", "thetaSteps": 64, "phiSteps": 32, "distance": 5.5}}
+
+### `cylindrical_surface_3d`
+
+Two constants plus a LaTeX formula readout that recomputes as the sliders move.
+`zMin` / `zMax` are string expressions over those constants:
+
+genui{"cylindrical_surface_3d": {"title": "Adjustable Cylinder", "r": "r = radius", "formula": {"latex": "V = \\pi r^2 h", "expression": "pi * radius^2 * height"}, "constants": [{"name": "radius", "label": "Radius", "value": 0.8, "min": 0.35, "max": 1.4, "step": 0.05}, {"name": "height", "label": "Height", "value": 2.4, "min": 1.0, "max": 4.0, "step": 0.1}], "zMin": "-height / 2", "zMax": "height / 2", "thetaSteps": 64, "zSteps": 34, "wireframe": "overlay"}}
+
+---
+
 ## Multiple widgets in one payload
 
 Every top-level key is its own widget; they stack in a column:
@@ -125,24 +183,18 @@ Every top-level key is its own widget; they stack in a column:
 
 ## Host-app extension points
 
-These types are **not** registered by default. `GenUiRegistry.defaults()`
-renders nothing for them until the host calls `register(...)`, so each of the
-next four lines is intentionally blank.
-
-genui{"plot_latex": {"equation": "x^2"}}
-
-genui{"surface_3d": {"title": "3D Saddle Surface", "equation": "z = 0.24 * (x^2 - y^2)", "xMin": -1.8, "xMax": 1.8, "yMin": -1.8, "yMax": 1.8, "wireframe": "overlay", "height": 320}}
-
-genui{"video": {"url": "https://example.com/video.mp4"}}
+`val_scene` (alias `val`) is the one type `GenUiRegistry.defaults()` does not
+register: it streams from a Firebase-backed artifact pipeline, which this
+package deliberately does not depend on. The next line is intentionally blank
+until a host registers a builder for it.
 
 genui{"val_scene": {"id": "abc123", "frame": "reels"}}
 
-Register one like this:
+Register it like this:
 
 ```dart
 GenUiRegistry.defaults()
-  ..register('video', (context, model) => MyVideoPlayer(model.attributes))
-  ..register('surface_3d', (context, model) => MySurface3D(model.attributes));
+  ..register('val_scene', (context, model) => MyValScene(model.attributes));
 ```
 
 ---

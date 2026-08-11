@@ -6,7 +6,17 @@ import 'chat_demo.dart';
 /// Minimal example for gpt_markdown — Markdown & LaTeX renderer for Flutter.
 ///
 /// For the full interactive playground visit https://gptmarkdown.com/playground
-void main() => runApp(const App());
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // The gen UI 3D graphs render through val_3d. Building the renderer here
+  // rather than on the first frame avoids racing the platform's Impeller (or,
+  // on web, WebGL2) context. Each platform also needs the Flutter GPU flag —
+  // see val_3d's SETUP.md; this app has it in its manifest and plists.
+  await GenUi3D.ensureInitialized();
+
+  runApp(const App());
+}
 
 class App extends StatelessWidget {
   const App({super.key});

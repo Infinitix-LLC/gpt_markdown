@@ -35,5 +35,11 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+        <!-- Required by val_3d for the gen UI 3D graphs. Flutter GPU is off by
+             default; without this the graphs show "3D renderer unavailable".
+             Impeller, which backs it, is already on by default. -->
+        <meta-data
+            android:name="io.flutter.embedding.android.EnableFlutterGPU"
+            android:value="true" />
     </application>
 </manifest>
