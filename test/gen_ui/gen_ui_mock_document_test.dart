@@ -57,6 +57,12 @@ void main() {
       GenMetricGrid,
       GenUnitConverter,
       GenTimelineFlow,
+      GenPlotLatex,
+      GenVideo,
+      GenSurface3DGraph,
+      GenPolarSurface3DGraph,
+      GenSphericalSurface3DGraph,
+      GenCylindricalSurface3DGraph,
     ]) {
       expect(find.byType(type), findsWidgets, reason: '$type missing');
     }

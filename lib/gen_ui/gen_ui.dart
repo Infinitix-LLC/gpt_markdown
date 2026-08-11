@@ -38,6 +38,16 @@ export 'src/gen_ui_data_widgets.dart'
         GenProgressList,
         GenMetricGrid;
 export 'src/gen_ui_learning_widgets.dart' show GenUnitConverter, GenTimelineFlow;
+export 'src/gen_ui_math.dart' show GenUiMath, genUiMathErrorFallback;
+export 'src/gen_ui_plot_latex.dart' show GenPlotLatex;
+export 'src/gen_ui_video.dart' show GenVideo;
+export 'src/three_d/gen_ui_3d_graphs.dart'
+    show
+        GenUi3D,
+        GenSurface3DGraph,
+        GenPolarSurface3DGraph,
+        GenSphericalSurface3DGraph,
+        GenCylindricalSurface3DGraph;
 export 'src/gen_ui_shells.dart'
     show
         GenUiChartCard,

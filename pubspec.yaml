@@ -15,6 +15,24 @@ dependencies:
   flutter_math_fork: ^0.7.4
   http: ^1.2.0
 
+  # Gen-UI widget dependencies. Git refs are LOCAL DEVELOPMENT ONLY — pub.dev
+  # rejects git dependencies, so these must be dropped (or the widgets split
+  # into a companion package) before this package can be published again.
+  plot_latex:
+    git:
+      url: git@github.com:Infinitix-LLC/plot_latex.git
+      ref: main
+  val_3d:
+    git:
+      url: git@github.com:Infinitix-LLC/val_3d.git
+      ref: main
+  plusfinity_calculator:
+    git:
+      url: git@github.com:Infinitix-LLC/plusfinity_calculator.git
+      ref: main
+  vector_math: ^2.1.4
+  video_player: ^2.10.1
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

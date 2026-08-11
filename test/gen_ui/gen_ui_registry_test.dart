@@ -55,21 +55,21 @@ void main() {
         'metric_grid',
         'unit_converter',
         'timeline_flow',
-      ]));
-    });
-
-    test('host-owned types are left unregistered', () {
-      final registry = GenUiRegistry.defaults();
-
-      for (final type in [
         'plot_latex',
+        'video',
         'surface_3d',
         'polar_surface_3d',
         'spherical_surface_3d',
         'cylindrical_surface_3d',
-        'video',
-        'val_scene',
-      ]) {
+      ]));
+    });
+
+    test('val_scene is the only type left to the host', () {
+      // It streams from a Firebase-backed pipeline this package does not
+      // depend on; everything else in the schema ships here.
+      final registry = GenUiRegistry.defaults();
+
+      for (final type in ['val_scene', 'val']) {
         expect(registry.contains(type), isFalse, reason: type);
       }
     });
@@ -77,10 +77,10 @@ void main() {
     test('clone does not share registrations with its source', () {
       final base = GenUiRegistry.defaults();
       final extended = base.clone()
-        ..register('video', (context, model) => const SizedBox.shrink());
+        ..register('val_scene', (context, model) => const SizedBox.shrink());
 
-      expect(extended.contains('video'), isTrue);
-      expect(base.contains('video'), isFalse);
+      expect(extended.contains('val_scene'), isTrue);
+      expect(base.contains('val_scene'), isFalse);
     });
 
     testWidgets('an unknown type renders nothing by default', (tester) async {
@@ -91,7 +91,7 @@ void main() {
           home: Scaffold(
             body: Builder(
               builder: (context) =>
-                  registry.build(context, '{"surface_3d": {"equation": "x"}}'),
+                  registry.build(context, '{"val_scene": {"id": "x"}}'),
             ),
           ),
         ),
@@ -110,13 +110,13 @@ void main() {
         MaterialApp(
           home: Scaffold(
             body: Builder(
-              builder: (context) => registry.build(context, '{"video": {}}'),
+              builder: (context) => registry.build(context, '{"val": {}}'),
             ),
           ),
         ),
       );
 
-      expect(find.text('unsupported: video'), findsOneWidget);
+      expect(find.text('unsupported: val'), findsOneWidget);
     });
 
     testWidgets('register overrides a built-in', (tester) async {

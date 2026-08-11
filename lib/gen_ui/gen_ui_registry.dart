@@ -6,6 +6,9 @@ import 'package:flutter/material.dart';
 import 'src/gen_ui_basic_widgets.dart';
 import 'src/gen_ui_data_widgets.dart';
 import 'src/gen_ui_learning_widgets.dart';
+import 'src/gen_ui_plot_latex.dart';
+import 'src/gen_ui_video.dart';
+import 'src/three_d/gen_ui_3d_graphs.dart';
 
 /// One widget request from a gen-UI payload: the top-level key is [type], its
 /// value is [attributes].
@@ -78,15 +81,14 @@ typedef GenUiWidgetBuilder = Widget Function(
 
 /// Maps gen-UI widget types to builders.
 ///
-/// [GenUiRegistry.defaults] pre-registers everything this package renders
-/// without extra dependencies. Types the package does not own — `plot_latex`,
-/// `surface_3d`, `polar_surface_3d`, `spherical_surface_3d`,
-/// `cylindrical_surface_3d`, `video`, `val_scene` — are left unregistered so a
-/// host app can plug in its own renderers:
+/// [GenUiRegistry.defaults] pre-registers every widget this package ships.
+/// Only `val_scene` / `val` is left out: it streams from a Firebase-backed
+/// artifact pipeline the package deliberately does not depend on, so a host
+/// app plugs that one in itself:
 ///
 /// ```dart
 /// final registry = GenUiRegistry.defaults()
-///   ..register('video', (context, model) => MyVideo(model.attributes))
+///   ..register('val_scene', (context, model) => MyValScene(model.attributes))
 ///   ..register('bar_chart', (context, model) => MyBranded(model.attributes));
 ///
 /// GptMarkdown(text, genUiBuilder: registry.build);
@@ -135,6 +137,17 @@ class GenUiRegistry {
             GenUnitConverter(attributes: model.attributes),
         'timeline_flow': (context, model) =>
             GenTimelineFlow(attributes: model.attributes),
+        'plot_latex': (context, model) =>
+            GenPlotLatex(attributes: model.attributes),
+        'video': (context, model) => GenVideo(attributes: model.attributes),
+        'surface_3d': (context, model) =>
+            GenSurface3DGraph(attributes: model.attributes),
+        'polar_surface_3d': (context, model) =>
+            GenPolarSurface3DGraph(attributes: model.attributes),
+        'spherical_surface_3d': (context, model) =>
+            GenSphericalSurface3DGraph(attributes: model.attributes),
+        'cylindrical_surface_3d': (context, model) =>
+            GenCylindricalSurface3DGraph(attributes: model.attributes),
       });
   }
 

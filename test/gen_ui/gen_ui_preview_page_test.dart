@@ -52,7 +52,7 @@ void main() {
     await pumpPage(tester);
 
     expect(
-      find.textContaining('`surface_3d` is host-owned'),
+      find.textContaining('`val_scene` is host-owned'),
       findsOneWidget,
     );
   });
@@ -98,15 +98,15 @@ void main() {
       tester,
       page: GenUiPreviewPage(
         title: 'Custom',
-        document: 'Header\n\ngenui{"video": {"url": "x"}}',
+        document: 'Header\n\n${wrapGenUi('{"val_scene": {"id": "x"}}')}',
         registry: GenUiRegistry.defaults()
-          ..register('video', (context, model) => const Text('fake video')),
+          ..register('val_scene', (context, model) => const Text('fake scene')),
       ),
     );
 
-    final count = GenUiRegistry.defaults().types.length + 1; // + the host's video
+    final count = GenUiRegistry.defaults().types.length + 1; // + val_scene
     expect(find.text('Custom'), findsOneWidget);
-    expect(find.text('fake video'), findsOneWidget);
+    expect(find.text('fake scene'), findsOneWidget);
     expect(find.text('$count registered widget types'), findsOneWidget);
   });
 }
