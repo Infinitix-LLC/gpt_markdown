@@ -24,11 +24,15 @@ void main() {
     await pumpChat(tester, FakeChatRepository(deltas: ['Hi there']));
 
     await tester.enterText(find.byType(TextField), 'hello');
+    await tester.pump();
     await tester.tap(find.byTooltip('Send'));
     await tester.pumpAndSettle();
 
     expect(
-      find.descendant(of: find.byType(ChatBubble), matching: find.text('hello')),
+      find.descendant(
+        of: find.byType(SessionQuestion),
+        matching: find.text('hello'),
+      ),
       findsOneWidget,
     );
     expect(find.textContaining('Hi there', findRichText: true), findsOneWidget);
@@ -38,6 +42,7 @@ void main() {
     await pumpChat(tester, FakeChatRepository());
 
     await tester.enterText(find.byType(TextField), 'hello');
+    await tester.pump();
     await tester.tap(find.byTooltip('Send'));
     await tester.pumpAndSettle();
 
@@ -48,6 +53,7 @@ void main() {
     await pumpChat(tester, FakeChatRepository(error: const ChatException('no credit')));
 
     await tester.enterText(find.byType(TextField), 'hello');
+    await tester.pump();
     await tester.tap(find.byTooltip('Send'));
     await tester.pumpAndSettle();
 
@@ -59,29 +65,56 @@ void main() {
     await pumpChat(tester, FakeChatRepository());
 
     await tester.enterText(find.byType(TextField), 'hello');
+    await tester.pump();
     await tester.tap(find.byTooltip('Send'));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byTooltip('Open navigation menu'));
+    await tester.tap(find.byTooltip('Sessions'));
     await tester.pumpAndSettle();
 
     expect(find.text('New chat'), findsOneWidget);
     expect(find.text('hello'), findsWidgets);
   });
 
-  testWidgets('picking a model tells the repository', (tester) async {
+  testWidgets('the model picker sits in the composer and opens a sheet', (
+    tester,
+  ) async {
     final repository = FakeChatRepository();
     await tester.pumpWidget(
       MaterialApp(home: GptChat(config: testConfig, chatRepository: repository)),
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byType(ModelSelector));
+    // The picker belongs to the composer now, not the app bar.
+    expect(
+      find.descendant(
+        of: find.byType(SessionComposer),
+        matching: find.byType(SessionModelSelector),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: find.byType(SessionAppBar),
+        matching: find.byType(SessionModelSelector),
+      ),
+      findsNothing,
+    );
+
+    await tester.tap(find.byType(SessionModelSelector));
     await tester.pumpAndSettle();
+
+    expect(find.byType(SessionModelSheet), findsOneWidget);
+    expect(find.text('Model'), findsOneWidget);
+
     await tester.tap(find.text(testConfig.model).last);
     await tester.pumpAndSettle();
 
-    expect(find.byType(ModelSelector), findsOneWidget);
-    expect(repository.selectedModel, isNull, reason: 'reselecting the same model is a no-op');
+    expect(find.byType(SessionModelSheet), findsNothing);
+    expect(
+      repository.selectedModel,
+      isNull,
+      reason: 'reselecting the same model is a no-op',
+    );
   });
 }

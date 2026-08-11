@@ -2,9 +2,11 @@ import 'package:flutter/widgets.dart';
 
 import '../../../gen_ui/gen_ui_registry.dart';
 import '../../data/models/val_artifact.dart';
+import '../controller/chat_controller.dart';
 import '../view_models/artifact_view_model.dart';
 import '../view_models/chat_view_model.dart';
 import '../view_models/model_view_model.dart';
+import 'chat_builders.dart';
 
 /// Renders a finished animation. Supply one to draw the VAL [ValArtifact.script].
 typedef ValArtifactBuilder = Widget Function(BuildContext context, ValArtifact artifact);
@@ -18,6 +20,8 @@ class ChatScope extends InheritedWidget {
     required this.artifacts,
     required this.models,
     required this.genUi,
+    required this.controller,
+    this.builders = const ChatBuilders(),
     this.artifactBuilder,
     required super.child,
   });
@@ -25,6 +29,13 @@ class ChatScope extends InheritedWidget {
   final ChatViewModel chat;
   final ArtifactViewModel artifacts;
   final ModelViewModel models;
+
+  /// State and actions for the UI. Prefer this over [chat] / [models] in
+  /// widgets: it is what every builder is handed.
+  final ChatController controller;
+
+  /// Per-part overrides for the default UI.
+  final ChatBuilders builders;
 
   /// Renders the gen-UI widgets the gateway draws inside a reply.
   final GenUiRegistry genUi;
@@ -41,6 +52,8 @@ class ChatScope extends InheritedWidget {
       chat != oldWidget.chat ||
       artifacts != oldWidget.artifacts ||
       models != oldWidget.models ||
+      controller != oldWidget.controller ||
+      builders != oldWidget.builders ||
       genUi != oldWidget.genUi ||
       artifactBuilder != oldWidget.artifactBuilder;
 }

@@ -104,18 +104,31 @@ class ChatViewModel extends ChangeNotifier {
   }
 
   /// Cancels the in-flight reply, keeping whatever text already arrived.
+  ///
+  /// The state flips before the transport is torn down. Cancelling a stream can
+  /// take arbitrarily long — or hang, if the transport never acknowledges — and
+  /// making the UI wait for it would leave the user staring at a Stop button
+  /// that does nothing and a composer that refuses to send.
   Future<void> stop() async {
-    await _stopStream();
-    final session = _state.activeSession;
-    if (session == null) return;
+    final subscription = _replySubscription;
+    _replySubscription = null;
 
-    final streaming = session.messages.where((m) => m.isStreaming).toList();
-    var updated = session;
-    for (final message in streaming) {
-      updated = updated.withMessage(message.copyWith(status: ChatMessageStatus.done));
+    final session = _state.activeSession;
+    ChatSession? updated;
+    if (session != null) {
+      updated = session;
+      for (final message in session.messages.where((m) => m.isStreaming)) {
+        updated = updated!.withMessage(
+          message.copyWith(status: ChatMessageStatus.done),
+        );
+      }
+      _emit(_upsert(updated!).copyWith(isResponding: false));
+    } else {
+      _emit(_state.copyWith(isResponding: false));
     }
-    await _sessions.save(updated);
-    _emit(_upsert(updated).copyWith(isResponding: false));
+
+    await subscription?.cancel();
+    if (updated != null) await _sessions.save(updated);
   }
 
   void clearError() => _emit(_state.copyWith(clearError: true));

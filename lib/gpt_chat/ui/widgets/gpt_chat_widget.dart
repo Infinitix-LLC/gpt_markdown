@@ -13,6 +13,8 @@ import '../../data/services/session_store.dart';
 import '../view_models/artifact_view_model.dart';
 import '../view_models/chat_view_model.dart';
 import '../view_models/model_view_model.dart';
+import '../controller/chat_controller.dart';
+import 'chat_builders.dart';
 import 'chat_gen_ui.dart';
 import 'chat_scope.dart';
 import 'chat_view.dart';
@@ -34,6 +36,8 @@ class GptChat extends StatefulWidget {
     this.sessionStore,
     this.chatRepository,
     this.showGenUiPreview = false,
+    this.builders = const ChatBuilders(),
+    this.onControllerReady,
   });
 
   final PlusfinityConfig config;
@@ -62,18 +66,34 @@ class GptChat extends StatefulWidget {
   /// Adds an app-bar action opening the gen-UI preview page. Developer tool.
   final bool showGenUiPreview;
 
+  /// Per-part overrides for the default UI. Every builder is handed the same
+  /// [ChatController], which carries the state and the actions.
+  final ChatBuilders builders;
+
+  /// Called once the controller exists, for hosts that want to drive the chat
+  /// from outside — prefilling the composer, sending programmatically, or
+  /// switching model in response to their own UI.
+  final void Function(ChatController controller)? onControllerReady;
+
   @override
   State<GptChat> createState() => _GptChatState();
 }
 
 class _GptChatState extends State<GptChat> {
   late _ChatGraph _graph;
+  late ChatController _controller;
   late GenUiRegistry _genUi = chatGenUiRegistry(widget.genUiRegistry);
 
   @override
   void initState() {
     super.initState();
     _graph = _ChatGraph(widget.config, widget.sessionStore, widget.chatRepository);
+    _createController();
+  }
+
+  void _createController() {
+    _controller = ChatController(chat: _graph.chat, models: _graph.models);
+    widget.onControllerReady?.call(_controller);
   }
 
   @override
@@ -82,13 +102,16 @@ class _GptChatState extends State<GptChat> {
     if (widget.config == oldWidget.config && widget.chatRepository == oldWidget.chatRepository) {
       return;
     }
+    _controller.dispose();
     _graph.dispose();
     _graph = _ChatGraph(widget.config, widget.sessionStore, widget.chatRepository);
     _genUi = chatGenUiRegistry(widget.genUiRegistry);
+    _createController();
   }
 
   @override
   void dispose() {
+    _controller.dispose();
     _graph.dispose();
     super.dispose();
   }
@@ -100,6 +123,8 @@ class _GptChatState extends State<GptChat> {
       artifacts: _graph.artifacts,
       models: _graph.models,
       genUi: _genUi,
+      controller: _controller,
+      builders: widget.builders,
       artifactBuilder: widget.artifactBuilder,
       child: ChatView(
         showSessions: widget.showSessions,

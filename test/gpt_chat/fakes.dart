@@ -85,19 +85,22 @@ Widget scopedChat({
 }) {
   final chatRepository = chat ?? FakeChatRepository();
   final artifacts = ArtifactRepository(service: artifactService ?? FakeArtifactService());
+  final chatViewModel = ChatViewModel(
+    chatRepository: chatRepository,
+    sessionRepository: SessionRepository(store: InMemorySessionStore()),
+  );
+  final modelViewModel = ModelViewModel(
+    repository: ModelRepository(service: GatewayChatService(config: testConfig)),
+    chat: chatRepository,
+    initialModel: testConfig.model,
+  );
 
   return MaterialApp(
     home: ChatScope(
-      chat: ChatViewModel(
-        chatRepository: chatRepository,
-        sessionRepository: SessionRepository(store: InMemorySessionStore()),
-      ),
+      chat: chatViewModel,
       artifacts: ArtifactViewModel(repository: artifacts),
-      models: ModelViewModel(
-        repository: ModelRepository(service: GatewayChatService(config: testConfig)),
-        chat: chatRepository,
-        initialModel: testConfig.model,
-      ),
+      models: modelViewModel,
+      controller: ChatController(chat: chatViewModel, models: modelViewModel),
       genUi: chatGenUiRegistry(genUi),
       artifactBuilder: artifactBuilder,
       child: Scaffold(body: SingleChildScrollView(child: child)),
