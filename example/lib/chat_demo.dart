@@ -14,8 +14,8 @@ const _models = [
 
 /// The `x_plusfinity.widgets` options, as offered in the demo.
 enum _Widgets {
-  defaults('Default 9', WidgetSelection.defaults),
   all('All 18', WidgetSelection.all),
+  defaults('Default 9', WidgetSelection.defaults),
   chartsOnly('Charts only', null),
   none('None — plain text', WidgetSelection.none);
 
@@ -45,7 +45,7 @@ class _ChatDemoPageState extends State<ChatDemoPage> {
 
   ArtifactFrame _frame = ArtifactFrame.square;
   bool _artifacts = true;
-  _Widgets _widgets = _Widgets.defaults;
+  _Widgets _widgets = _Widgets.all;
   ReasoningEffort? _effort;
 
   @override

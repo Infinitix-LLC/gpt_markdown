@@ -67,20 +67,25 @@ void main() {
       'messages': [
         {'role': 'user', 'content': 'hi'},
       ],
+      'x_plusfinity': {'widgets': 'all'},
     });
   });
 
-  test('adds x_plusfinity only when it differs from the default', () async {
+  test('adds the x_plusfinity fields that differ from the default', () async {
     String? body;
     await service(
       const PlusfinityConfig(apiKey: 'k', frame: ArtifactFrame.reels, languageCode: 'bn'),
       sseClient(['data: [DONE]'], onBody: (b) => body = b),
     ).complete([user('hi')]).toList();
 
-    expect(jsonDecode(body!)['x_plusfinity'], {'frame': 'reels', 'languageCode': 'bn'});
+    expect(jsonDecode(body!)['x_plusfinity'], {
+      'widgets': 'all',
+      'frame': 'reels',
+      'languageCode': 'bn',
+    });
   });
 
-  test('sends widgets and reasoning_effort when set', () async {
+  test('x_plusfinity.widgets is always sent', () async {
     String? body;
     await service(
       PlusfinityConfig(

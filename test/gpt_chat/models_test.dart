@@ -151,10 +151,6 @@ void main() {
       expect(config.requestHeaders['Authorization'], 'Bearer k');
     });
 
-    test('omits x_plusfinity while everything is default', () {
-      expect(config.requestExtension, isNull);
-    });
-
     test('sends only the fields that differ from the default', () {
       const custom = PlusfinityConfig(
         apiKey: 'k',
@@ -163,33 +159,32 @@ void main() {
         artifactsEnabled: false,
       );
 
-      expect(custom.requestExtension, {'frame': 'reels', 'languageCode': 'bn', 'artifacts': false});
+      expect(custom.requestExtension, {
+        'widgets': 'all',
+        'frame': 'reels',
+        'languageCode': 'bn',
+        'artifacts': false,
+      });
     });
 
-    test('widget selection reaches x_plusfinity', () {
+    test('widgets default to every widget and are always sent', () {
+      expect(config.widgets, WidgetSelection.all);
+      expect(config.requestExtension, {'widgets': 'all'});
+    });
+
+    test('widget selection maps to its wire value', () {
+      expect(WidgetSelection.defaults.toWire(), true);
+      expect(WidgetSelection.none.toWire(), false);
       expect(
-        const PlusfinityConfig(apiKey: 'k', widgets: WidgetSelection.all).requestExtension,
-        {'widgets': 'all'},
-      );
-      expect(
-        const PlusfinityConfig(apiKey: 'k', widgets: WidgetSelection.none).requestExtension,
-        {'widgets': false},
-      );
-      expect(
-        PlusfinityConfig(
-          apiKey: 'k',
-          widgets: WidgetSelection.only(const ['bar_chart', 'surface_3d']),
-        ).requestExtension,
-        {
-          'widgets': ['bar_chart', 'surface_3d'],
-        },
+        WidgetSelection.only(const ['bar_chart', 'surface_3d']).toWire(),
+        ['bar_chart', 'surface_3d'],
       );
     });
 
     test('compares by value', () {
       expect(config, const PlusfinityConfig(apiKey: 'k'));
       expect(config, isNot(config.copyWith(model: 'gemini-3.6-flash')));
-      expect(config, isNot(config.copyWith(widgets: WidgetSelection.all)));
+      expect(config, isNot(config.copyWith(widgets: WidgetSelection.none)));
       expect(
         config.copyWith(widgets: WidgetSelection.only(const ['bar_chart'])),
         config.copyWith(widgets: WidgetSelection.only(const ['bar_chart'])),

@@ -8,7 +8,7 @@ import 'package:flutter/foundation.dart';
 class WidgetSelection {
   const WidgetSelection._(this._wire);
 
-  /// The nine widgets that are on by default.
+  /// The gateway's own default set — the nine always-on widgets.
   static const WidgetSelection defaults = WidgetSelection._(true);
 
   /// All eighteen, including the opt-in ones.
@@ -23,9 +23,6 @@ class WidgetSelection {
       WidgetSelection._(List<String>.unmodifiable(types));
 
   final Object _wire;
-
-  /// True when the gateway default applies and the field can be omitted.
-  bool get isDefault => _wire == true;
 
   /// The value for `x_plusfinity.widgets`.
   Object toWire() => _wire;

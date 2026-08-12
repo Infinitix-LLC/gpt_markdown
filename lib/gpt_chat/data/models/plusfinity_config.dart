@@ -21,7 +21,7 @@ class PlusfinityConfig {
     this.headers = const {},
     this.historyLimit = 40,
     this.timeout = const Duration(seconds: 90),
-    this.widgets = WidgetSelection.defaults,
+    this.widgets = WidgetSelection.all,
     this.frame = ArtifactFrame.square,
     this.languageCode,
     this.artifactsEnabled = true,
@@ -53,7 +53,8 @@ class PlusfinityConfig {
   final int historyLimit;
   final Duration timeout;
 
-  /// Which gen-UI widgets the model may draw.
+  /// Which gen-UI widgets the model may draw. Sent as `x_plusfinity.widgets`
+  /// on every request; defaults to every widget.
   final WidgetSelection widgets;
 
   /// Aspect ratio for generated animations.
@@ -82,16 +83,14 @@ class PlusfinityConfig {
     ...headers,
   };
 
-  /// The `x_plusfinity` request extension. Omitted when everything is default.
-  Map<String, dynamic>? get requestExtension {
-    final extension = <String, dynamic>{
-      if (!widgets.isDefault) 'widgets': widgets.toWire(),
-      if (frame != ArtifactFrame.square) 'frame': frame.wireName,
-      if (languageCode != null) 'languageCode': languageCode,
-      if (!artifactsEnabled) 'artifacts': false,
-    };
-    return extension.isEmpty ? null : extension;
-  }
+  /// The `x_plusfinity` request extension. `widgets` is always present; the
+  /// rest only when they differ from the gateway default.
+  Map<String, dynamic> get requestExtension => {
+    'widgets': widgets.toWire(),
+    if (frame != ArtifactFrame.square) 'frame': frame.wireName,
+    if (languageCode != null) 'languageCode': languageCode,
+    if (!artifactsEnabled) 'artifacts': false,
+  };
 
   PlusfinityConfig copyWith({
     String? model,

@@ -31,7 +31,6 @@ class GatewayChatService {
 
   /// Only documented parameters are sent — the gateway rejects unknown ones with 400.
   Map<String, dynamic> _body(List<ChatMessage> messages, String model, {required bool stream}) {
-    final extension = config.requestExtension;
     return {
       'model': model,
       'stream': stream,
@@ -40,7 +39,7 @@ class GatewayChatService {
       if (config.maxTokens != null) 'max_tokens': config.maxTokens,
       if (config.reasoningEffort != null)
         'reasoning_effort': config.reasoningEffort!.wireName,
-      if (extension != null) 'x_plusfinity': extension,
+      'x_plusfinity': config.requestExtension,
     };
   }
 
