@@ -132,6 +132,13 @@ class MarkdownSerializer {
       return;
     }
 
+    // WidgetSpan content is wrapped in a MediaQuery that neutralizes the text
+    // scaler, since Flutter already scales a WidgetSpan's child geometrically.
+    if (widget is MediaQuery) {
+      _visitWidget(widget.child);
+      return;
+    }
+
     if (widget is Padding && widget.child != null) {
       _visitWidget(widget.child!);
       return;

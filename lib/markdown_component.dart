@@ -1,5 +1,20 @@
 part of 'gpt_markdown.dart';
 
+/// Prepares [child] to be embedded in a [WidgetSpan].
+///
+/// Flutter already magnifies a [WidgetSpan]'s child geometrically by the host
+/// paragraph's text scale factor (see [WidgetSpan.extractFromInlineSpan] and
+/// its `_RenderScaledInlineWidget`). Any text rendered inside that child must
+/// therefore not apply the text scaler a second time, or it ends up scaled
+/// quadratically — visibly larger than the surrounding prose when the user
+/// increases the system font size, and smaller when they decrease it.
+Widget _unscaledSpanChild(BuildContext context, Widget child) {
+  return MediaQuery(
+    data: MediaQuery.of(context).copyWith(textScaler: TextScaler.noScaling),
+    child: child,
+  );
+}
+
 /// Markdown components
 abstract class MarkdownComponent {
   static List<MarkdownComponent> get globalComponents => [
@@ -127,7 +142,15 @@ abstract class BlockMd extends MarkdownComponent {
     var matches = RegExp(r'^(?<spaces>\ \ +).*').firstMatch(text);
     var spaces = matches?.namedGroup('spaces');
     var length = spaces?.length ?? 0;
-    var child = build(context, text, config);
+    // Block content is returned as a `WidgetSpan` below, so it must not apply
+    // the text scaler a second time (see [_unscaledSpanChild]). Neutralize the
+    // explicit scaler that `GptMarkdownConfig.getRich` hands to `Text.rich`
+    // here, and the ambient one via `_unscaledSpanChild` below.
+    var child = build(
+      context,
+      text,
+      config.copyWith(textScaler: TextScaler.noScaling),
+    );
     length = min(length, 4);
     if (length > 0) {
       child = UnorderedListView(
@@ -141,7 +164,7 @@ abstract class BlockMd extends MarkdownComponent {
       children: [Flexible(child: child)],
     );
     return WidgetSpan(
-      child: child,
+      child: _unscaledSpanChild(context, child),
       alignment: PlaceholderAlignment.baseline,
       baseline: TextBaseline.alphabetic,
     );
@@ -867,7 +890,12 @@ class ATagMd extends InlineMd {
         decorationColor: theme.linkColor,
         decoration: TextDecoration.underline,
       );
-      final linkConfig = config.copyWith(style: linkStyle);
+      // Link content is embedded in a `WidgetSpan` below, so it must not apply
+      // the text scaler a second time (see [_unscaledSpanChild]).
+      final linkConfig = config.copyWith(
+        style: linkStyle,
+        textScaler: TextScaler.noScaling,
+      );
       final linkTextSpan = TextSpan(
         children: MarkdownComponent.generate(
           context,
@@ -880,13 +908,16 @@ class ATagMd extends InlineMd {
       child = WidgetSpan(
         baseline: TextBaseline.alphabetic,
         alignment: PlaceholderAlignment.baseline,
-        child: GestureDetector(
-          onTap: () => config.onLinkTap?.call(url, linkText),
-          child: builder(
-            context,
-            linkTextSpan,
-            url,
-            config.style ?? const TextStyle(),
+        child: _unscaledSpanChild(
+          context,
+          GestureDetector(
+            onTap: () => config.onLinkTap?.call(url, linkText),
+            child: builder(
+              context,
+              linkTextSpan,
+              url,
+              config.style ?? const TextStyle(),
+            ),
           ),
         ),
       );
@@ -897,30 +928,38 @@ class ATagMd extends InlineMd {
     child ??= WidgetSpan(
       alignment: PlaceholderAlignment.baseline,
       baseline: TextBaseline.alphabetic,
-      child: LinkButton(
-        hoverColor: theme.linkHoverColor,
-        color: theme.linkColor,
-        onPressed: () {
-          config.onLinkTap?.call(url, linkText);
-        },
-        text: linkText,
-        config: config,
-        spanBuilder: (color) {
-          final spanStyle = (config.style ?? const TextStyle()).copyWith(
-            color: color,
-            decorationColor: color,
-            decoration: TextDecoration.underline,
-          );
-          return TextSpan(
-            children: MarkdownComponent.generate(
-              context,
-              linkText,
-              config.copyWith(style: spanStyle),
-              false,
-            ),
-            style: spanStyle,
-          );
-        },
+      child: _unscaledSpanChild(
+        context,
+        LinkButton(
+          hoverColor: theme.linkHoverColor,
+          color: theme.linkColor,
+          onPressed: () {
+            config.onLinkTap?.call(url, linkText);
+          },
+          text: linkText,
+          // `LinkButton` renders the link text through `config.getRich`, so it
+          // needs the neutralized scaler too (see [_unscaledSpanChild]).
+          config: config.copyWith(textScaler: TextScaler.noScaling),
+          spanBuilder: (color) {
+            final spanStyle = (config.style ?? const TextStyle()).copyWith(
+              color: color,
+              decorationColor: color,
+              decoration: TextDecoration.underline,
+            );
+            return TextSpan(
+              children: MarkdownComponent.generate(
+                context,
+                linkText,
+                config.copyWith(
+                  style: spanStyle,
+                  textScaler: TextScaler.noScaling,
+                ),
+                false,
+              ),
+              style: spanStyle,
+            );
+          },
+        ),
       ),
     );
     var textSpan = TextSpan(children: [child, ...endingSpans]);
