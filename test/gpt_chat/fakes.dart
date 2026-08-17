@@ -1,52 +1,70 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:gpt_markdown/gpt_chat/gpt_chat.dart';
+import 'package:gpt_markdown/gpt_chat_gateway.dart';
 
 const testConfig = PlusfinityConfig(apiKey: 'plus_live_test');
 
 /// Emits a fixed script of deltas, optionally failing at the end.
-class FakeChatRepository implements ChatRepository {
-  FakeChatRepository({this.deltas = const ['Hello'], this.error});
+class FakeAdapter extends StreamingChatAdapter {
+  FakeAdapter({this.deltas = const ['Hello'], this.error, super.store});
 
   final List<String> deltas;
   final Object? error;
   final List<List<ChatMessage>> calls = [];
-  String? selectedModel;
   bool disposed = false;
 
   @override
-  Stream<String> streamReply(List<ChatMessage> history) async* {
+  Stream<ChatDelta> streamReply(List<ChatMessage> history) async* {
     calls.add(history);
     for (final delta in deltas) {
-      yield delta;
+      yield ChatDelta(delta);
     }
     if (error != null) throw error!;
   }
 
   @override
-  void selectModel(String model) => selectedModel = model;
-
-  @override
-  void dispose() => disposed = true;
+  void dispose() {
+    disposed = true;
+    super.dispose();
+  }
 }
 
 /// Lets a test drive the reply stream by hand.
-class ManualChatRepository implements ChatRepository {
-  final _controller = StreamController<String>();
+class ManualAdapter extends StreamingChatAdapter {
+  final _controller = StreamController<ChatDelta>();
 
-  void emit(String delta) => _controller.add(delta);
+  void emit(String delta) => _controller.add(ChatDelta(delta));
   void finish() => _controller.close();
 
   @override
-  Stream<String> streamReply(List<ChatMessage> history) => _controller.stream;
-
-  @override
-  void selectModel(String model) {}
+  Stream<ChatDelta> streamReply(List<ChatMessage> history) =>
+      _controller.stream;
 
   @override
   void dispose() {
     if (!_controller.isClosed) _controller.close();
+    super.dispose();
+  }
+}
+
+/// Records the model the UI picked.
+class FakeModelSource extends StaticChatModelSource {
+  FakeModelSource()
+    : super(
+        models: const [
+          ChatModelOption(id: 'gpt-5.4'),
+          ChatModelOption(id: 'gemini-3.6-flash'),
+        ],
+        selected: 'gpt-5.4',
+      );
+
+  String? chosen;
+
+  @override
+  void select(String modelId) {
+    chosen = modelId;
+    super.select(modelId);
   }
 }
 
@@ -75,35 +93,49 @@ class FakeArtifactService extends ArtifactService {
   }
 }
 
-/// Builds a scope around [child] so widgets can be pumped in isolation.
+/// An assistant message, for widgets pumped in isolation.
+SimpleChatMessage reply(String content, {String id = 'm1'}) =>
+    SimpleChatMessage(
+      id: id,
+      role: ChatRole.assistant,
+      content: content,
+      createdAt: DateTime(2024),
+    );
+
+/// Builds a scope around [child] so chat widgets can be pumped on their own.
 Widget scopedChat({
   required Widget child,
-  ChatRepository? chat,
+  ChatAdapter? adapter,
   ArtifactService? artifactService,
   ValArtifactBuilder? artifactBuilder,
   GenUiRegistry? genUi,
 }) {
-  final chatRepository = chat ?? FakeChatRepository();
-  final artifacts = ArtifactRepository(service: artifactService ?? FakeArtifactService());
-  final chatViewModel = ChatViewModel(
-    chatRepository: chatRepository,
-    sessionRepository: SessionRepository(store: InMemorySessionStore()),
+  final chatAdapter = adapter ?? FakeAdapter();
+  final artifacts = ArtifactRepository(
+    service: artifactService ?? FakeArtifactService(),
   );
-  final modelViewModel = ModelViewModel(
-    repository: ModelRepository(service: GatewayChatService(config: testConfig)),
-    chat: chatRepository,
-    initialModel: testConfig.model,
-  );
+  final registry = chatGenUiRegistry(genUi);
+
+  Widget buildGenUi(BuildContext context, String payload) {
+    final legacy = parseLegacyGenUiArtifact(payload);
+    if (legacy != null) return ValArtifactCard(initial: legacy);
+    return registry.build(context, payload);
+  }
 
   return MaterialApp(
-    home: ChatScope(
-      chat: chatViewModel,
-      artifacts: ArtifactViewModel(repository: artifacts),
-      models: modelViewModel,
-      controller: ChatController(chat: chatViewModel, models: modelViewModel),
-      genUi: chatGenUiRegistry(genUi),
-      artifactBuilder: artifactBuilder,
-      child: Scaffold(body: SingleChildScrollView(child: child)),
+    home: Builder(
+      builder:
+          (context) => ArtifactScope(
+            store: ArtifactStore(repository: artifacts),
+            builder: artifactBuilder,
+            child: ChatScope(
+              controller: ChatController(adapter: chatAdapter),
+              theme: ChatTheme.of(context),
+              genUi: registry,
+              builders: ChatBuilders(genUi: buildGenUi),
+              child: Scaffold(body: SingleChildScrollView(child: child)),
+            ),
+          ),
     ),
   );
 }

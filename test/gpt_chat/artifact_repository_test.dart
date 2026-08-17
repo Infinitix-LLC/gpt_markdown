@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:gpt_markdown/gpt_chat/gpt_chat.dart';
+import 'package:gpt_markdown/gpt_chat_gateway.dart';
 
 import 'fakes.dart';
 

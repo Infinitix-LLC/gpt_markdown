@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:gpt_markdown/gpt_chat/gpt_chat.dart';
+import 'package:gpt_markdown/gpt_chat_gateway.dart';
 
-ChatMessage message(String id, {String content = ''}) => ChatMessage(
+ChatMessage message(String id, {String content = ''}) => SimpleChatMessage(
   id: id,
   role: ChatRole.user,
   content: content,

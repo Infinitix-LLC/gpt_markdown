@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:gpt_markdown/gpt_chat/gpt_chat.dart';
+import 'package:gpt_markdown/gpt_chat_gateway.dart';
 
 import 'fakes.dart';
 
@@ -11,16 +11,13 @@ const _tag =
     '"frame":"square","status":"queued","token":"tok"}'
     '$genUiCloseMarker';
 
-ChatMessage reply(String content) =>
-    ChatMessage(id: 'm1', role: ChatRole.assistant, content: content, createdAt: DateTime(2024));
-
 void main() {
   /// A pending artifact spins forever, so frames are pumped one at a time.
   Future<FakeArtifactService> pumpCard(WidgetTester tester, {ValArtifactBuilder? builder}) async {
     final service = FakeArtifactService();
     await tester.pumpWidget(
       scopedChat(
-        child: ChatBubble(message: reply(_tag)),
+        child: ChatAnswer(message: reply(_tag)),
         artifactService: service,
         artifactBuilder: builder,
       ),

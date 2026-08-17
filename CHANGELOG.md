@@ -1,5 +1,69 @@
 ## Unreleased
 
+### `gpt_chat` — adapter + slot rework (breaking)
+
+The chat layer is now a UI shell any app can drive, with the Plusfinity Gateway
+as one plug-in rather than the foundation. See `doc/chat_adapter_plan.md`.
+
+* **New entry points.** `package:gpt_markdown/gpt_chat.dart` is the UI and adapter
+  layer and pulls in no HTTP dependency; the gateway client moved to
+  `package:gpt_markdown/gpt_chat_gateway.dart`. The old
+  `package:gpt_markdown/gpt_chat/gpt_chat.dart` still works and re-exports both.
+* **`ChatAdapter`** is the seam between the UI and whatever produces the
+  conversation. Apps that already own their chat state implement it directly and
+  keep that state; apps with no state layer extend `StreamingChatAdapter`, which
+  handles sessions, titling, cancellation, retry and persistence on top of one
+  `streamReply` method. `ChatViewModel`, `ChatRepository`, `SessionRepository`
+  and `ModelRepository` are gone.
+* **`ChatMessage` is now an interface**, so a host can satisfy it on its own
+  message type — mutable, a `ChangeNotifier`, backed by a DTO — without
+  converting. `SimpleChatMessage` is the package's own implementation. When a
+  message is also a `Listenable`, the transcript rebuilds that one bubble as it
+  streams instead of the whole list.
+* **Slot-based builders.** Every builder now takes a single `ChatSlot` carrying
+  the controller, the resolved theme, the default widget, *and* the parts that
+  composed it. Replace the transcript and you still get the bubbles
+  (`slot.item(i)`); replace an answer and you still get its text, sections and
+  actions. Names are flat and prefixed (`answerText`, `composerSend`).
+* **`ChatTheme`** covers colours, radii, spacing, widths and typography, so a
+  rebrand needs no builders.
+* **`ChatCapabilities`** replaces the `showSessions` / `showModelSelector` flags:
+  the chrome follows the adapter.
+* **Defaults redrawn** to the familiar assistant-app shape — centred reading
+  column, user bubble right / assistant full width, model picker in the app bar,
+  floating rounded composer, date-grouped conversation drawer.
+* `GptChat(config:)` is now `GatewayChat(config:)`; `GptChat` takes an adapter.
+* Composer drafts carry attachments and a host-defined tool via `ChatDraft`.
+* Send and stop are separate widgets (`ChatSendButton`, `ChatStopButton`) behind
+  `composerSend` / `composerStop`; stop takes send's place while a reply streams.
+* The drawer groups by recency, searches past eight conversations, and offers
+  rename when the adapter allows it. The conversation list, suggestion chips,
+  the attachment strip and the load-more footer are each gated on the matching
+  `ChatCapabilities` flag.
+* Answer actions are copy + regenerate, pinned on touch and hover-revealed on
+  pointer platforms per `ChatTheme.answerActionsAlwaysVisible`.
+* **A host's own message type now flows through `StreamingChatAdapter`.**
+  `newMessage` returns `ChatMessage` rather than the package's own type, and one
+  new hook — `updateMessage` — is all a custom model needs. Forgetting it fails
+  loudly at send time (debug assert) instead of asynchronously inside the stream.
+* **`ChatDelta` carries a `payload`**, plus a `ChatDelta.data` constructor, so a
+  chunk's non-prose parts (sources, tool status, media, reasoning) can be routed
+  into fields the package knows nothing about via the `applyDelta` hook.
+* `ChatTheme.scrollPhysics` and `ChatTheme.transcriptPadding` — the last two
+  reasons a host had to override `messageList` just to change a metric.
+* `listHeader` / `listFooter` are constrained to the reading column, like every
+  exchange, so they no longer have to re-wrap themselves.
+* `ChatController(followLatest: false)` hands scrolling entirely to the host, for
+  apps whose own view model already drives the transcript. Without it two things
+  share one `ScrollController`.
+* The transcript's anchor height is now measured *after* `transcriptPadding`, so
+  the last exchange is not taller than the space it actually gets.
+* The awaiting-first-token state no longer short-circuits the `answer` builder: a
+  host's header, status line and progress now render from the moment a question
+  is sent, not from the first token.
+
+### Markdown
+
 * 🔡 Fixed inline widgets (LaTeX, images, links) rendering in reverse order when a paragraph mixes right-to-left text with two or more of them — e.g. `واحد $two^2$ ثلاثة أربعة five ستة سبعة $eight^8$` used to swap the two formulas. This works around [flutter/flutter#54400](https://github.com/flutter/flutter/issues/54400), where the engine fills a line's inline-placeholder slots left to right in logical order regardless of the line's direction. Affected paragraphs now render through `BidiText`, which computes the correct visual order per line with the Unicode bidi reordering rule (UAX #9, L2); everything else keeps using a plain `Text`.
 * `GptMarkdownConfig.getRich` now returns `Widget` instead of `Text`.
 

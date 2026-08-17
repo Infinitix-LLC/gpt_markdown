@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
-import '../../data/models/val_artifact.dart';
+import 'models/val_artifact.dart';
 import 'artifact_status_line.dart';
-import 'chat_scope.dart';
+import 'artifact_scope.dart';
 
 /// Inline card for a `genui{...}` animation tag. Registers the artifact on
 /// first build, then follows it to ready.
@@ -21,19 +21,19 @@ class _ValArtifactCardState extends State<ValArtifactCard> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) ChatScope.of(context).artifacts.track(widget.initial);
+      if (mounted) ArtifactScope.of(context).store.track(widget.initial);
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    final scope = ChatScope.of(context);
+    final scope = ArtifactScope.of(context);
 
     return ListenableBuilder(
-      listenable: scope.artifacts,
+      listenable: scope.store,
       builder: (context, _) {
-        final artifact = scope.artifacts.byId(widget.initial.id) ?? widget.initial;
-        return _Card(artifact: artifact, builder: scope.artifactBuilder);
+        final artifact = scope.store.byId(widget.initial.id) ?? widget.initial;
+        return _Card(artifact: artifact, builder: scope.builder);
       },
     );
   }

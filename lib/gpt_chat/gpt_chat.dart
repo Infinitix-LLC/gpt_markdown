@@ -1,51 +1,9 @@
-/// Chat UI for the Plusfinity Gateway, rendered with `gpt_markdown`.
+/// Compatibility entry point.
+///
+/// Prefer `package:gpt_markdown/gpt_chat.dart` for the UI and adapter layer, or
+/// `package:gpt_markdown/gpt_chat_gateway.dart` when you also want the
+/// Plusfinity Gateway client. This library re-exports both.
 library;
 
-// Re-exported so a host can build or extend the registry passed to GptChat.
-export '../gen_ui/gen_ui.dart';
-export 'data/models/artifact_frame.dart';
-export 'data/models/chat_exception.dart';
-export 'data/models/chat_message.dart';
-export 'data/models/chat_role.dart';
-export 'data/models/chat_session.dart';
-export 'data/models/completion_chunk.dart';
-export 'data/models/gateway_model.dart';
-export 'data/models/gen_ui_widget_types.dart';
-export 'data/models/plusfinity_config.dart';
-export 'data/models/reasoning_effort.dart';
-export 'data/models/widget_selection.dart';
-export 'data/models/val_artifact.dart';
-export 'data/repositories/artifact_repository.dart';
-export 'data/repositories/chat_repository.dart';
-export 'data/repositories/gateway_chat_repository.dart';
-export 'data/repositories/model_repository.dart';
-export 'data/repositories/session_repository.dart';
-export 'data/services/artifact_service.dart';
-export 'data/services/gateway_chat_service.dart';
-export 'data/services/gateway_client.dart';
-export 'data/services/genui_parser.dart';
-export 'data/services/session_store.dart';
-export 'ui/controller/chat_controller.dart';
-export 'ui/controller/chat_message_pair.dart';
-export 'ui/view_models/artifact_view_model.dart';
-export 'ui/view_models/chat_state.dart';
-export 'ui/view_models/chat_view_model.dart';
-export 'ui/view_models/model_view_model.dart';
-export 'ui/widgets/chat_builders.dart';
-export 'ui/widgets/chat_bubble.dart';
-export 'ui/widgets/chat_gen_ui.dart';
-export 'ui/widgets/chat_input_box.dart';
-export 'ui/widgets/chat_message_list.dart';
-export 'ui/widgets/chat_scope.dart';
-export 'ui/widgets/chat_view.dart';
-export 'ui/widgets/gpt_chat_widget.dart';
-export 'ui/widgets/model_selector.dart';
-export 'ui/widgets/session_answer.dart';
-export 'ui/widgets/session_app_bar.dart';
-export 'ui/widgets/session_composer.dart';
-export 'ui/widgets/session_drawer.dart';
-export 'ui/widgets/session_layout.dart';
-export 'ui/widgets/session_model_picker.dart';
-export 'ui/widgets/session_question.dart';
-export 'ui/widgets/session_transcript.dart';
-export 'ui/widgets/val_artifact_card.dart';
+export '../gpt_chat.dart';
+export '../gpt_chat_gateway.dart';

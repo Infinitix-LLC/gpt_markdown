@@ -1,14 +1,14 @@
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:gpt_markdown/gpt_chat/gpt_chat.dart';
+import 'package:gpt_markdown/gpt_chat_gateway.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
 const _config = PlusfinityConfig(apiKey: 'plus_live_test', model: 'gpt-5.4');
 
 ChatMessage user(String content) =>
-    ChatMessage(id: '1', role: ChatRole.user, content: content, createdAt: DateTime(2024));
+    SimpleChatMessage(id: '1', role: ChatRole.user, content: content, createdAt: DateTime(2024));
 
 GatewayChatService service(
   PlusfinityConfig config,

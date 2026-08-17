@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../data/models/val_artifact.dart';
+import 'models/val_artifact.dart';
 
 /// Progress row shown while an animation is generated (20–60s).
 class ArtifactStatusLine extends StatelessWidget {

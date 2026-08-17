@@ -1,5 +1,5 @@
 import '../../../gen_ui/gen_ui_registry.dart';
-import '../../data/models/val_artifact.dart';
+import 'models/val_artifact.dart';
 import 'val_artifact_card.dart';
 
 /// A gen-UI registry that also knows how to draw an animation.

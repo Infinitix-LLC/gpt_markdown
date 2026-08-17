@@ -132,6 +132,27 @@ GptMarkdown(markdownText, selectable: true)
 
 ---
 
+## 💬 Building a chat page?
+
+This package also ships `gpt_chat` — a full chat screen (transcript, streaming,
+scrolling, composer) that renders its answers with `gpt_markdown`. One method
+gets you a working chat; a theme covers most rebrands.
+
+```dart
+import 'package:gpt_markdown/gpt_chat.dart';
+
+class MyAdapter extends StreamingChatAdapter {
+  @override
+  Stream<ChatDelta> streamReply(List<ChatMessage> history) async* {
+    yield ChatDelta('…');
+  }
+}
+
+GptChat(adapter: MyAdapter());
+```
+
+See **[doc/gpt_chat.md](doc/gpt_chat.md)** for the full guide.
+
 ## 🛠️ Getting Started
 
 Run this command:

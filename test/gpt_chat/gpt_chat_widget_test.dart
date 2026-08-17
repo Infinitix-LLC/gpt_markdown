@@ -1,27 +1,29 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:gpt_markdown/gpt_chat/gpt_chat.dart';
+import 'package:gpt_markdown/gpt_chat_gateway.dart';
 
 import 'fakes.dart';
 
 void main() {
-  Future<void> pumpChat(WidgetTester tester, ChatRepository repository) async {
+  Future<void> pumpChat(
+    WidgetTester tester,
+    ChatAdapter adapter, {
+    ChatModelSource? models,
+  }) async {
     await tester.pumpWidget(
-      MaterialApp(
-        home: GptChat(config: testConfig, chatRepository: repository, showModelSelector: false),
-      ),
+      MaterialApp(home: GptChat(adapter: adapter, models: models)),
     );
     await tester.pumpAndSettle();
   }
 
   testWidgets('shows the empty state before the first message', (tester) async {
-    await pumpChat(tester, FakeChatRepository());
+    await pumpChat(tester, FakeAdapter());
 
-    expect(find.text('Ask anything'), findsOneWidget);
+    expect(find.byType(ChatEmptyState), findsOneWidget);
   });
 
   testWidgets('sending renders both the prompt and the reply', (tester) async {
-    await pumpChat(tester, FakeChatRepository(deltas: ['Hi there']));
+    await pumpChat(tester, FakeAdapter(deltas: ['Hi there']));
 
     await tester.enterText(find.byType(TextField), 'hello');
     await tester.pump();
@@ -30,7 +32,7 @@ void main() {
 
     expect(
       find.descendant(
-        of: find.byType(SessionQuestion),
+        of: find.byType(ChatQuestion),
         matching: find.text('hello'),
       ),
       findsOneWidget,
@@ -39,18 +41,24 @@ void main() {
   });
 
   testWidgets('the composer clears after sending', (tester) async {
-    await pumpChat(tester, FakeChatRepository());
+    await pumpChat(tester, FakeAdapter());
 
     await tester.enterText(find.byType(TextField), 'hello');
     await tester.pump();
     await tester.tap(find.byTooltip('Send'));
     await tester.pumpAndSettle();
 
-    expect(tester.widget<TextField>(find.byType(TextField)).controller!.text, isEmpty);
+    expect(
+      tester.widget<TextField>(find.byType(TextField)).controller!.text,
+      isEmpty,
+    );
   });
 
   testWidgets('a failure shows the error bar', (tester) async {
-    await pumpChat(tester, FakeChatRepository(error: const ChatException('no credit')));
+    await pumpChat(
+      tester,
+      FakeAdapter(error: const ChatException('no credit')),
+    );
 
     await tester.enterText(find.byType(TextField), 'hello');
     await tester.pump();
@@ -62,59 +70,57 @@ void main() {
   });
 
   testWidgets('the drawer lists sessions', (tester) async {
-    await pumpChat(tester, FakeChatRepository());
+    await pumpChat(tester, FakeAdapter());
 
     await tester.enterText(find.byType(TextField), 'hello');
     await tester.pump();
     await tester.tap(find.byTooltip('Send'));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byTooltip('Sessions'));
+    await tester.tap(find.byTooltip('Conversations'));
     await tester.pumpAndSettle();
 
     expect(find.text('New chat'), findsOneWidget);
+    expect(find.text('Today'), findsOneWidget);
     expect(find.text('hello'), findsWidgets);
   });
 
-  testWidgets('the model picker sits in the composer and opens a sheet', (
+  testWidgets('no model source means no picker', (tester) async {
+    await pumpChat(tester, FakeAdapter());
+
+    expect(find.byType(ChatModelPicker), findsNothing);
+  });
+
+  testWidgets('the model picker sits in the app bar and opens a sheet', (
     tester,
   ) async {
-    final repository = FakeChatRepository();
-    await tester.pumpWidget(
-      MaterialApp(home: GptChat(config: testConfig, chatRepository: repository)),
-    );
-    await tester.pumpAndSettle();
+    final models = FakeModelSource();
+    await pumpChat(tester, _ModelAdapter(), models: models);
 
-    // The picker belongs to the composer now, not the app bar.
     expect(
       find.descendant(
-        of: find.byType(SessionComposer),
-        matching: find.byType(SessionModelSelector),
+        of: find.byType(ChatAppBar),
+        matching: find.byType(ChatModelPicker),
       ),
       findsOneWidget,
     );
-    expect(
-      find.descendant(
-        of: find.byType(SessionAppBar),
-        matching: find.byType(SessionModelSelector),
-      ),
-      findsNothing,
-    );
 
-    await tester.tap(find.byType(SessionModelSelector));
+    await tester.tap(find.byType(ChatModelPicker));
     await tester.pumpAndSettle();
 
-    expect(find.byType(SessionModelSheet), findsOneWidget);
+    expect(find.byType(ChatModelSheet), findsOneWidget);
     expect(find.text('Model'), findsOneWidget);
 
-    await tester.tap(find.text(testConfig.model).last);
+    await tester.tap(find.text('gemini-3.6-flash').last);
     await tester.pumpAndSettle();
 
-    expect(find.byType(SessionModelSheet), findsNothing);
-    expect(
-      repository.selectedModel,
-      isNull,
-      reason: 'reselecting the same model is a no-op',
-    );
+    expect(find.byType(ChatModelSheet), findsNothing);
+    expect(models.chosen, 'gemini-3.6-flash');
   });
+}
+
+/// A fake that advertises model support.
+class _ModelAdapter extends FakeAdapter {
+  @override
+  ChatCapabilities get capabilities => const ChatCapabilities(models: true);
 }

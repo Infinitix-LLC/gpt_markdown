@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
-import 'package:gpt_markdown/gpt_chat/gpt_chat.dart';
+import 'package:gpt_markdown/gpt_chat_gateway.dart';
+
+import 'adapter_demo.dart';
 
 /// A few of the models the gateway serves — the chat's own picker reads the
 /// live list from `GET /models`.
@@ -69,7 +71,7 @@ class _ChatDemoPageState extends State<ChatDemoPage> {
 
     Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (context) => GptChat(config: config, showGenUiPreview: true),
+        builder: (context) => GatewayChat(config: config, showGenUiPreview: true),
       ),
     );
   }
@@ -86,6 +88,15 @@ class _ChatDemoPageState extends State<ChatDemoPage> {
       appBar: AppBar(
         title: const Text('Plusfinity chat demo'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.cable),
+            tooltip: 'Adapter demo',
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (context) => const AdapterDemoPage(),
+              ),
+            ),
+          ),
           IconButton(
             icon: const Icon(Icons.dashboard_customize_outlined),
             tooltip: 'Gen UI preview',

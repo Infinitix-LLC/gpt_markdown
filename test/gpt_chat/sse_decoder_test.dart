@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:gpt_markdown/gpt_chat/data/services/sse_decoder.dart';
+import 'package:gpt_markdown/gpt_chat_gateway.dart';
 
 void main() {
   Future<List<String>> decode(List<String> lines) =>

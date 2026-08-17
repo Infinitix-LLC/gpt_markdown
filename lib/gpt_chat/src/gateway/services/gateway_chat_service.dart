@@ -1,4 +1,4 @@
-import '../models/chat_message.dart';
+import '../../adapter/chat_message.dart';
 import '../models/completion_chunk.dart';
 import '../models/gateway_model.dart';
 import '../models/plusfinity_config.dart';
