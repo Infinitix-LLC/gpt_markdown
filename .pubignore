@@ -1,0 +1,3 @@
+# Tooling that should not ship to pub.dev.
+widgetbook/
+doc/

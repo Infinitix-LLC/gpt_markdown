@@ -8,7 +8,11 @@ class MdWidget extends StatefulWidget {
     this.includeGlobalComponents, {
     super.key,
     required this.config,
+    this.isRoot = false,
   });
+
+  /// isRoot
+  final bool isRoot;
 
   /// The expression to be displayed.
   final String exp;
@@ -26,15 +30,20 @@ class MdWidget extends StatefulWidget {
 
 class _MdWidgetState extends State<MdWidget> {
   List<InlineSpan> list = [];
+
   @override
-  void initState() {
-    super.initState();
-    list = MarkdownComponent.generate(
-      widget.context,
-      widget.exp,
-      widget.config,
-      widget.includeGlobalComponents,
-    );
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Colours are resolved while the spans are built, not while they are
+    // painted: link colours come from `GptMarkdownTheme`, inline code and
+    // headings from the ambient `ColorScheme`. So an inherited change — a
+    // light/dark switch, a new `GptMarkdownTheme`, a text-direction change —
+    // has to regenerate them. Without this the widget rebuilds happily and
+    // keeps painting the previous theme's colours.
+    //
+    // This also covers the first build: `didChangeDependencies` runs after
+    // `initState` and before `build`.
+    _generate();
   }
 
   @override
@@ -42,25 +51,31 @@ class _MdWidgetState extends State<MdWidget> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.exp != widget.exp ||
         !oldWidget.config.isSame(widget.config)) {
-      list = MarkdownComponent.generate(
-        context,
-        widget.exp,
-        widget.config,
-        widget.includeGlobalComponents,
-      );
+      _generate();
     }
+  }
+
+  /// Regenerates the spans.
+  ///
+  /// Uses this element's own `context`, not [MdWidget.context]. Components
+  /// resolve their colours through the context handed to them, and an
+  /// inherited lookup registers the dependency on *that* element — so passing
+  /// an ancestor's context would mean this widget is never notified when the
+  /// theme changes.
+  void _generate() {
+    list = MarkdownComponent.generate(
+      context,
+      widget.exp,
+      widget.config,
+      widget.includeGlobalComponents,
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    // List<InlineSpan> list = MarkdownComponent.generate(
-    //   context,
-    //   widget.exp,
-    //   widget.config,
-    //   widget.includeGlobalComponents,
-    // );
     return widget.config.getRich(
       TextSpan(children: list, style: widget.config.style?.copyWith()),
+      isRoot: widget.isRoot,
     );
   }
 }

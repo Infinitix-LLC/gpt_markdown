@@ -6,7 +6,7 @@ import 'package:gpt_markdown/custom_widgets/indent_widget.dart';
 import 'package:gpt_markdown/custom_widgets/link_button.dart';
 import 'package:gpt_markdown/custom_widgets/unordered_ordered_list.dart';
 import 'package:gpt_markdown/gpt_markdown.dart'
-    show MarkdownComponent, MdWidget;
+    show CodeTextSpan, MarkdownComponent, MdWidget;
 
 /// Serializes a Flutter span tree into a stable, comparable string format.
 ///
@@ -61,7 +61,11 @@ class MarkdownSerializer {
       if (text == '\n\n') {
         _write('NEWLINE');
       } else if (text.trim().isNotEmpty || text == ' ') {
-        _writeTextWithStyle(text, span.style);
+        _writeTextWithStyle(
+          text,
+          span.style,
+          isInlineCode: span is CodeTextSpan,
+        );
       }
     }
 
@@ -73,7 +77,11 @@ class MarkdownSerializer {
     }
   }
 
-  void _writeTextWithStyle(String text, TextStyle? style) {
+  void _writeTextWithStyle(
+    String text,
+    TextStyle? style, {
+    bool isInlineCode = false,
+  }) {
     final modifiers = <String>[];
 
     if (style != null) {
@@ -90,8 +98,9 @@ class MarkdownSerializer {
       if (style.decoration == TextDecoration.underline) {
         modifiers.add('underline');
       }
-      // Highlight detection: check for background paint
-      if (style.background != null) {
+      // Highlight detection: a tagged inline-code span, or the legacy
+      // background paint a custom style may still carry.
+      if (isInlineCode || style.background != null) {
         modifiers.add('highlight');
       }
     }

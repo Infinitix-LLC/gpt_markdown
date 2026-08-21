@@ -16,6 +16,7 @@ class GptMarkdownThemeData extends ThemeExtension<GptMarkdownThemeData> {
     required this.linkColor,
     required this.linkHoverColor,
     required this.autoAddDividerLineAfterH1,
+    required this.inlineCode,
   });
 
   /// A factory constructor for `GptMarkdownThemeData`.
@@ -34,6 +35,7 @@ class GptMarkdownThemeData extends ThemeExtension<GptMarkdownThemeData> {
     Color? linkColor,
     Color? linkHoverColor,
     bool? autoAddDividerLineAfterH1,
+    InlineCodeStyle? inlineCode,
   }) {
     ThemeData themeData = switch (brightness) {
       Brightness.light => ThemeData.light(),
@@ -74,6 +76,16 @@ class GptMarkdownThemeData extends ThemeExtension<GptMarkdownThemeData> {
       linkColor: linkColor,
       linkHoverColor: linkHoverColor,
       autoAddDividerLineAfterH1: autoAddDividerLineAfterH1,
+      // Resolving here means a caller can set one field — a colour, a font —
+      // and keep the scheme-derived defaults for everything else.
+      //
+      // `highlightColor` used to be the whole of inline-code styling, so an app
+      // that set it and nothing else keeps its colour as the chip fill.
+      inlineCode: (inlineCode ??
+              (highlightColor == null
+                  ? null
+                  : InlineCodeStyle(backgroundColor: highlightColor)))
+          ?.resolve(themeData.colorScheme),
     );
   }
 
@@ -95,6 +107,7 @@ class GptMarkdownThemeData extends ThemeExtension<GptMarkdownThemeData> {
       linkColor: Colors.blue,
       linkHoverColor: Colors.red,
       autoAddDividerLineAfterH1: true,
+      inlineCode: const InlineCodeStyle().resolve(theme.colorScheme),
     );
   }
 
@@ -135,6 +148,13 @@ class GptMarkdownThemeData extends ThemeExtension<GptMarkdownThemeData> {
   /// Whether to insert a horizontal divider after `#` (h1) headings.
   bool autoAddDividerLineAfterH1;
 
+  /// How inline `code` is drawn.
+  ///
+  /// Always fully resolved — every field is non-null. Pass a partial
+  /// [InlineCodeStyle] to the [GptMarkdownThemeData] factory and the rest is
+  /// filled in from the ambient [ColorScheme].
+  InlineCodeStyle inlineCode;
+
   /// A method to copy the `GptMarkdownThemeData`.
   @override
   GptMarkdownThemeData copyWith({
@@ -151,6 +171,7 @@ class GptMarkdownThemeData extends ThemeExtension<GptMarkdownThemeData> {
     Color? linkColor,
     Color? linkHoverColor,
     bool? autoAddDividerLineAfterH1,
+    InlineCodeStyle? inlineCode,
   }) {
     return GptMarkdownThemeData._(
       highlightColor: highlightColor ?? this.highlightColor,
@@ -167,6 +188,7 @@ class GptMarkdownThemeData extends ThemeExtension<GptMarkdownThemeData> {
       linkHoverColor: linkHoverColor ?? this.linkHoverColor,
       autoAddDividerLineAfterH1:
           autoAddDividerLineAfterH1 ?? this.autoAddDividerLineAfterH1,
+      inlineCode: inlineCode ?? this.inlineCode,
     );
   }
 
@@ -184,7 +206,8 @@ class GptMarkdownThemeData extends ThemeExtension<GptMarkdownThemeData> {
         hrLinePadding == other.hrLinePadding &&
         linkColor == other.linkColor &&
         linkHoverColor == other.linkHoverColor &&
-        autoAddDividerLineAfterH1 == other.autoAddDividerLineAfterH1;
+        autoAddDividerLineAfterH1 == other.autoAddDividerLineAfterH1 &&
+        inlineCode == other.inlineCode;
   }
 
   @override
@@ -214,6 +237,8 @@ class GptMarkdownThemeData extends ThemeExtension<GptMarkdownThemeData> {
           Color.lerp(linkHoverColor, other.linkHoverColor, t) ?? linkHoverColor,
       autoAddDividerLineAfterH1:
           t < 0.5 ? autoAddDividerLineAfterH1 : other.autoAddDividerLineAfterH1,
+      inlineCode:
+          InlineCodeStyle.lerp(inlineCode, other.inlineCode, t) ?? inlineCode,
     );
   }
 }

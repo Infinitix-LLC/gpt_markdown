@@ -1,7 +1,59 @@
 part of 'gpt_markdown.dart';
 
+/// The nesting context a [MarkdownComponent] is being rendered in.
+///
+/// Markdown nests: a link label may contain bold text, a table cell may
+/// contain a link, a heading may contain inline code. A component declares the
+/// contexts it is meaningful in through [MarkdownComponent.scopes] and is
+/// skipped everywhere else.
+///
+/// This is what stops, for example, an app-specific `#channel` chip from also
+/// rendering *inside* `[#channel](url)`. That produced a [WidgetSpan] nested
+/// in the link's own [WidgetSpan], which does not paint on iOS.
+enum MarkdownScope {
+  /// Ordinary document or inline content. The default.
+  content,
+
+  /// Inside the `label` half of a `[label](url)` link.
+  linkLabel,
+
+  /// Inside a table cell.
+  tableCell,
+
+  /// Inside a `#` heading.
+  heading,
+}
+
 /// Markdown components
 abstract class MarkdownComponent {
+  /// Every scope — the default value of [scopes].
+  ///
+  /// Declared `const` so reading [scopes] allocates nothing; it is read once
+  /// per component per [generate] call, and [generate] recurses.
+  static const Set<MarkdownScope> allScopes = {
+    MarkdownScope.content,
+    MarkdownScope.linkLabel,
+    MarkdownScope.tableCell,
+    MarkdownScope.heading,
+  };
+
+  /// Every scope except [MarkdownScope.linkLabel].
+  ///
+  /// The right default for anything rendering a [WidgetSpan]: a placeholder
+  /// nested inside the link's own placeholder does not paint on iOS.
+  static const Set<MarkdownScope> allScopesExceptLinkLabel = {
+    MarkdownScope.content,
+    MarkdownScope.tableCell,
+    MarkdownScope.heading,
+  };
+
+  /// The nesting contexts this component is allowed to render in.
+  ///
+  /// Defaults to [allScopes], so existing components keep their behaviour.
+  /// Override it to opt out of a context — most commonly
+  /// [allScopesExceptLinkLabel].
+  Set<MarkdownScope> get scopes => allScopes;
+
   static List<MarkdownComponent> get globalComponents => [
     CodeBlockMd(),
     LatexMathMultiLine(),
@@ -20,6 +72,7 @@ abstract class MarkdownComponent {
   static final List<MarkdownComponent> inlineComponents = [
     ATagMd(),
     ImageMd(),
+    AutolinkMd(),
     TableMd(),
     StrikeMd(),
     BoldMd(),
@@ -30,6 +83,43 @@ abstract class MarkdownComponent {
     HighlightedText(),
     SourceTag(),
   ];
+
+  /// Compiled combined regexes, keyed by the joined pattern string.
+  ///
+  /// Building and compiling the combined pattern is the most expensive part of
+  /// [generate], and [generate] recurses once per nested span. The joined
+  /// pattern string fully determines the [RegExp], so it is the natural key.
+  static final Map<String, RegExp> _combinedRegexCache = {};
+
+  /// Upper bound on [_combinedRegexCache].
+  ///
+  /// Components may be built from runtime data (a channel list, an emoji
+  /// palette), so the set of distinct patterns is not bounded by the package.
+  /// The cache is dropped wholesale rather than grown without limit.
+  static const int _combinedRegexCacheLimit = 64;
+
+  static RegExp _combinedRegexFor(List<MarkdownComponent> components) {
+    final pattern = components.map<String>((e) => e.exp.pattern).join("|");
+    // The combined regex carries one set of flags for every alternative, so a
+    // single case-insensitive component makes the whole alternation
+    // case-insensitive. Without this its matches never reach the dispatch loop
+    // at all — the combined regex simply does not find them.
+    final caseSensitive = components.every((e) => e.exp.isCaseSensitive);
+    final key = caseSensitive ? pattern : 'i:$pattern';
+    final cached = _combinedRegexCache[key];
+    if (cached != null) {
+      return cached;
+    }
+    if (_combinedRegexCache.length >= _combinedRegexCacheLimit) {
+      _combinedRegexCache.clear();
+    }
+    return _combinedRegexCache[key] = RegExp(
+      pattern,
+      multiLine: true,
+      dotAll: true,
+      caseSensitive: caseSensitive,
+    );
+  }
 
   /// Generate widget for markdown widget
   static List<InlineSpan> generate(
@@ -42,29 +132,62 @@ abstract class MarkdownComponent {
         includeGlobalComponents
             ? config.components ?? MarkdownComponent.globalComponents
             : config.inlineComponents ?? MarkdownComponent.inlineComponents;
+
+    // Consumer patterns are matched ahead of the built-ins, and only in the
+    // inline pass. The global pass resolves block structure (headings, lists,
+    // tables); everything it does not claim comes straight back here with
+    // [includeGlobalComponents] false, so inline patterns still see all of it.
+    final inlinePatterns = config.inlinePatterns;
+    if (!includeGlobalComponents &&
+        inlinePatterns != null &&
+        inlinePatterns.isNotEmpty) {
+      components = [...inlinePatterns.map(InlinePatternMd.new), ...components];
+    }
+
+    // Filter *before* the combined regex is built, not just in the dispatch
+    // loop below. Filtering only the dispatch loop would leave the combined
+    // regex claiming text that no component then handles.
+    final scope = config.scope;
+    components = components
+        .where((e) => e.scopes.contains(scope))
+        .toList(growable: false);
+
     List<InlineSpan> spans = [];
-    Iterable<String> regexes = components.map<String>((e) => e.exp.pattern);
-    final combinedRegex = RegExp(
-      regexes.join("|"),
-      multiLine: true,
-      dotAll: true,
-    );
+    if (components.isEmpty) {
+      // An empty pattern matches everywhere and would consume the text.
+      return [TextSpan(text: text, style: config.style)];
+    }
+    final combinedRegex = _combinedRegexFor(components);
     text.splitMapJoin(
       combinedRegex,
       onMatch: (p0) {
         String element = p0[0] ?? "";
         for (var each in components) {
           var p = each.exp.pattern;
+          // The group matters: `^a|b$` anchors only the first and last
+          // alternative, so any component whose pattern has a top-level `|`
+          // would claim matches it does not actually cover.
           var exp = RegExp(
-            '^$p\$',
+            '^(?:$p)\$',
             multiLine: each.exp.isMultiLine,
             dotAll: each.exp.isDotAll,
+            caseSensitive: each.exp.isCaseSensitive,
           );
           if (exp.hasMatch(element)) {
             spans.add(each.span(context, element, config));
             return "";
           }
         }
+        // The combined regex matched but no single component claims the whole
+        // match. Show the source text rather than dropping it silently.
+        assert(() {
+          debugPrint(
+            'gpt_markdown: no component claimed "$element"; '
+            'rendering it as plain text.',
+          );
+          return true;
+        }());
+        spans.add(TextSpan(text: element, style: config.style));
         return "";
       },
       onNonMatch: (p0) {
@@ -140,11 +263,7 @@ abstract class BlockMd extends MarkdownComponent {
       mainAxisSize: MainAxisSize.min,
       children: [Flexible(child: child)],
     );
-    return WidgetSpan(
-      child: child,
-      alignment: PlaceholderAlignment.baseline,
-      baseline: TextBaseline.alphabetic,
-    );
+    return scaledWidgetSpan(child: child, config: config);
   }
 
   Widget build(
@@ -202,6 +321,7 @@ class HTag extends BlockMd {
     var theme = GptMarkdownTheme.of(context);
     var match = this.exp.firstMatch(text.trim());
     var conf = config.copyWith(
+      scope: MarkdownScope.heading,
       style:
           [
             theme.h1,
@@ -227,6 +347,10 @@ class HTag extends BlockMd {
               text: "\n ",
               style: TextStyle(fontSize: 0, height: 0),
             ),
+            // Left uncompensated on purpose. The rule is a one-pixel
+            // decoration with no text in it, so the paragraph scaling its box
+            // is invisible — and compensating it made the space it takes at 1x
+            // differ from every other scale.
             WidgetSpan(
               child: CustomDivider(
                 height: theme.hrLineThickness,
@@ -324,6 +448,7 @@ class RadioButtonMd extends BlockMd {
 class BlockQuote extends InlineMd {
   @override
   bool get inline => false;
+
   @override
   RegExp get exp =>
   // RegExp(r"(?<=\n\n)(\ +)(.+?)(?=\n\n)", dotAll: true, multiLine: true);
@@ -359,7 +484,10 @@ class BlockQuote extends InlineMd {
     );
     return TextSpan(
       children: [
-        WidgetSpan(
+        scaledWidgetSpan(
+          config: config,
+          alignment: PlaceholderAlignment.bottom,
+          baseline: null,
           child: Directionality(
             textDirection: config.textDirection,
             child: Padding(
@@ -463,36 +591,25 @@ class HighlightedText extends InlineMd {
     var match = exp.firstMatch(text.trim());
     var highlightedText = match?[1] ?? "";
 
-    if (config.highlightBuilder != null) {
-      return WidgetSpan(
-        alignment: PlaceholderAlignment.middle,
-        child: config.highlightBuilder!(
-          context,
-          highlightedText,
-          config.style ?? const TextStyle(),
-        ),
-      );
+    // A plain TextSpan, tagged so the paragraph paints a rounded chip behind
+    // it — see `custom_widgets/inline_code.dart`. Keeping it out of a
+    // WidgetSpan is what lets inline code wrap across lines, stay selectable,
+    // sit on the surrounding baseline, and appear inside a link label.
+    final codeStyle = (config.inlineCodeStyle ??
+            GptMarkdownTheme.of(context).inlineCode)
+        .resolve(Theme.of(context).colorScheme);
+    final textStyle = codeStyle.applyTo(config.style ?? const TextStyle());
+
+    final builder = config.inlineCodeBuilder;
+    if (builder != null) {
+      return builder(context, highlightedText, textStyle, codeStyle);
     }
 
-    var style =
-        config.style?.copyWith(
-          fontWeight: FontWeight.bold,
-          background:
-              Paint()
-                ..color = GptMarkdownTheme.of(context).highlightColor
-                ..strokeCap = StrokeCap.round
-                ..strokeJoin = StrokeJoin.round,
-        ) ??
-        TextStyle(
-          fontWeight: FontWeight.bold,
-          background:
-              Paint()
-                ..color = GptMarkdownTheme.of(context).highlightColor
-                ..strokeCap = StrokeCap.round
-                ..strokeJoin = StrokeJoin.round,
-        );
-
-    return TextSpan(text: highlightedText, style: style);
+    return CodeTextSpan(
+      text: highlightedText,
+      codeStyle: codeStyle,
+      style: textStyle,
+    );
   }
 }
 
@@ -720,9 +837,8 @@ class LatexMath extends InlineMd {
                 },
               ),
             );
-    return WidgetSpan(
-      alignment: PlaceholderAlignment.baseline,
-      baseline: TextBaseline.alphabetic,
+    return scaledWidgetSpan(
+      config: config,
       child: builder(
         context,
         workaround(mathText),
@@ -749,8 +865,10 @@ class SourceTag extends InlineMd {
     if (content == null) {
       return const TextSpan();
     }
-    return WidgetSpan(
+    return scaledWidgetSpan(
+      config: config,
       alignment: PlaceholderAlignment.middle,
+      baseline: null,
       child: Padding(
         padding: const EdgeInsets.all(2),
         child:
@@ -785,6 +903,12 @@ class ATagMd extends InlineMd {
   @override
   RegExp get exp => RegExp(r"(?<!\!)\[.*?\]\([^\s]*\)");
 
+  /// CommonMark forbids links inside link labels, and the label is rendered
+  /// inside this component's own [WidgetSpan] — a second one nested in it does
+  /// not paint on iOS.
+  @override
+  Set<MarkdownScope> get scopes => MarkdownComponent.allScopesExceptLinkLabel;
+
   @override
   InlineSpan span(
     BuildContext context,
@@ -806,8 +930,9 @@ class ATagMd extends InlineMd {
       }
     }
 
-    if (text[end + 1] != '(') {
-      return const TextSpan();
+    if (end + 1 >= text.length || text[end + 1] != '(') {
+      // Malformed link. Show the source text instead of deleting it.
+      return TextSpan(text: text, style: config.style);
     }
 
     // First try to find the basic pattern
@@ -840,13 +965,12 @@ class ATagMd extends InlineMd {
     }
 
     if (urlEnd == urlStart) {
-      // No closing parenthesis found
-      return const TextSpan();
+      // No closing parenthesis found. Show the source text instead of
+      // deleting it.
+      return TextSpan(text: text, style: config.style);
     }
 
     final url = text.substring(urlStart, urlEnd).trim();
-
-    var builder = config.linkBuilder;
 
     var ending = text.substring(urlEnd + 1);
 
@@ -856,82 +980,112 @@ class ATagMd extends InlineMd {
       config,
       false,
     );
-    var theme = GptMarkdownTheme.of(context);
 
-    // Use custom builder if provided
-    WidgetSpan? child;
-    if (builder != null) {
-      // Build a styled span to hand off to the custom linkBuilder.
-      final linkStyle = (config.style ?? const TextStyle()).copyWith(
-        color: theme.linkColor,
-        decorationColor: theme.linkColor,
-        decoration: TextDecoration.underline,
-      );
-      final linkConfig = config.copyWith(style: linkStyle);
-      final linkTextSpan = TextSpan(
-        children: MarkdownComponent.generate(
-          context,
-          linkText,
-          linkConfig,
-          false,
-        ),
-        style: linkStyle,
-      );
-      child = WidgetSpan(
-        baseline: TextBaseline.alphabetic,
-        alignment: PlaceholderAlignment.baseline,
-        child: GestureDetector(
-          onTap: () => config.onLinkTap?.call(url, linkText),
-          child: builder(
-            context,
-            linkTextSpan,
-            url,
-            config.style ?? const TextStyle(),
-          ),
-        ),
-      );
-    }
-
-    // Default rendering — LinkButton rebuilds the span on every hover change
-    // so bold/italic text inside a link also picks up the hover colour.
-    child ??= WidgetSpan(
-      alignment: PlaceholderAlignment.baseline,
-      baseline: TextBaseline.alphabetic,
-      child: LinkButton(
-        hoverColor: theme.linkHoverColor,
-        color: theme.linkColor,
-        onPressed: () {
-          config.onLinkTap?.call(url, linkText);
-        },
-        text: linkText,
-        config: config,
-        spanBuilder: (color) {
-          final spanStyle = (config.style ?? const TextStyle()).copyWith(
-            color: color,
-            decorationColor: color,
-            decoration: TextDecoration.underline,
-          );
-          return TextSpan(
-            children: MarkdownComponent.generate(
-              context,
-              linkText,
-              config.copyWith(style: spanStyle),
-              false,
-            ),
-            style: spanStyle,
-          );
-        },
-      ),
-    );
+    final child = buildLinkSpan(context, config, url: url, label: linkText);
     var textSpan = TextSpan(children: [child, ...endingSpans]);
     return textSpan;
   }
+}
+
+/// A [WidgetSpan] for an inline widget.
+///
+/// Note for anyone touching text scaling: a paragraph lays inline children out
+/// in *scaled* space — it divides their constraints by the scale factor and
+/// multiplies the reported size back. At a 3x setting a block widget is
+/// therefore given a third of the width, wraps into a narrow column and
+/// reserves far more height than it needs. Compensating for that inside the
+/// child was tried and produced overlapping text; the fix belongs in how
+/// blocks are composed, not in a wrapper. See CHANGELOG.
+WidgetSpan scaledWidgetSpan({
+  required Widget child,
+  required GptMarkdownConfig config,
+  PlaceholderAlignment alignment = PlaceholderAlignment.baseline,
+  TextBaseline? baseline = TextBaseline.alphabetic,
+}) {
+  return WidgetSpan(alignment: alignment, baseline: baseline, child: child);
+}
+
+/// Builds the span for a link, shared by [ATagMd] and [AutolinkMd].
+///
+/// [label] is rendered through [MarkdownComponent.generate] in the
+/// [MarkdownScope.linkLabel] scope when [parseLabel] is true. Autolinks pass
+/// false: their label *is* the URL, and running it back through the inline
+/// components would let `ItalicMd` eat the underscores out of a path such as
+/// `https://example.com/a_b_c`.
+InlineSpan buildLinkSpan(
+  BuildContext context,
+  GptMarkdownConfig config, {
+  required String url,
+  required String label,
+  bool parseLabel = true,
+}) {
+  final theme = GptMarkdownTheme.of(context);
+  final builder = config.linkBuilder;
+
+  List<InlineSpan> labelSpans(TextStyle style) {
+    if (!parseLabel) {
+      return [TextSpan(text: label, style: style)];
+    }
+    return MarkdownComponent.generate(
+      context,
+      label,
+      config.copyWith(style: style, scope: MarkdownScope.linkLabel),
+      false,
+    );
+  }
+
+  if (builder != null) {
+    // Build a styled span to hand off to the custom linkBuilder.
+    final linkStyle = (config.style ?? const TextStyle()).copyWith(
+      color: theme.linkColor,
+      decorationColor: theme.linkColor,
+      decoration: TextDecoration.underline,
+    );
+    return scaledWidgetSpan(
+      config: config,
+      child: GestureDetector(
+        onTap: () => config.onLinkTap?.call(url, label),
+        child: builder(
+          context,
+          TextSpan(children: labelSpans(linkStyle), style: linkStyle),
+          url,
+          config.style ?? const TextStyle(),
+        ),
+      ),
+    );
+  }
+
+  // Default rendering — LinkButton rebuilds the span on every hover change so
+  // bold/italic text inside a link also picks up the hover colour.
+  return scaledWidgetSpan(
+    config: config,
+    child: LinkButton(
+      hoverColor: theme.linkHoverColor,
+      color: theme.linkColor,
+      onPressed: () => config.onLinkTap?.call(url, label),
+      text: label,
+      config: config,
+      spanBuilder: (color) {
+        final spanStyle = (config.style ?? const TextStyle()).copyWith(
+          color: color,
+          decorationColor: color,
+          decoration: TextDecoration.underline,
+        );
+        return TextSpan(children: labelSpans(spanStyle), style: spanStyle);
+      },
+    ),
+  );
 }
 
 /// Image component
 class ImageMd extends InlineMd {
   @override
   RegExp get exp => RegExp(r"\!\[[^\[\]]*\]\([^\s]*\)");
+
+  /// An image is not meaningful as a link label, and nesting its [WidgetSpan]
+  /// inside the link's own one does not paint on iOS.
+  @override
+  Set<MarkdownScope> get scopes => MarkdownComponent.allScopesExceptLinkLabel;
 
   @override
   InlineSpan span(
@@ -1015,12 +1169,21 @@ class ImageMd extends InlineMd {
         ),
       );
     }
-    return WidgetSpan(alignment: PlaceholderAlignment.bottom, child: image);
+    return scaledWidgetSpan(
+      config: config,
+      alignment: PlaceholderAlignment.bottom,
+      baseline: null,
+      child: image,
+    );
   }
 }
 
 /// Table component
 class TableMd extends BlockMd {
+  /// A table cannot be a link label.
+  @override
+  Set<MarkdownScope> get scopes => MarkdownComponent.allScopesExceptLinkLabel;
+
   @override
   String get expString =>
       (r"(((\|[^\n\|]+\|)((([^\n\|]+\|)+)?)\ *)(\n\ *(((\|[^\n\|]+\|)(([^\n\|]+\|)+)?))\ *)+)$");
@@ -1171,7 +1334,9 @@ class TableMd extends BlockMd {
                             context,
                             (e[index] ?? "").trim(),
                             false,
-                            config: config,
+                            config: config.copyWith(
+                              scope: MarkdownScope.tableCell,
+                            ),
                           ),
                         );
 

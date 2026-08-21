@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:gpt_markdown/custom_widgets/bidi_rich_text.dart';
 import 'package:gpt_markdown/gpt_markdown.dart';
@@ -59,9 +60,35 @@ typedef TableBuilder =
       GptMarkdownConfig config,
     );
 
-/// A builder function for the highlight.
-typedef HighlightBuilder =
-    Widget Function(BuildContext context, String text, TextStyle style);
+/// Builds the span for one run of inline `` `code` ``.
+///
+/// [code] is the text between the backticks, [style] is the resolved code
+/// [TextStyle] (monospace, sized and coloured per [InlineCodeStyle]), and
+/// [codeStyle] is the resolved [InlineCodeStyle] itself, so a builder can reuse
+/// the chip colours it would have been drawn with.
+///
+/// Return a [CodeTextSpan] to keep the painted chip, any other [TextSpan] to
+/// drop it, or [baselineWidgetSpan] when a widget is genuinely required:
+///
+/// ```dart
+/// inlineCodeBuilder: (context, code, style, codeStyle) => CodeTextSpan(
+///   text: code,
+///   codeStyle: codeStyle.copyWith(
+///     backgroundColor: code.startsWith('TODO') ? Colors.amber : null,
+///   ),
+///   style: style,
+/// ),
+/// ```
+///
+/// Returning an [InlineSpan] rather than a [Widget] is what keeps inline code
+/// on the text baseline, wrapping across lines, and selectable.
+typedef InlineCodeBuilder =
+    InlineSpan Function(
+      BuildContext context,
+      String code,
+      TextStyle style,
+      InlineCodeStyle codeStyle,
+    );
 
 /// A builder function for the image.
 ///
@@ -93,7 +120,7 @@ class GptMarkdownConfig {
     this.followLinkColor = false,
     this.codeBuilder,
     this.sourceTagBuilder,
-    this.highlightBuilder,
+    this.inlineCodeBuilder,
     this.orderedListBuilder,
     this.unOrderedListBuilder,
     this.linkBuilder,
@@ -102,7 +129,12 @@ class GptMarkdownConfig {
     this.overflow,
     this.components,
     this.inlineComponents,
+    this.inlinePatterns,
     this.tableBuilder,
+    this.inlineCodeStyle,
+    this.autolink = true,
+    this.autolinkSchemes = const <String>{},
+    this.scope = MarkdownScope.content,
   });
 
   /// The direction of the text.
@@ -147,8 +179,8 @@ class GptMarkdownConfig {
   /// The overflow.
   final TextOverflow? overflow;
 
-  /// The highlight builder.
-  final HighlightBuilder? highlightBuilder;
+  /// Builds the span for inline `` `code` ``, overriding the default chip.
+  final InlineCodeBuilder? inlineCodeBuilder;
 
   /// The link builder.
   final LinkBuilder? linkBuilder;
@@ -161,6 +193,26 @@ class GptMarkdownConfig {
 
   /// The list of inline components.
   final List<MarkdownComponent>? inlineComponents;
+
+  /// App-specific inline syntaxes. See [GptMarkdown.inlinePatterns].
+  final List<InlinePattern>? inlinePatterns;
+
+  /// Overrides the themed inline `code` style for this widget only.
+  final InlineCodeStyle? inlineCodeStyle;
+
+  /// Whether bare URLs, `www.` hosts, emails and `<...>` autolinks are linked.
+  final bool autolink;
+
+  /// Extra URL schemes linked without `<>`. See [GptMarkdown.autolinkSchemes].
+  final Set<String> autolinkSchemes;
+
+  /// The nesting context the current text is being rendered in.
+  ///
+  /// Set by the components that recurse — [ATagMd] renders its label with
+  /// [MarkdownScope.linkLabel], [TableMd] renders cells with
+  /// [MarkdownScope.tableCell], and so on. Components whose
+  /// [MarkdownComponent.scopes] excludes the current scope are skipped.
+  final MarkdownScope scope;
 
   /// The table builder.
   final TableBuilder? tableBuilder;
@@ -179,14 +231,19 @@ class GptMarkdownConfig {
     final CodeBlockBuilder? codeBuilder,
     final int? maxLines,
     final TextOverflow? overflow,
-    final HighlightBuilder? highlightBuilder,
+    final InlineCodeBuilder? inlineCodeBuilder,
     final LinkBuilder? linkBuilder,
     final ImageBuilder? imageBuilder,
     final OrderedListBuilder? orderedListBuilder,
     final UnOrderedListBuilder? unOrderedListBuilder,
     final List<MarkdownComponent>? components,
     final List<MarkdownComponent>? inlineComponents,
+    final List<InlinePattern>? inlinePatterns,
     final TableBuilder? tableBuilder,
+    final InlineCodeStyle? inlineCodeStyle,
+    final bool? autolink,
+    final Set<String>? autolinkSchemes,
+    final MarkdownScope? scope,
   }) {
     return GptMarkdownConfig(
       style: style ?? this.style,
@@ -201,14 +258,19 @@ class GptMarkdownConfig {
       sourceTagBuilder: sourceTagBuilder ?? this.sourceTagBuilder,
       maxLines: maxLines ?? this.maxLines,
       overflow: overflow ?? this.overflow,
-      highlightBuilder: highlightBuilder ?? this.highlightBuilder,
+      inlineCodeBuilder: inlineCodeBuilder ?? this.inlineCodeBuilder,
       linkBuilder: linkBuilder ?? this.linkBuilder,
       imageBuilder: imageBuilder ?? this.imageBuilder,
       orderedListBuilder: orderedListBuilder ?? this.orderedListBuilder,
       unOrderedListBuilder: unOrderedListBuilder ?? this.unOrderedListBuilder,
       components: components ?? this.components,
       inlineComponents: inlineComponents ?? this.inlineComponents,
+      inlinePatterns: inlinePatterns ?? this.inlinePatterns,
       tableBuilder: tableBuilder ?? this.tableBuilder,
+      inlineCodeStyle: inlineCodeStyle ?? this.inlineCodeStyle,
+      autolink: autolink ?? this.autolink,
+      autolinkSchemes: autolinkSchemes ?? this.autolinkSchemes,
+      scope: scope ?? this.scope,
     );
   }
 
@@ -219,25 +281,48 @@ class GptMarkdownConfig {
   /// https://github.com/flutter/flutter/issues/54400 — the engine otherwise
   /// lays those inline widgets out left to right and they come out reversed.
   /// Everything else keeps using a plain [Text].
-  Widget getRich(InlineSpan span) {
-    if (needsBidiPlaceholderFix(span)) {
-      return BidiText(
+  Widget getRich(InlineSpan span, {bool isRoot = false}) {
+    // A nested paragraph sits inside a `WidgetSpan`, and a paragraph lays its
+    // inline children out in scaled space — it hands them `maxWidth / scale`
+    // and multiplies the reported size back. A child that scales its own text
+    // as well is counted twice, so nested paragraphs opt out.
+    //
+    // Passing `textScaler` here would defeat that: an explicit scaler on a
+    // `Text` wins over the ambient `MediaQuery`, so the paragraph would scale
+    // itself again despite the `withNoTextScaling` wrapper below.
+    final effectiveScaler = isRoot ? textScaler : TextScaler.noScaling;
+    final codeRuns = collectInlineCodeRuns(span);
+    final needsBidi = needsBidiPlaceholderFix(span);
+    if (codeRuns.isEmpty && !needsBidi) {
+      // Nothing to decorate and no placeholders to reorder — the stock widget
+      // does the job, and stays the hot path for ordinary paragraphs.
+      final Widget child = Text.rich(
         span,
         textDirection: textDirection,
-        textScaler: textScaler,
+        textScaler: effectiveScaler,
         textAlign: textAlign,
         maxLines: maxLines,
         overflow: overflow,
       );
+      if (isRoot) {
+        return child;
+      }
+      return MediaQuery.withNoTextScaling(child: child);
     }
-    return Text.rich(
+    final child = BidiText(
       span,
+      bidiEnabled: needsBidi,
+      inlineCodeRuns: codeRuns,
       textDirection: textDirection,
-      textScaler: textScaler,
+      textScaler: effectiveScaler,
       textAlign: textAlign,
       maxLines: maxLines,
       overflow: overflow,
     );
+    if (isRoot) {
+      return child;
+    }
+    return MediaQuery.withNoTextScaling(child: child);
   }
 
   /// A method to check if the configuration is the same.
@@ -248,9 +333,27 @@ class GptMarkdownConfig {
         maxLines == other.maxLines &&
         overflow == other.overflow &&
         followLinkColor == other.followLinkColor &&
+        scope == other.scope &&
+        autolink == other.autolink &&
+        // Value types, so comparing them is cheap and a runtime change to any
+        // of them regenerates the spans. Getting this wrong is silent: the
+        // widget rebuilds with the new config and keeps rendering the old
+        // output.
+        setEquals(autolinkSchemes, other.autolinkSchemes) &&
+        inlineCodeStyle == other.inlineCodeStyle &&
+        // `InlinePattern` holds a builder closure and has no value equality,
+        // so this falls back to element identity. A consumer that rebuilds the
+        // list inline pays a regeneration per rebuild — the safe direction.
+        listEquals(inlinePatterns, other.inlinePatterns) &&
+        // Same reasoning: `MarkdownComponent` has no value equality, so these
+        // compare by element identity. Swapping a component list at runtime
+        // used to be ignored outright.
+        listEquals(components, other.components) &&
+        listEquals(inlineComponents, other.inlineComponents) &&
+        // The rest are closures. They are recreated on every build by any
+        // consumer that writes them inline, so comparing them would defeat the
+        // cache entirely — a change to one of these needs a key or a remount.
         // latexWorkaround == other.latexWorkaround &&
-        // components == other.components &&
-        // inlineComponents == other.inlineComponents &&
         // latexBuilder == other.latexBuilder &&
         // sourceTagBuilder == other.sourceTagBuilder &&
         // codeBuilder == other.codeBuilder &&
@@ -258,7 +361,7 @@ class GptMarkdownConfig {
         // unOrderedListBuilder == other.unOrderedListBuilder &&
         // linkBuilder == other.linkBuilder &&
         // imageBuilder == other.imageBuilder &&
-        // highlightBuilder == other.highlightBuilder &&
+        // inlineCodeBuilder == other.inlineCodeBuilder &&
         // onLinkTap == other.onLinkTap &&
         textDirection == other.textDirection;
   }
