@@ -195,14 +195,27 @@ A tolerance was tried and rejected. Any threshold loose enough to absorb
 cross-platform antialiasing also hides real changes — widening the blockquote
 bar from 3 to 9 points passed at a 0.5% tolerance, which defeats the point.
 
-To regenerate after an intended change:
+To regenerate after an intended change, dispatch the workflow against your
+branch. It regenerates on Linux and commits the images back, so a maintainer
+on macOS or Windows never has to produce them by hand:
 
 ```bash
-gh workflow run goldens.yml
-gh run download --name goldens --dir test/golden/defaults
+gh workflow run goldens.yml --ref my-branch
+gh run watch
+git pull
 ```
 
-On Linux, `./scripts/goldens.sh` does it directly.
+Pass `-f commit=false` to get the images as an artifact and commit them
+yourself. On Linux, `./scripts/goldens.sh` does the whole thing locally.
+
+> [!WARNING]
+> Regenerating is not a fix for a failing golden — it is how you record a
+> change you meant to make. `--update-goldens` overwrites the reference with
+> whatever the code now draws, so running it on a red build makes the
+> regression the new baseline. Look at the diff images first.
+>
+> This is why the workflow is manual. If it ran on every push the goldens would
+> always match and the test could never fail.
 
 If a golden fails on CI, download the `golden-failures` artifact from the run —
 it contains the expected, actual and diff images, which is the only readable

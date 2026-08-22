@@ -4,10 +4,24 @@ name: Goldens
 # compared on Linux only — text rasterisation differs between platforms, so a
 # golden captured on macOS fails here for reasons that are not a change.
 #
-# That means they must also be *generated* on Linux. Run this workflow, then
-# download the artifact and commit it.
+# That means they must also be *generated* on Linux. This workflow does that and
+# commits the result back to the branch it ran on, so a maintainer without a
+# Linux machine never has to produce them by hand.
+#
+# It is deliberately manual. Regenerating on every push would rubber-stamp real
+# regressions: the goldens would simply follow whatever the code now draws, and
+# the test could never fail. Run it only when you meant to change a default, or
+# once to bootstrap them onto Linux.
 on:
   workflow_dispatch:
+    inputs:
+      commit:
+        description: Commit the regenerated goldens back to this branch
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
 
 jobs:
   regenerate:
@@ -32,7 +46,22 @@ jobs:
       - name: Show what changed
         run: git status --short test/golden
 
+      # Uploaded either way, so the images can be reviewed before merging even
+      # when the commit step is turned off.
       - uses: actions/upload-artifact@v4
         with:
           name: goldens
           path: test/golden/defaults/
+
+      - name: Commit
+        if: ${{ inputs.commit }}
+        run: |
+          if [ -z "$(git status --porcelain test/golden)" ]; then
+            echo "goldens already match this platform — nothing to commit"
+            exit 0
+          fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add test/golden
+          git commit -m "test: regenerate goldens on linux"
+          git push origin "HEAD:${GITHUB_REF_NAME}"

@@ -17,13 +17,16 @@ if [[ "$(uname -s)" != "Linux" ]]; then
   cat <<'ELSEWHERE'
 Goldens are generated on Linux, and this is not Linux.
 
-Run the workflow instead:
+Run the workflow instead — it regenerates them and commits them back to the
+branch you dispatch it from:
 
-  gh workflow run goldens.yml
-  gh run download --name goldens --dir test/golden/defaults
+  gh workflow run goldens.yml --ref "$(git rev-parse --abbrev-ref HEAD)"
+  gh run watch
+  git pull
 
-Then review the diff and commit. Locally the golden tests are skipped, so the
-rest of the suite still runs.
+Pass -f commit=false to get the images as an artifact without a commit.
+
+Locally the golden tests are skipped, so the rest of the suite still runs.
 ELSEWHERE
   exit 1
 fi
