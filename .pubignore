@@ -1,3 +1,23 @@
-# Tooling that should not ship to pub.dev.
+# A `.pubignore` REPLACES `.gitignore` for publishing — pub does not read
+# `.gitignore` when this file exists. Everything that must stay out of the
+# published archive has to be listed here, including build output.
+
+# Build output and tool caches.
+build/
+.dart_tool/
+.idea/
+.vscode/
+*.iml
+
+# Development surfaces. Useful in the repository, not to consumers.
 widgetbook/
+scripts/
+.github/
+
+# The built playground, deployed from this directory by GitHub Pages.
 doc/
+
+# The example's own build output and lockfile.
+example/build/
+example/.dart_tool/
+example/pubspec.lock

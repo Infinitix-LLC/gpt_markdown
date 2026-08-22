@@ -1,0 +1,52 @@
+name: Publish
+
+# Tag-triggered, so the published artefact is always one that passed the gate.
+# Uses pub.dev automated publishing: the token is minted from GitHub's OIDC
+# identity, so there is no long-lived credential in repository secrets.
+#
+# Set up once at:
+#   pub.dev → gpt_markdown → Admin → Automated publishing
+on:
+  push:
+    tags: ['v[0-9]+.[0-9]+.[0-9]+*']
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Format, analyze, test
+        run: ./scripts/check.sh
+
+      - name: pub.dev score
+        run: ./scripts/score.sh 160
+
+      - name: Tag matches pubspec version
+        run: |
+          version="$(grep '^version:' pubspec.yaml | awk '{print $2}')"
+          tag="${GITHUB_REF_NAME#v}"
+          if [ "$version" != "$tag" ]; then
+            echo "tag $tag does not match pubspec version $version"
+            exit 1
+          fi
+
+      - name: Changelog has an entry for this version
+        run: |
+          version="$(grep '^version:' pubspec.yaml | awk '{print $2}')"
+          grep -qE "^## +\[?${version}\]?" CHANGELOG.md || {
+            echo "CHANGELOG.md has no '## $version' heading"
+            exit 1
+          }
+
+  publish:
+    needs: gate
+    permissions:
+      id-token: write     # required to mint the pub.dev credential
+    uses: dart-lang/setup-dart/.github/workflows/publish.yml@v1
