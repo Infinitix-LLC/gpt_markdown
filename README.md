@@ -149,6 +149,15 @@ SelectionArea(
 )
 ```
 
+### Output from gpt_markdown
+
+<p align="center">
+  <img width="614" alt="A complete AI response rendered by gpt_markdown in Flutter" src="https://github.com/Infinitix-LLC/gpt_markdown/assets/59507062/8f4a4068-a12c-45d1-a954-ebaf3822e754">
+</p>
+
+See the Markdown, LaTeX, code, tables, links, and structured content above
+rendered together as one polished Flutter response.
+
 ---
 
 ## 🛠️ Getting Started
@@ -227,16 +236,6 @@ The quadratic function is \( f(x) = x^2 + 2x + 1 \).
 
 Markdown and LaTeX can live naturally inside the same Flutter conversation.
 ```
-
-### Output from gpt_markdown
-
-<p align="center">
-  <img width="614" alt="A complete AI response rendered by gpt_markdown in Flutter" src="https://github.com/Infinitix-LLC/gpt_markdown/assets/59507062/8f4a4068-a12c-45d1-a954-ebaf3822e754">
-</p>
-
-If you are using `flutter_markdown` and need LaTeX, streaming, deep
-customization, or AI-oriented interactions, `gpt_markdown` gives you one
-renderer for the whole answer.
 
 ## 🌊 Streaming AI Responses
 
