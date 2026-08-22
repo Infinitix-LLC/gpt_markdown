@@ -14,10 +14,32 @@ widgetbook/
 scripts/
 .github/
 
-# The built playground, deployed from this directory by GitHub Pages.
+# Website and local workspace surfaces are published independently.
+# The package README links to the source documentation on GitHub.
+website/
+docs/
+
+# The built Flutter playground and local Replit metadata do not belong in the
+# package archive.
 doc/
+.agents/
+.cache/
+.config/
+.local/
+artifacts/
+attached_assets/
+.replit
+replit.nix
+replit.md
+screenshots/
+seo_strategy.md
+push.sh
+start.sh
 
 # The example's own build output and lockfile.
 example/build/
 example/.dart_tool/
 example/pubspec.lock
+
+# Libraries should not publish a lockfile.
+pubspec.lock
