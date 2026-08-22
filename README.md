@@ -1,15 +1,15 @@
-# 📦 GPT Markdown & LaTeX for Flutter
+# ✨ GPT Markdown for Flutter — AI-Ready Markdown & LaTeX
 
 [![CI](https://github.com/Infinitix-LLC/gpt_markdown/actions/workflows/ci.yml/badge.svg)](https://github.com/Infinitix-LLC/gpt_markdown/actions/workflows/ci.yml) [![Pub Version](https://img.shields.io/pub/v/gpt_markdown)](https://pub.dev/packages/gpt_markdown) [![Pub Likes](https://img.shields.io/pub/likes/gpt_markdown)](https://pub.dev/packages/gpt_markdown) [![Pub Points](https://img.shields.io/pub/points/gpt_markdown)](https://pub.dev/packages/gpt_markdown) [![GitHub](https://img.shields.io/badge/github-gpt__markdown-blue?logo=github)](https://github.com/Infinitix-LLC/gpt_markdown)
 
-A production-ready Flutter package for rendering rich Markdown and LaTeX in
-your app—built for AI output from ChatGPT, Gemini, Claude, and any model that
-speaks Markdown. Render explanations, formulas, code, tables, links, images,
-citations, and interactive lists in one native Flutter surface.
+A production-ready Flutter renderer for the complete shape of an AI answer.
+Render rich Markdown, LaTeX, code, tables, links, images, citations, and
+interactive lists from ChatGPT, Gemini, Claude, or any model that speaks
+Markdown—all in one native Flutter surface.
 
 Use it as a drop-in alternative to `flutter_markdown` when your app needs
-first-class LaTeX, streaming responses, rich customization, and AI-oriented
-interactions.
+first-class LaTeX, smooth streaming, deep visual control, and AI-oriented
+interactions without stitching together multiple renderers.
 
 🌐 [gptmarkdown.com](https://gptmarkdown.com) · 📖 [Documentation](https://gptmarkdown.com/docs) · 🎮 [Live Playground](https://gptmarkdown.com/playground)
 
@@ -17,19 +17,19 @@ interactions.
 
 ## 🚀 Why Use GPT Markdown?
 
-- **Optimized for AI outputs**: Render the rich mixture of text, math, code,
-  tables, links, citations, and checklists that AI assistants produce.
-- **LaTeX out of the box**: Render inline and block mathematics without
+- **Made for AI output**: Render the rich mixture of text, math, code, tables,
+  links, citations, and checklists that AI assistants produce.
+- **LaTeX from the first line**: Render inline and block mathematics without
   building a separate math surface.
 - **Beautiful while streaming**: Reveal a growing response smoothly while
   keeping the settled part of the document stable.
 - **Complete Markdown support**: Headings, emphasis, lists, tables, block
   quotes, images, links, code blocks, task lists, radio options, and more.
-- **Rich customization**: Style every major component, inherit your Flutter
-  theme, or replace individual components with your own builders.
-- **App-specific syntax**: Add `@mentions`, `#channels`, `:emoji:`, source
+- **Your design system, not ours**: Start with your `ColorScheme`, tune each
+  component through the style sheet, or replace any part with a Flutter builder.
+- **Your product language**: Add `@mentions`, `#channels`, `:emoji:`, source
   tags, and other inline patterns without forking the parser.
-- **Selectable and accessible**: Work with `SelectionArea`, RTL content, text
+- **Ready for real users**: Work with `SelectionArea`, RTL content, text
   scaling, and reduced-motion preferences.
 - **Ready for every Flutter surface**: Mobile, desktop, web, and WASM support
   without platform plugins.
@@ -65,8 +65,8 @@ interactions.
 
 ## ✨ Key Features
 
-Render a wide variety of content with full Markdown and LaTeX support, all in
-the same answer users see from an AI assistant.
+Render a complete AI response—not just isolated Markdown fragments—with full
+Markdown and LaTeX support in one cohesive Flutter surface.
 
 ### Lists, rules, links, and images
 
@@ -234,7 +234,7 @@ Markdown and LaTeX can live naturally inside the same Flutter conversation.
   <img width="614" alt="A complete AI response rendered by gpt_markdown in Flutter" src="https://github.com/Infinitix-LLC/gpt_markdown/assets/59507062/8f4a4068-a12c-45d1-a954-ebaf3822e754">
 </p>
 
-If you are using `flutter_markdown` and need LaTeX, streaming, richer
+If you are using `flutter_markdown` and need LaTeX, streaming, deep
 customization, or AI-oriented interactions, `gpt_markdown` gives you one
 renderer for the whole answer.
 
@@ -258,10 +258,11 @@ Streaming is opt-in, supports configurable pacing, and respects
 See the [streaming guide](docs/streaming.md) for pacing, completion, and
 integration patterns.
 
-## 🎨 Styling and Theming
+## 🎨 Make It Look Like Your Product
 
-Customize only what you need with `GptMarkdownStyleSheet`. Unset values keep
-following your Flutter `ColorScheme`.
+Start with your Flutter `ColorScheme`, then customize only what needs to be
+different. `GptMarkdownStyleSheet` gives you focused control over each rendered
+component, while unset values continue to inherit naturally from your theme.
 
 ```dart
 GptMarkdown(
@@ -286,7 +287,8 @@ GptMarkdown(
 )
 ```
 
-Set consistent defaults app-wide with `GptMarkdownThemeData`:
+Set consistent defaults app-wide with `GptMarkdownThemeData`, or provide a
+`styleSheet` to one widget for a local override:
 
 ```dart
 ThemeData(
@@ -302,10 +304,30 @@ ThemeData(
 )
 ```
 
+The style system covers the whole response:
+
+| Rendered part | Customize with |
+|---|---|
+| Headings | `HeadingStyle` |
+| Paragraph links | `LinkStyle` |
+| Ordered and unordered lists | `ListStyle` |
+| Tables | `TableStyle` |
+| Fenced code | `CodeBlockStyle` |
+| Inline code | `InlineCodeStyle` |
+| LaTeX blocks | `LatexStyle` |
+| Images | `ImageStyle` |
+| Block quotes and rules | `BlockQuoteStyle`, `HrStyle` |
+| Checkboxes and radio options | `CheckboxStyle` |
+| Citations and source tags | `SourceTagStyle` |
+
+You can also control the widget itself with `style`, `textDirection`,
+`textAlign`, `textScaler`, `maxLines`, `overflow`, `followLinkColor`, and
+`useDollarSignsForLatex`.
+
 ## 🧩 Builders and Callbacks
 
-When styling is not enough, replace exactly the part of the response your
-product needs to own:
+When styling is not enough, take ownership of exactly the part of the response
+your product needs to own. Keep the built-in rendering everywhere else:
 
 - `codeBuilder` for a custom code viewer
 - `latexBuilder` for a different math renderer
@@ -316,9 +338,12 @@ product needs to own:
 - `checkboxBuilder` and `radioOptionBuilder` for interactive controls
 - `inlineCodeBuilder` for custom inline code spans
 - `sourceTagBuilder` for citations and references
+- `components` and `inlineComponents` for custom block and inline Markdown
+  components
 
-Callbacks include `onLinkTap`, `onImageTap`, `onCodeCopy`,
-`onSourceTagTap`, and `onCheckboxChanged`.
+Callbacks include `onLinkTap`, `onImageTap`, `onCodeCopy`, `onSourceTagTap`,
+and `onCheckboxChanged`, so rendered content can open links, preview images,
+copy code, navigate to sources, or update application state.
 
 ---
 
