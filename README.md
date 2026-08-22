@@ -10,9 +10,15 @@ Built for ChatGPT, Gemini, Claude, and any model that returns Markdown.
 
 🌐 [gptmarkdown.com](https://gptmarkdown.com) · 📖 [Documentation](https://gptmarkdown.com/docs) · 🎮 [Live Playground](https://gptmarkdown.com/playground)
 
-![gpt_markdown Playground showing Markdown and LaTeX source rendered as a polished Flutter response](screenshots/playground.jpg)
+<p align="center">
+  <img
+    width="614"
+    alt="A complete AI response rendered by gpt_markdown in Flutter"
+    src="https://github.com/Infinitix-LLC/gpt_markdown/assets/59507062/8f4a4068-a12c-45d1-a954-ebaf3822e754"
+  >
+</p>
 
-*Write Markdown and LaTeX on the left. Deliver a polished, native Flutter answer on the right.*
+<p align="center"><em>Markdown, LaTeX, code, and structured content—rendered together as one native Flutter answer.</em></p>
 
 ---
 
@@ -239,19 +245,12 @@ the token to stay selectable and wrap naturally.
 - [Inline syntax](docs/inline-syntax.md) — autolinks, patterns, and scopes
 - [Custom components](docs/custom-components.md) — block and inline components
 - [Testing](docs/testing.md) — testing rendered Markdown and custom components
-- [Live Playground](https://gptmarkdown.com/playground) — try the renderer in
-  your browser
 
 ---
 
 ⭐ If you find this package helpful, please give it a like on
 [pub.dev](https://pub.dev/packages/gpt_markdown)! Your support means a lot. ⭐
 
-## 🔗 Additional Information
-
-- 🌐 [Website](https://gptmarkdown.com)
-- 📖 [Documentation](https://gptmarkdown.com/docs)
-- 🎮 [Live Playground](https://gptmarkdown.com/playground)
-- 📦 [pub.dev](https://pub.dev/packages/gpt_markdown)
-- 🐛 [Issue tracker](https://github.com/Infinitix-LLC/gpt_markdown/issues)
-- 💬 [Publisher](https://infinitix.tech)
+Need help? [Open an issue](https://github.com/Infinitix-LLC/gpt_markdown/issues)
+· [Publisher](https://infinitix.tech)
+· [License](LICENSE)
