@@ -184,22 +184,29 @@ survived.
 The package's defaults are locked by goldens in
 `test/golden/default_look_test.dart` — eight constructs in light and dark.
 
-If you are contributing, run them **before** your change and confirm they still
-pass **after** it without `--update-goldens`. A failure means a default moved.
+> [!IMPORTANT]
+> **They run on Linux only**, and are skipped everywhere else.
+>
+> Text rasterisation is not identical across platforms, so a golden captured on
+> macOS fails on CI for reasons that are not a change. Pinning to one platform
+> is the only way the comparison means anything.
 
-> [!WARNING]
-> Load a real font first. The default test font renders every glyph as a filled
-> box, which hides most visual regressions.
+A tolerance was tried and rejected. Any threshold loose enough to absorb
+cross-platform antialiasing also hides real changes — widening the blockquote
+bar from 3 to 9 points passed at a 0.5% tolerance, which defeats the point.
 
-```dart
-setUpAll(() async {
-  final loader = FontLoader('Roboto');
-  loader.addFont(rootBundle.load('fonts/Roboto-Regular.ttf'));
-  await loader.load();
-});
+To regenerate after an intended change:
+
+```bash
+gh workflow run goldens.yml
+gh run download --name goldens --dir test/golden/defaults
 ```
 
----
+On Linux, `./scripts/goldens.sh` does it directly.
+
+If a golden fails on CI, download the `golden-failures` artifact from the run —
+it contains the expected, actual and diff images, which is the only readable
+way to see what moved.
 
 ## Documentation snippets are compiled
 

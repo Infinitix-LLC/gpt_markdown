@@ -1,0 +1,38 @@
+name: Goldens
+
+# Golden files record what the package is supposed to look like. They are
+# compared on Linux only — text rasterisation differs between platforms, so a
+# golden captured on macOS fails here for reasons that are not a change.
+#
+# That means they must also be *generated* on Linux. Run this workflow, then
+# download the artifact and commit it.
+on:
+  workflow_dispatch:
+
+jobs:
+  regenerate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - run: flutter pub get
+
+      - name: Regenerate goldens
+        run: flutter test test/golden --update-goldens
+
+      - name: Confirm they now pass
+        run: flutter test test/golden
+
+      - name: Show what changed
+        run: git status --short test/golden
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: goldens
+          path: test/golden/defaults/

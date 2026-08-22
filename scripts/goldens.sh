@@ -2,29 +2,38 @@
 #
 # Regenerates the golden files that lock the package's default appearance.
 #
-# The goldens exist so a change to a default cannot slip through unnoticed: a
-# failure means something now looks different than it did. Regenerate only
-# when the change is intended.
+# Goldens are compared on Linux only, because text rasterisation is not
+# identical across platforms — a golden captured on macOS fails on CI for
+# reasons that are not a change. A tolerance was tried and rejected: any
+# threshold loose enough to absorb that noise also hides real changes.
+#
+# So they have to be generated on Linux too. On Linux this regenerates them
+# directly; anywhere else it points you at the workflow that does.
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-cat <<'WARNING'
-⚠  Goldens are platform-sensitive: font rasterisation differs between macOS,
-   Linux and Windows. CI runs them on ubuntu-latest.
+if [[ "$(uname -s)" != "Linux" ]]; then
+  cat <<'ELSEWHERE'
+Goldens are generated on Linux, and this is not Linux.
 
-   Regenerating on another platform will make CI fail on every future run.
-   Prefer letting CI regenerate them, or run this inside the same image.
+Run the workflow instead:
 
-WARNING
+  gh workflow run goldens.yml
+  gh run download --name goldens --dir test/golden/defaults
 
-read -r -p "Regenerate anyway? [y/N] " reply
-if [[ ! "$reply" =~ ^[Yy]$ ]]; then
-  echo "aborted"
+Then review the diff and commit. Locally the golden tests are skipped, so the
+rest of the suite still runs.
+ELSEWHERE
   exit 1
 fi
 
+echo "▸ regenerating"
 flutter test test/golden --update-goldens
+
+echo "▸ verifying"
+flutter test test/golden
+
 echo
 echo "✓ goldens updated — review the diff before committing"
 git status --short test/golden
