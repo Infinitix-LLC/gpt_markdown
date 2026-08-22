@@ -1,4 +1,8 @@
-<h1 align="center">🚀 gpt_markdown</h1>
+<p align="center">
+  <img src="assets/gpt-mark.png" width="150" alt="gpt_markdown logo">
+</p>
+
+<h1 align="center">gpt_markdown</h1>
 
 <p align="center"><strong>The Flutter renderer for AI output.</strong></p>
 
