@@ -1,34 +1,62 @@
-## Unreleased
+## 1.2.0
 
-* 📐 **Text scaling is now proportional for every component.** A paragraph lays inline children out in *scaled* space — it hands them `maxWidth / scale` and multiplies their reported size back — so a `WidgetSpan` child that also scales its own text was counted twice, and nesting compounded it. Measured at a 2x system font setting: a heading grew 17x, a list 10x, a checkbox 39x.
-  Flutter's contract is that a `WidgetSpan` child does not scale itself; `MediaQuery.withNoTextScaling` exists for exactly this. Nested paragraphs built by `GptMarkdownConfig.getRich` now opt out, as do the list bullet and number, the checkbox and radio markers, and the code block. The root paragraph still scales normally, so text grows as the user asked.
-  `GptMarkdownConfig.getRich` no longer forwards `textScaler` to nested paragraphs either: an explicit scaler on a `Text` beats the ambient `MediaQuery`, so passing it there defeated the opt-out and the `GptMarkdown.textScaler` parameter still double-counted — 978 points where the platform route gave 378. Both routes now agree exactly.
-  Consumer widgets get the same treatment: a `WidgetSpan` returned from an `InlinePattern` builder, and anything passed to `baselineWidgetSpan`, are wrapped too — a chip was growing 3.8x at a 2x setting while the text beside it grew 2x.
-  Measured after, at a width where nothing rewraps: paragraphs, inline code, headings, links, bullet and ordered lists, checkboxes, radio buttons, blockquotes, tables, code blocks and rules are all **exactly 2.0x at 2x and 3.0x at 3x**.
+Upgrading from 1.1.x? See [MIGRATION.md](MIGRATION.md).
 
-* 🔗 **Bare URLs, `www.` hosts and email addresses are now links.** `AutolinkMd` implements the GFM autolink extension — including the two rules everyone gets wrong: trailing punctuation is excluded (`see https://x.com.` leaves the period out), and a trailing `)` is part of the link only when the parentheses balance. `<https://x.com>`, `<mailto:a@b.com>` and `<a@b.com>` follow CommonMark §6.5. On by default; set `autolink: false` to render URLs as plain text.
-  Doing this as a component rather than a pre-processor removes a whole class of bug: `**https://x.com**` used to become `[https://x.com](https://x.com**)` in downstream normalizers, because they cannot tell where the Markdown ends and the URL starts. `BoldMd` matches first, strips the `**`, and the autolink only ever sees a clean URL. Inline code, headings and table cells behave the same way.
-* 🔐 **`autolinkSchemes`** opts extra schemes into *bare* linking — `http`, `https`, `mailto` and `xmpp` are linked without it, and a bare `myapp://thing` is not, since it is usually not meant as a link. `<...>` autolinks accept any scheme, as CommonMark specifies.
-* 🐛 **Component dispatch mis-anchored alternations.** `generate` re-tested each component with `'^\$pattern\$'`, which binds `^` to the first alternative and `\$` to the last, so a component whose pattern contained a top-level `|` claimed matches it did not cover — and, being earlier in the list, stole them from the component that did. Now anchored as `'^(?:\$pattern)\$'`. `HrLine` and any consumer component with alternation were affected.
-* 🐛 **Theme changes did not repaint.** Colours are resolved while the spans are built, not while they are painted — link colours from `GptMarkdownTheme`, inline code and headings from the ambient `ColorScheme`. `MdWidget` caches those spans and only regenerated them when the text or the config changed, so a light/dark switch, a new `GptMarkdownTheme`, or a text-direction change left the previous theme's colours on screen. It regenerates on `didChangeDependencies` now, and builds with its own element's context so the inherited dependency is registered where it can be notified.
-* 🐛 **`GptMarkdownConfig.isSame` ignored several fields**, so `MdWidget` kept its cached spans and a runtime change to them rendered nothing new — silently, since the widget did rebuild. `inlineCodeStyle`, `autolink`, `autolinkSchemes`, `inlinePatterns`, `components` and `inlineComponents` are now compared. Swapping a component list at runtime previously had no effect at all. The remaining omissions are the builder closures, which any consumer writing them inline recreates on every build; comparing those would defeat the cache, so a change to one still needs a key or a remount — now stated in the code rather than left as a bare commented-out line.
-* Link rendering moved into a shared `buildLinkSpan`, used by `ATagMd` and `AutolinkMd`, so both honour `linkBuilder`, `onLinkTap` and the theme's link colours identically.
+### Changed
 
-* 💅 **Inline `code` is drawn as a rounded chip, and it wraps.** Flutter gives a span one decoration slot — `TextStyle.background`, a single `Paint` — which is a fill *or* a stroke, with no radius and no padding. The usual answer is a `WidgetSpan` holding a `Container`, which cannot wrap, breaks selection, sits off the baseline and does not paint on iOS inside a link label. Instead inline code stays a plain `TextSpan` and the chip is painted underneath the paragraph, once per line fragment — the same thing CSS calls `box-decoration-break: clone`. Long inline code now wraps and gets one chip per line. The default is monospace (the bundled JetBrains Mono, matching fenced blocks), a tinted fill, an outline and a 4px radius, with no horizontal padding so the surrounding words keep their normal spacing, all derived from the ambient `ColorScheme` and stepped up on dark schemes, where a light tint over a dark ground separates less than the reverse. **This changes how inline code looks in every app.**
-* 🎛️ **`InlineCodeStyle`** configures it: `fontFamily`, `fontFamilyPackage`, `fontFamilyFallback`, `fontSizeFactor`, `fontWeight`, `color`, `backgroundColor`, `borderColor`, `borderWidth`, `borderRadius`, `padding`, `boxHeightStyle`. Every field is optional and falls back to a scheme-derived default, so one field is a complete override. Pass it per widget as `GptMarkdown.inlineCodeStyle`, or app-wide as `GptMarkdownThemeData.inlineCode`. An app that set only `GptMarkdownThemeData.highlightColor` keeps that colour as the chip fill.
-* 💥 **`highlightBuilder` is gone, replaced by `inlineCodeBuilder`.** The old hook returned a `Widget`, which the package wrapped in a `WidgetSpan` at a hardcoded `PlaceholderAlignment.middle` — off the baseline, unable to wrap, skipped by selection, and blank on iOS inside a link label. `inlineCodeBuilder` returns an `InlineSpan` and receives the resolved `TextStyle` *and* `InlineCodeStyle`, so a builder can keep the painted chip (`CodeTextSpan`), drop it (`TextSpan`), or opt into a widget with `baselineWidgetSpan`, which aligns on the text baseline rather than the line box. Migration is mechanical: `(context, text, style) => MyChip(...)` becomes `(context, code, style, codeStyle) => baselineWidgetSpan(MyChip(...))`.
-* Inline code no longer needs a builder to look right, so `` [`code`](url) `` renders correctly.
-* ⚠️ A paragraph containing inline code (or one needing right-to-left placeholder reordering) now renders through `BidiRichText`, a `RichText` **subclass**. `find.byType(RichText)` matches exact runtime types and will miss those paragraphs; use `find.byWidgetPredicate((w) => w is RichText)`.
-* `BidiRichText` gained `bidiEnabled`, so the reordering probe layout is skipped for paragraphs that cannot need it.
+* Deprecated `highlightBuilder`. Use `inlineCodeStyle` for appearance, or
+  `inlineCodeBuilder` for full control. It still works, is now aligned on the
+  text baseline, and will be removed in 2.0.0.
+* Inline code renders as a monospace chip that wraps across lines. Restyle with
+  `inlineCodeStyle`.
+* Autolinking is on by default. Disable with `autolink: false`, and remove any
+  pre-processor that rewrites bare URLs.
+* `ImageMd`, `TableMd` and `ATagMd` no longer render inside link labels. Custom
+  components opt out with `scopes`.
+* Malformed links and unclaimed matches render as plain text instead of being
+  dropped silently.
+* Component dispatch is anchored as `^(?:pattern)$`, so a pattern containing a
+  top-level `|` no longer claims matches it does not cover.
+* Case-insensitive component patterns now match.
+* Tests using `find.byType(RichText)` need
+  `find.byWidgetPredicate((w) => w is RichText)` — some paragraphs render as a
+  `RichText` subclass.
 
-* 🎯 **Nesting scopes for components.** `MarkdownComponent` gained `scopes`, a set of `MarkdownScope` values (`content`, `linkLabel`, `tableCell`, `heading`) describing where a component may render. It defaults to every scope, so existing components are unaffected. `ATagMd`, `ImageMd` and `TableMd` now opt out of `linkLabel`: a link label is rendered inside the link's own `WidgetSpan`, and a second `WidgetSpan` nested in it does not paint on iOS — `[![alt](img)](url)` and `[#chip](url)` rendered as blank space. Custom components opt out with `Set<MarkdownScope> get scopes => MarkdownComponent.allScopesExceptLinkLabel;`.
-* ✨ **`GptMarkdown.inlinePatterns`.** Register app-specific inline syntaxes — `@mention`, `#channel`, `:emoji:` — without subclassing `InlineMd` or reordering `inlineComponents`. Each `InlinePattern` pairs a `RegExp` with a builder returning an `InlineSpan`, is matched ahead of the built-in components, and by default does not apply inside link labels. `InlinePattern.prefixed` builds the common prefixed-token regex, with an optional generic fallback so an app can choose to claim only names it knows — `#2959` stays an issue number rather than becoming a channel.
-* 🐛 **Text is no longer silently deleted.** `MarkdownComponent.generate` matched with a combined regex and then dispatched with a separate anchored re-test; when the two disagreed the match was dropped and the text vanished with no warning. It now falls back to plain text (and `debugPrint`s in debug builds). `ATagMd` did the same for malformed links such as `[[a](http://x)` and `[label](http://x` — those now render their source text too.
-* 🐛 **Case-insensitive component patterns now match.** The combined regex was always built case-sensitively, so a component declaring `RegExp(..., caseSensitive: false)` never received its matches. The combined regex is now case-insensitive when any component asks for it, and the anchored dispatch re-test preserves each component's flag.
-* ⚡ **Combined regexes are cached.** `generate` recompiled the joined alternation on every call, and it recurses once per nested span. Compiled regexes are now memoised by pattern string (bounded at 64 entries, since components may be built from runtime data).
-* `GptMarkdownConfig` gained `scope` and `inlinePatterns`. `gpt_markdown.dart` now re-exports `custom_widgets/markdown_config.dart`, so `GptMarkdownConfig` and the builder typedefs are available from the main import.
-* 🔡 Fixed inline widgets (LaTeX, images, links) rendering in reverse order when a paragraph mixes right-to-left text with two or more of them — e.g. `واحد $two^2$ ثلاثة أربعة five ستة سبعة $eight^8$` used to swap the two formulas. This works around [flutter/flutter#54400](https://github.com/flutter/flutter/issues/54400), where the engine fills a line's inline-placeholder slots left to right in logical order regardless of the line's direction. Affected paragraphs now render through `BidiText`, which computes the correct visual order per line with the Unicode bidi reordering rule (UAX #9, L2); everything else keeps using a plain `Text`.
-* `GptMarkdownConfig.getRich` now returns `Widget` instead of `Text`.
+### Added
+
+* Streaming reveal for generated replies, off by default:
+  `GptMarkdown(text, animation: GptMarkdownAnimation.fade, isStreaming: true)`.
+  Only the part of the reply that can still change is rebuilt, so the cost per
+  token stays flat as the reply grows. The reveal keeps up with a fast model,
+  fast-forwards when `isStreaming` turns false, and honours reduced motion.
+  See [docs/streaming.md](docs/streaming.md).
+* `GptMarkdownStyleSheet` with twelve per-component style classes, settable per
+  widget or app-wide on `GptMarkdownThemeData`. Unset fields keep the previous
+  defaults.
+* Builders for every component: `blockQuoteBuilder`, `headingBuilder`,
+  `checkboxBuilder`, `radioOptionBuilder`, `hrBuilder`.
+* Callbacks `onCheckboxChanged`, `onCodeCopy`, `onImageTap`, `onSourceTagTap`.
+* `InlinePattern` for app-specific inline syntax such as `@mention`,
+  `#channel` and `:emoji:`, with `InlinePattern.prefixed` for the common case.
+* `MarkdownScope` and `MarkdownComponent.scopes` — components declare which
+  nesting contexts they render in.
+* Autolinks following the GFM autolink extension and CommonMark §6.5, with
+  `autolinkSchemes` for app schemes.
+* `GptMarkdownConfig` and the builder typedefs are exported from the main
+  import.
+
+### Fixed
+
+* Text scaling: components rendered through a `WidgetSpan` reserved up to 39x
+  the space they needed at a 2x system font setting. Every component now scales
+  proportionally.
+* Theme changes did not repaint — colours are resolved when spans are built,
+  and the cache was not invalidated.
+* `GptMarkdownConfig.isSame` ignored several fields, so runtime changes to
+  components, inline patterns and styles did nothing.
+* Inline widgets in right-to-left paragraphs render in visual order
+  ([flutter#54400](https://github.com/flutter/flutter/issues/54400)).
+* `GptMarkdownConfig.getRich` returns `Widget` instead of `Text`.
 
 ## 1.1.8
 

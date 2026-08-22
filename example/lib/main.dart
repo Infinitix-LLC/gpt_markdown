@@ -6,6 +6,7 @@ import 'demo_theme.dart';
 import 'inline_code_demo.dart';
 import 'inline_patterns_demo.dart';
 import 'selection_demo.dart';
+import 'streaming_demo.dart';
 import 'text_scale_demo.dart';
 
 /// Minimal example for gpt_markdown — Markdown & LaTeX renderer for Flutter.
@@ -103,6 +104,13 @@ class ExamplePage extends StatelessWidget {
         title: const Text('gpt_markdown'),
         actions: [
           DemoThemeButton(onToggle: onToggleTheme),
+          IconButton(
+            tooltip: 'Streaming demo',
+            icon: const Icon(Icons.auto_awesome_rounded),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => const StreamingPage()),
+            ),
+          ),
           IconButton(
             tooltip: 'Text scaling demo',
             icon: const Icon(Icons.format_size_rounded),

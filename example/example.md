@@ -1,166 +1,219 @@
-# gpt_markdown example
+# gpt_markdown
 
-Run `flutter run` inside the `example/` directory to see the interactive demo.
+Markdown and LaTeX rendering for Flutter, built for AI chat output.
 
-## main.dart
+Full guides live in [`docs/`](https://github.com/Infinitix-LLC/gpt_markdown/tree/main/docs).
+Run `flutter run` in `example/` for the interactive demos.
+
+---
+
+## 1. Getting started
 
 ```dart
 import 'package:flutter/material.dart';
 import 'package:gpt_markdown/gpt_markdown.dart';
 
-void main() => runApp(const MyApp());
+class AnswerView extends StatelessWidget {
+  const AnswerView({super.key, required this.reply});
 
-const _demoContent = r'''
-# GPT Markdown Demo
+  final String reply;
 
-**Bold**, *italic*, ~~strikethrough~~, and `inline code` all work out of the box.
+  @override
+  Widget build(BuildContext context) {
+    // The widget sizes itself to its content, so give it somewhere to scroll.
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: GptMarkdown(
+        reply,
+        // Links do nothing on their own — the package has no URL launcher.
+        onLinkTap: (url, title) => debugPrint('open $url'),
+      ),
+    );
+  }
+}
+```
 
-[Visit pub.dev](https://pub.dev/packages/gpt_markdown "gpt_markdown on pub.dev")
-
-> Block quotes are great for AI-generated citations.
+Headings, emphasis, lists, task lists, tables, quotes, rules, images, code
+blocks, LaTeX and citations all render out of the box. Bare URLs, `www.` hosts
+and email addresses are linked automatically.
 
 ---
 
-### Unordered list
+## 2. Builders — replacing a widget
 
-- Flutter
-- Dart
-- gpt_markdown
-
-### Ordered list
-
-1. Install the package
-2. Pass your markdown string
-3. Done ✅
-
-### LaTeX
-
-Inline: \(E = mc^2\) and display:
-
-\[
-\int_0^\infty e^{-x^2}\,dx = \frac{\sqrt{\pi}}{2}
-\]
-
-### Table
-
-| Feature     | Supported |
-|-------------|-----------|
-| Markdown    | ✅        |
-| LaTeX       | ✅        |
-| Code blocks | ✅        |
-| Tables      | ✅        |
-| Links       | ✅        |
-
-### Task list
-
-- [x] Install gpt_markdown
-- [x] Render AI responses beautifully
-- [ ] Ship to production
-''';
-
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'GPT Markdown Demo',
-      theme: ThemeData(
-        useMaterial3: true,
-        brightness: Brightness.light,
-        colorSchemeSeed: Colors.blue,
-        extensions: [GptMarkdownThemeData(brightness: Brightness.light)],
-      ),
-      darkTheme: ThemeData(
-        useMaterial3: true,
-        brightness: Brightness.dark,
-        colorSchemeSeed: Colors.blue,
-        extensions: [GptMarkdownThemeData(brightness: Brightness.dark)],
-      ),
-      home: const DemoPage(),
-    );
-  }
-}
-
-class DemoPage extends StatelessWidget {
-  const DemoPage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('GPT Markdown')),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: GptMarkdown(
-          _demoContent,
-          onLinkTap: (url, title) => debugPrint('Link tapped: $url'),
-        ),
-      ),
-    );
-  }
-}
-```
-
-## Code blocks
-
-Fenced code blocks with language tags are syntax-highlighted automatically:
-
-````markdown
-```python
-def greet(name: str) -> str:
-    return f"Hello, {name}!"
-```
-````
-
-## Theme customisation
-
-Wrap with `GptMarkdownTheme` to override colours:
-
-```dart
-GptMarkdownTheme(
-  gptThemeData: GptMarkdownThemeData(
-    brightness: Brightness.light,
-    linkColor: Colors.blue,
-    highlightColor: Colors.amber,
-  ),
-  child: GptMarkdown(markdownContent),
-)
-```
-
-## Text selection
-
-Wrap with Flutter's built-in `SelectionArea` to enable text selection on desktop and web:
-
-```dart
-SelectionArea(
-  child: GptMarkdown(markdownContent),
-)
-```
-
-## Custom table builder
+Use a builder when you need different *structure*. Each one receives the
+resolved style, so it can follow the theme rather than restate it.
 
 ```dart
 GptMarkdown(
-  markdownContent,
-  tableBuilder: (context, tableRows, textStyle, config) {
-    return Table(
-      border: TableBorder.all(color: Colors.grey),
-      children: tableRows.map((row) {
-        return TableRow(
-          decoration: row.isHeader
-              ? const BoxDecoration(color: Color(0xFFEEEEEE))
-              : null,
-          children: row.fields
-              .map((cell) => Padding(
-                    padding: const EdgeInsets.all(8),
-                    child: Text(cell.data, textAlign: cell.alignment),
-                  ))
-              .toList(),
-        );
-      }).toList(),
-    );
-  },
+  reply,
+  // Maths needs a renderer; pick your own engine.
+  latexBuilder: (context, tex, style, inline) => Math.tex(
+    tex,
+    textStyle: style,
+    onErrorFallback: (err) => Text(tex, style: style),
+  ),
+
+  // Cached images with a placeholder.
+  imageBuilder: (context, url, width, height) => CachedNetworkImage(
+    imageUrl: url,
+    width: width,
+    height: height,
+    placeholder: (context, _) => const CircularProgressIndicator(),
+  ),
+
+  // A callout instead of the default quote bar.
+  blockQuoteBuilder: (context, content, style) => Card(
+    color: Theme.of(context).colorScheme.surfaceContainerHighest,
+    child: Padding(padding: const EdgeInsets.all(12), child: content),
+  ),
+
+  // `closed` is false while a fence is still streaming.
+  codeBuilder: (context, name, code, closed) => Container(
+    width: double.infinity,
+    padding: const EdgeInsets.all(12),
+    child: SelectableText(code),
+  ),
 )
 ```
 
-See the [README](https://github.com/Infinitix-LLC/gpt_markdown) and the live [playground](https://gptmarkdown.com/playground).
+Builders exist for every component: `headingBuilder`, `checkboxBuilder`,
+`radioOptionBuilder`, `hrBuilder`, `tableBuilder`, `linkBuilder`,
+`sourceTagBuilder`, `orderedListBuilder`, `unOrderedListBuilder` and
+`inlineCodeBuilder`.
+
+---
+
+## 3. Customizing appearance
+
+For colours, sizes and padding use a style object — not a builder.
+
+**One widget:**
+
+```dart
+GptMarkdown(
+  reply,
+  styleSheet: const GptMarkdownStyleSheet(
+    inlineCode: InlineCodeStyle(fontFamily: 'GeistMono'),
+    blockQuote: BlockQuoteStyle(barWidth: 4, barColor: Colors.indigo),
+    codeBlock: CodeBlockStyle(borderRadius: Radius.circular(12)),
+  ),
+)
+```
+
+**The whole app**, through the theme extension:
+
+```dart
+MaterialApp(
+  theme: ThemeData(
+    useMaterial3: true,
+    extensions: [
+      GptMarkdownThemeData(
+        brightness: Brightness.light,
+        h1: Theme.of(context).textTheme.headlineMedium,
+        styleSheet: const GptMarkdownStyleSheet(
+          link: LinkStyle(decoration: TextDecoration.none),
+          table: TableStyle(cellPadding: EdgeInsets.all(10)),
+          latex: LatexStyle(scrollBlockHorizontally: true),
+        ),
+      ),
+    ],
+  ),
+  // Dark mode needs its own extension, with a matching brightness.
+  darkTheme: ThemeData(
+    useMaterial3: true,
+    brightness: Brightness.dark,
+    extensions: [GptMarkdownThemeData(brightness: Brightness.dark)],
+  ),
+)
+```
+
+A value on the widget wins over the theme **field by field**, so overriding one
+setting never discards the rest. Every field is optional, and unset fields keep
+the package defaults.
+
+Twelve style classes: `HeadingStyle`, `LinkStyle`, `InlineCodeStyle`,
+`ListStyle`, `CheckboxStyle`, `BlockQuoteStyle`, `CodeBlockStyle`,
+`TableStyle`, `ImageStyle`, `HrStyle`, `SourceTagStyle`, `LatexStyle`.
+
+---
+
+## 4. Streaming an AI reply
+
+Rebuild with a longer string as tokens arrive. Only the part that can still
+change is re-rendered, so the cost per token stays flat as the reply grows.
+
+```dart
+GptMarkdown(
+  buffer.toString(),
+  animation: GptMarkdownAnimation.fade,
+  isStreaming: stillGenerating,   // false when the reply finishes
+)
+```
+
+`GptMarkdownAnimation.none` is the default. Setting `isStreaming: false` is
+what triggers the fast-forward, so always flip it when the stream ends.
+
+---
+
+## 5. App-specific inline syntax
+
+`@mention`, `#channel`, `:emoji:` — the package supplies the mechanism, you
+supply the meaning.
+
+```dart
+GptMarkdown(
+  reply,
+  inlinePatterns: [
+    InlinePattern.prefixed(
+      prefix: '#',
+      knownNames: channelNames,   // only these match, so `#2959` stays text
+      builder: (context, match, style) => WidgetSpan(
+        alignment: PlaceholderAlignment.baseline,
+        baseline: TextBaseline.alphabetic,
+        child: ChannelChip(name: match.group(0)!.substring(1)),
+      ),
+    ),
+  ],
+  // Link `myapp://` too. `http`, `https`, `mailto` and `xmpp` are automatic.
+  autolinkSchemes: const {'myapp'},
+)
+```
+
+---
+
+## 6. Other useful bits
+
+```dart
+// Callbacks
+GptMarkdown(
+  reply,
+  onImageTap: (url) => openLightbox(url),
+  onCodeCopy: (code) => showSnackBar('Copied'),
+  onSourceTagTap: (content) => showCitation(content),
+)
+
+// Selection
+SelectionArea(child: GptMarkdown(reply))
+
+// Right to left
+GptMarkdown(reply, textDirection: TextDirection.rtl)
+
+// `$…$` maths instead of `\( … \)`
+GptMarkdown(reply, useDollarSignsForLatex: true)
+
+// Turn autolinking off
+GptMarkdown(reply, autolink: false)
+```
+
+---
+
+## Learn more
+
+| | |
+|---|---|
+| [Getting started](https://github.com/Infinitix-LLC/gpt_markdown/blob/main/docs/getting-started.md) | Install, syntax, taps, LaTeX, RTL |
+| [Customization](https://github.com/Infinitix-LLC/gpt_markdown/blob/main/docs/customization.md) | Every style field and builder |
+| [Streaming](https://github.com/Infinitix-LLC/gpt_markdown/blob/main/docs/streaming.md) | Pacing, performance, limitations |
+| [Inline syntax](https://github.com/Infinitix-LLC/gpt_markdown/blob/main/docs/inline-syntax.md) | Autolinks, patterns, scopes |
+| [Playground](https://gptmarkdown.com/playground) | Try it in the browser |

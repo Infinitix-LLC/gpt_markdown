@@ -122,6 +122,30 @@ class InlineCodeStyle {
   /// metrics. Use [ui.BoxHeightStyle.strut] for chips that fill the line box.
   final ui.BoxHeightStyle? boxHeightStyle;
 
+  /// This style, with any unset field taken from [other], field by field.
+  ///
+  /// Per field, not per object: a style setting only `color` keeps [other]'s
+  /// font, padding and border.
+  InlineCodeStyle merge(InlineCodeStyle? other) {
+    if (other == null) {
+      return this;
+    }
+    return InlineCodeStyle(
+      fontFamily: fontFamily ?? other.fontFamily,
+      fontFamilyPackage: fontFamilyPackage ?? other.fontFamilyPackage,
+      fontFamilyFallback: fontFamilyFallback ?? other.fontFamilyFallback,
+      fontSizeFactor: fontSizeFactor ?? other.fontSizeFactor,
+      fontWeight: fontWeight ?? other.fontWeight,
+      color: color ?? other.color,
+      backgroundColor: backgroundColor ?? other.backgroundColor,
+      borderColor: borderColor ?? other.borderColor,
+      borderWidth: borderWidth ?? other.borderWidth,
+      borderRadius: borderRadius ?? other.borderRadius,
+      padding: padding ?? other.padding,
+      boxHeightStyle: boxHeightStyle ?? other.boxHeightStyle,
+    );
+  }
+
   /// This style with every null field filled in from [scheme].
   InlineCodeStyle resolve(ColorScheme scheme) {
     final hasCustomFamily = fontFamily != null;

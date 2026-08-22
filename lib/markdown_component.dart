@@ -320,29 +320,51 @@ class HTag extends BlockMd {
   ) {
     var theme = GptMarkdownTheme.of(context);
     var match = this.exp.firstMatch(text.trim());
+    final hashes = match?.namedGroup('hash');
+    final level = hashes == null ? 1 : hashes.length;
+    final headingStyle = (resolvedStyleSheet(context, config).heading ??
+            const HeadingStyle())
+        .resolve(Theme.of(context).colorScheme);
+    final levelStyle =
+        [theme.h1, theme.h2, theme.h3, theme.h4, theme.h5, theme.h6][level - 1];
+    final override = headingStyle.textStyle;
     var conf = config.copyWith(
       scope: MarkdownScope.heading,
       style:
-          [
-            theme.h1,
-            theme.h2,
-            theme.h3,
-            theme.h4,
-            theme.h5,
-            theme.h6,
-          ][match![1]!.length - 1],
+          override == null
+              ? levelStyle
+              : (levelStyle ?? const TextStyle()).merge(override),
     );
-    return config.getRich(
+    final headingDividerPadding = headingStyle.dividerPadding;
+    final headingPadding = headingStyle.padding;
+
+    final headingBuilder = config.headingBuilder;
+    if (headingBuilder != null) {
+      final content = config.getRich(
+        TextSpan(
+          children: MarkdownComponent.generate(
+            context,
+            "${match?.namedGroup('data')}",
+            conf,
+            false,
+          ),
+        ),
+      );
+      return headingBuilder(context, level, content, headingStyle);
+    }
+
+    final rich = config.getRich(
       TextSpan(
         children: [
           ...(MarkdownComponent.generate(
             context,
-            "${match.namedGroup('data')}",
+            "${match?.namedGroup('data')}",
             conf,
             false,
           )),
-          if (match.namedGroup('hash')!.length == 1 &&
-              theme.autoAddDividerLineAfterH1) ...[
+          if (level == 1 &&
+              (headingStyle.showDivider ??
+                  theme.autoAddDividerLineAfterH1)) ...[
             const TextSpan(
               text: "\n ",
               style: TextStyle(fontSize: 0, height: 0),
@@ -353,15 +375,22 @@ class HTag extends BlockMd {
             // differ from every other scale.
             WidgetSpan(
               child: CustomDivider(
-                height: theme.hrLineThickness,
-                color: theme.hrLineColor,
-                padding: theme.hrLinePadding,
+                height: headingStyle.dividerThickness ?? theme.hrLineThickness,
+                color: headingStyle.dividerColor ?? theme.hrLineColor,
+                padding:
+                    headingDividerPadding is EdgeInsets
+                        ? headingDividerPadding
+                        : theme.hrLinePadding,
               ),
             ),
           ],
         ],
       ),
     );
+    if (headingPadding == null) {
+      return rich;
+    }
+    return Padding(padding: headingPadding, child: rich);
   }
 }
 
@@ -396,10 +425,17 @@ class HrLine extends BlockMd {
     final GptMarkdownConfig config,
   ) {
     final gptTheme = GptMarkdownTheme.of(context);
+    final style = (resolvedStyleSheet(context, config).hr ?? const HrStyle())
+        .resolve(Theme.of(context).colorScheme);
+    final builder = config.hrBuilder;
+    if (builder != null) {
+      return builder(context, style);
+    }
+    final padding = style.padding;
     return CustomDivider(
-      height: gptTheme.hrLineThickness,
-      color: gptTheme.hrLineColor,
-      padding: gptTheme.hrLinePadding,
+      height: style.thickness ?? gptTheme.hrLineThickness,
+      color: style.color ?? gptTheme.hrLineColor,
+      padding: padding is EdgeInsets ? padding : gptTheme.hrLinePadding,
     );
   }
 }
@@ -416,10 +452,22 @@ class CheckBoxMd extends BlockMd {
     final GptMarkdownConfig config,
   ) {
     var match = this.exp.firstMatch(text.trim());
+    final style = (resolvedStyleSheet(context, config).checkbox ??
+            const CheckboxStyle())
+        .resolve(Theme.of(context).colorScheme);
+    final checked = "${match?[1]}" == "x";
+    final label = MdWidget(context, "${match?[2]}", false, config: config);
+    final builder = config.checkboxBuilder;
+    if (builder != null) {
+      return builder(context, checked, label, style);
+    }
     return CustomCb(
-      value: ("${match?[1]}" == "x"),
+      value: checked,
       textDirection: config.textDirection,
-      child: MdWidget(context, "${match?[2]}", false, config: config),
+      spacing: style.gapAfterBox ?? 5,
+      style: style,
+      onChanged: config.onCheckboxChanged,
+      child: label,
     );
   }
 }
@@ -436,10 +484,22 @@ class RadioButtonMd extends BlockMd {
     final GptMarkdownConfig config,
   ) {
     var match = this.exp.firstMatch(text.trim());
+    final style = (resolvedStyleSheet(context, config).checkbox ??
+            const CheckboxStyle())
+        .resolve(Theme.of(context).colorScheme);
+    final selected = "${match?[1]}" == "x";
+    final label = MdWidget(context, "${match?[2]}", false, config: config);
+    final builder = config.radioOptionBuilder;
+    if (builder != null) {
+      return builder(context, selected, label, style);
+    }
     return CustomRb(
-      value: ("${match?[1]}" == "x"),
+      value: selected,
       textDirection: config.textDirection,
-      child: MdWidget(context, "${match?[2]}", false, config: config),
+      spacing: style.gapAfterBox ?? 5,
+      style: style,
+      onChanged: config.onCheckboxChanged,
+      child: label,
     );
   }
 }
@@ -479,33 +539,79 @@ class BlockQuote extends InlineMd {
       }
     }
     var data = dataBuilder.toString().trim();
-    var child = TextSpan(
-      children: MarkdownComponent.generate(context, data, config, true),
+    var quotedConfig = config;
+    final style = (resolvedStyleSheet(context, config).blockQuote ??
+            const BlockQuoteStyle())
+        .resolve(Theme.of(context).colorScheme);
+    final textStyle = style.textStyle;
+    if (textStyle != null) {
+      final base = config.style;
+      quotedConfig = config.copyWith(
+        style: base == null ? textStyle : base.merge(textStyle),
+      );
+    }
+    final content = quotedConfig.getRich(
+      TextSpan(
+        children: MarkdownComponent.generate(context, data, quotedConfig, true),
+      ),
     );
+
+    final builder = config.blockQuoteBuilder;
+    final Widget quote;
+    if (builder == null) {
+      quote = _defaultQuote(context, content, style, config.textDirection);
+    } else {
+      quote = builder(context, content, style);
+    }
+
     return TextSpan(
       children: [
         scaledWidgetSpan(
           config: config,
           alignment: PlaceholderAlignment.bottom,
           baseline: null,
-          child: Directionality(
-            textDirection: config.textDirection,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 2),
-              child: BlockQuoteWidget(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-                direction: config.textDirection,
-                width: 3,
-                child: Padding(
-                  padding: const EdgeInsetsDirectional.only(start: 8.0),
-                  child: config.getRich(child),
-                ),
-              ),
-            ),
-          ),
+          child: quote,
         ),
       ],
     );
+  }
+
+  Widget _defaultQuote(
+    BuildContext context,
+    Widget content,
+    BlockQuoteStyle style,
+    TextDirection direction,
+  ) {
+    final padding = style.padding;
+    final margin = style.margin;
+    final background = style.backgroundColor;
+    final barColor = style.barColor;
+    final barWidth = style.barWidth;
+
+    Widget child = content;
+    if (padding != null) {
+      child = Padding(padding: padding, child: child);
+    }
+    child = BlockQuoteWidget(
+      color: barColor ?? Theme.of(context).colorScheme.onSurfaceVariant,
+      direction: direction,
+      width: barWidth ?? 3,
+      child: child,
+    );
+    if (background != null) {
+      final radius = style.barRadius;
+      child = DecoratedBox(
+        decoration: BoxDecoration(
+          color: background,
+          borderRadius: radius == null ? null : BorderRadius.all(radius),
+        ),
+        child: child,
+      );
+    }
+    if (margin != null) {
+      child = Padding(padding: margin, child: child);
+    }
+    return Directionality(textDirection: direction, child: child);
   }
 }
 
@@ -529,19 +635,32 @@ class UnOrderedList extends BlockMd {
           child,
           config.copyWith(),
         ) ??
-        UnorderedListView(
-          bulletColor:
-              (config.style?.color ?? DefaultTextStyle.of(context).style.color),
-          padding: 7,
-          spacing: 10,
-          bulletSize:
-              0.3 *
-              (config.style?.fontSize ??
-                  DefaultTextStyle.of(context).style.fontSize ??
-                  kDefaultFontSize),
-          textDirection: config.textDirection,
-          child: child,
-        );
+        _unorderedListView(context, config, child);
+  }
+
+  Widget _unorderedListView(
+    BuildContext context,
+    GptMarkdownConfig config,
+    Widget child,
+  ) {
+    final style = (resolvedStyleSheet(context, config).list ??
+            const ListStyle())
+        .resolve(Theme.of(context).colorScheme);
+    final fontSize =
+        config.style?.fontSize ??
+        DefaultTextStyle.of(context).style.fontSize ??
+        kDefaultFontSize;
+    return UnorderedListView(
+      bulletColor:
+          style.bulletColor ??
+          config.style?.color ??
+          DefaultTextStyle.of(context).style.color,
+      padding: style.indent ?? 7,
+      spacing: style.gapAfterMarker ?? 10,
+      bulletSize: style.bulletSize ?? 0.3 * fontSize,
+      textDirection: config.textDirection,
+      child: child,
+    );
   }
 }
 
@@ -567,14 +686,32 @@ class OrderedList extends BlockMd {
           child,
           config.copyWith(),
         ) ??
-        OrderedListView(
-          no: "$no.",
-          textDirection: config.textDirection,
-          style: (config.style ?? const TextStyle()).copyWith(
-            fontWeight: FontWeight.w100,
-          ),
-          child: child,
-        );
+        _orderedListView(context, config, no, child);
+  }
+
+  Widget _orderedListView(
+    BuildContext context,
+    GptMarkdownConfig config,
+    String no,
+    Widget child,
+  ) {
+    final style = (resolvedStyleSheet(context, config).list ??
+            const ListStyle())
+        .resolve(Theme.of(context).colorScheme);
+    final marker = style.markerTextStyle;
+    final base = (config.style ?? const TextStyle()).copyWith(
+      fontWeight: FontWeight.w100,
+    );
+    return OrderedListView(
+      no: "$no.",
+      textDirection: config.textDirection,
+      style: marker == null ? base : base.merge(marker),
+      // 6 is what `OrderedListView` used before this was configurable; the
+      // bullet list uses different numbers, so neither is a shared default.
+      padding: style.indent ?? 6,
+      spacing: style.gapAfterMarker ?? 6,
+      child: child,
+    );
   }
 }
 
@@ -603,6 +740,17 @@ class HighlightedText extends InlineMd {
     final builder = config.inlineCodeBuilder;
     if (builder != null) {
       return builder(context, highlightedText, textStyle, codeStyle);
+    }
+
+    // ignore: deprecated_member_use_from_same_package
+    final legacyBuilder = config.highlightBuilder;
+    if (legacyBuilder != null) {
+      // Kept so 1.1.x code compiles. Wrapped on the baseline rather than at
+      // the old hardcoded `PlaceholderAlignment.middle`, which sat visibly off
+      // the surrounding text.
+      return baselineWidgetSpan(
+        legacyBuilder(context, highlightedText, config.style ?? textStyle),
+      );
     }
 
     return CodeTextSpan(
@@ -762,12 +910,41 @@ class LatexMathMultiLine extends BlockMd {
                 },
               ),
             );
-    return builder(
+    final latexStyle = (resolvedStyleSheet(context, config).latex ??
+            const LatexStyle())
+        .resolve(Theme.of(context).colorScheme);
+    final override = latexStyle.textStyle;
+    final base = config.style ?? const TextStyle();
+    Widget maths = builder(
       context,
       workaround(mathText),
-      config.style ?? const TextStyle(),
+      override == null ? base : base.merge(override),
       false,
     );
+
+    if (latexStyle.scrollBlockHorizontally ?? false) {
+      // Rendered maths cannot wrap, so a wide formula overflows a phone.
+      maths = SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: maths,
+      );
+    }
+    final background = latexStyle.backgroundColor;
+    if (background != null) {
+      final radius = latexStyle.borderRadius;
+      maths = DecoratedBox(
+        decoration: BoxDecoration(
+          color: background,
+          borderRadius: radius == null ? null : BorderRadius.all(radius),
+        ),
+        child: maths,
+      );
+    }
+    final padding = latexStyle.padding;
+    if (padding != null) {
+      maths = Padding(padding: padding, child: maths);
+    }
+    return maths;
   }
 }
 
@@ -837,12 +1014,17 @@ class LatexMath extends InlineMd {
                 },
               ),
             );
+    final latexStyle = (resolvedStyleSheet(context, config).latex ??
+            const LatexStyle())
+        .resolve(Theme.of(context).colorScheme);
+    final latexOverride = latexStyle.textStyle;
+    final base = config.style ?? const TextStyle();
     return scaledWidgetSpan(
       config: config,
       child: builder(
         context,
         workaround(mathText),
-        config.style ?? const TextStyle(),
+        latexOverride == null ? base : base.merge(latexOverride),
         true,
       ),
     );
@@ -865,34 +1047,50 @@ class SourceTag extends InlineMd {
     if (content == null) {
       return const TextSpan();
     }
+    final style = (resolvedStyleSheet(context, config).sourceTag ??
+            const SourceTagStyle())
+        .resolve(Theme.of(context).colorScheme);
+    final size = style.size ?? 20;
+    Widget chip =
+        config.sourceTagBuilder?.call(
+          context,
+          content,
+          style.textStyle ?? const TextStyle(),
+        ) ??
+        SizedBox(
+          width: size,
+          height: size,
+          child: Material(
+            color:
+                style.backgroundColor ??
+                Theme.of(context).colorScheme.onInverseSurface,
+            shape:
+                style.shape == BoxShape.rectangle
+                    ? const RoundedRectangleBorder()
+                    : const OvalBorder(),
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                content,
+                style: style.textStyle,
+                textDirection: config.textDirection,
+              ),
+            ),
+          ),
+        );
+
+    final onTap = config.onSourceTagTap;
+    if (onTap != null) {
+      chip = GestureDetector(onTap: () => onTap(content), child: chip);
+    }
+
     return scaledWidgetSpan(
       config: config,
       alignment: PlaceholderAlignment.middle,
       baseline: null,
       child: Padding(
-        padding: const EdgeInsets.all(2),
-        child:
-            config.sourceTagBuilder?.call(
-              context,
-              content,
-              const TextStyle(),
-            ) ??
-            SizedBox(
-              width: 20,
-              height: 20,
-              child: Material(
-                color: Theme.of(context).colorScheme.onInverseSurface,
-                shape: const OvalBorder(),
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Text(
-                    content,
-                    // style: (style ?? const TextStyle()).copyWith(),
-                    textDirection: config.textDirection,
-                  ),
-                ),
-              ),
-            ),
+        padding: style.padding ?? const EdgeInsets.all(2),
+        child: chip,
       ),
     );
   }
@@ -987,6 +1185,19 @@ class ATagMd extends InlineMd {
   }
 }
 
+/// The style sheet in force: the widget's, merged over the theme's, field by
+/// field, with anything still unset resolved to the package default.
+///
+/// Kept in one place so every component resolves its style the same way and a
+/// widget override never discards the rest of the theme.
+GptMarkdownStyleSheet resolvedStyleSheet(
+  BuildContext context,
+  GptMarkdownConfig config,
+) {
+  final widgetSheet = config.styleSheet ?? const GptMarkdownStyleSheet();
+  return widgetSheet.merge(GptMarkdownTheme.of(context).styleSheet);
+}
+
 /// A [WidgetSpan] for an inline widget.
 ///
 /// Note for anyone touching text scaling: a paragraph lays inline children out
@@ -1020,6 +1231,12 @@ InlineSpan buildLinkSpan(
   bool parseLabel = true,
 }) {
   final theme = GptMarkdownTheme.of(context);
+  final linkStyleSpec = (resolvedStyleSheet(context, config).link ??
+          const LinkStyle())
+      .resolve(Theme.of(context).colorScheme);
+  final baseColor = linkStyleSpec.color ?? theme.linkColor;
+  final hoverColor = linkStyleSpec.hoverColor ?? theme.linkHoverColor;
+  final decoration = linkStyleSpec.decoration ?? TextDecoration.underline;
   final builder = config.linkBuilder;
 
   List<InlineSpan> labelSpans(TextStyle style) {
@@ -1037,9 +1254,11 @@ InlineSpan buildLinkSpan(
   if (builder != null) {
     // Build a styled span to hand off to the custom linkBuilder.
     final linkStyle = (config.style ?? const TextStyle()).copyWith(
-      color: theme.linkColor,
-      decorationColor: theme.linkColor,
-      decoration: TextDecoration.underline,
+      color: baseColor,
+      decorationColor: baseColor,
+      decoration: decoration,
+      decorationThickness: linkStyleSpec.decorationThickness,
+      fontWeight: linkStyleSpec.fontWeight,
     );
     return scaledWidgetSpan(
       config: config,
@@ -1060,8 +1279,8 @@ InlineSpan buildLinkSpan(
   return scaledWidgetSpan(
     config: config,
     child: LinkButton(
-      hoverColor: theme.linkHoverColor,
-      color: theme.linkColor,
+      hoverColor: hoverColor,
+      color: baseColor,
       onPressed: () => config.onLinkTap?.call(url, label),
       text: label,
       config: config,
@@ -1069,7 +1288,9 @@ InlineSpan buildLinkSpan(
         final spanStyle = (config.style ?? const TextStyle()).copyWith(
           color: color,
           decorationColor: color,
-          decoration: TextDecoration.underline,
+          decoration: decoration,
+          decorationThickness: linkStyleSpec.decorationThickness,
+          fontWeight: linkStyleSpec.fontWeight,
         );
         return TextSpan(children: labelSpans(spanStyle), style: spanStyle);
       },
@@ -1169,11 +1390,33 @@ class ImageMd extends InlineMd {
         ),
       );
     }
+    final imageStyle = (resolvedStyleSheet(context, config).image ??
+            const ImageStyle())
+        .resolve(Theme.of(context).colorScheme);
+    Widget decorated = image;
+    final imageRadius = imageStyle.borderRadius;
+    if (imageRadius != null) {
+      decorated = ClipRRect(
+        borderRadius: BorderRadius.all(imageRadius),
+        child: decorated,
+      );
+    }
+    final imagePadding = imageStyle.padding;
+    if (imagePadding != null) {
+      decorated = Padding(padding: imagePadding, child: decorated);
+    }
+    final onImageTap = config.onImageTap;
+    if (onImageTap != null) {
+      decorated = GestureDetector(
+        onTap: () => onImageTap(url),
+        child: decorated,
+      );
+    }
     return scaledWidgetSpan(
       config: config,
       alignment: PlaceholderAlignment.bottom,
       baseline: null,
-      child: image,
+      child: decorated,
     );
   }
 }
@@ -1193,6 +1436,10 @@ class TableMd extends BlockMd {
     String text,
     final GptMarkdownConfig config,
   ) {
+    final tableStyle = (resolvedStyleSheet(context, config).table ??
+            const TableStyle())
+        .resolve(Theme.of(context).colorScheme);
+    final tableRadius = tableStyle.borderRadius;
     final List<Map<int, String>> value =
         text
             .split('\n')
@@ -1291,8 +1538,14 @@ class TableMd extends BlockMd {
           defaultColumnWidth: CustomTableColumnWidth(),
           defaultVerticalAlignment: TableCellVerticalAlignment.middle,
           border: TableBorder.all(
-            width: 1,
-            color: Theme.of(context).colorScheme.onSurface,
+            width: tableStyle.borderWidth ?? 1,
+            color:
+                tableStyle.borderColor ??
+                Theme.of(context).colorScheme.onSurface,
+            borderRadius:
+                tableRadius == null
+                    ? BorderRadius.zero
+                    : BorderRadius.all(tableRadius),
           ),
           children:
               value
@@ -1311,6 +1564,7 @@ class TableMd extends BlockMd {
                           (hasHeader && entry.key == 0)
                               ? BoxDecoration(
                                 color:
+                                    tableStyle.headerBackground ??
                                     Theme.of(
                                       context,
                                     ).colorScheme.surfaceContainerHighest,
@@ -1326,10 +1580,12 @@ class TableMd extends BlockMd {
 
                         // Apply alignment based on column alignment
                         Widget content = Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
-                          ),
+                          padding:
+                              tableStyle.cellPadding ??
+                              const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
                           child: MdWidget(
                             context,
                             (e[index] ?? "").trim(),
@@ -1385,8 +1641,16 @@ class CodeBlockMd extends BlockMd {
     codes = codes.replaceAll(r"```", "");
     bool closed = text.endsWith("```");
 
+    final style = (resolvedStyleSheet(context, config).codeBlock ??
+            const CodeBlockStyle())
+        .resolve(Theme.of(context).colorScheme);
     return config.codeBuilder?.call(context, name, codes, closed) ??
-        CodeField(name: name, codes: codes);
+        CodeField(
+          name: name,
+          codes: codes,
+          style: style,
+          onCopy: config.onCodeCopy,
+        );
   }
 }
 

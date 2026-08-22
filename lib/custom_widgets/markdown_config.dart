@@ -60,6 +60,17 @@ typedef TableBuilder =
       GptMarkdownConfig config,
     );
 
+/// A builder function for the highlight.
+@Deprecated(
+  'Use InlineCodeBuilder via GptMarkdown.inlineCodeBuilder. '
+  'This returns a Widget, which the package has to wrap in a WidgetSpan: it '
+  'sits off the baseline, cannot wrap across lines, is skipped by text '
+  'selection, and does not paint on iOS inside a link label. '
+  'Will be removed in 2.0.0.',
+)
+typedef HighlightBuilder =
+    Widget Function(BuildContext context, String text, TextStyle style);
+
 /// Builds the span for one run of inline `` `code` ``.
 ///
 /// [code] is the text between the backticks, [style] is the resolved code
@@ -88,6 +99,64 @@ typedef InlineCodeBuilder =
       String code,
       TextStyle style,
       InlineCodeStyle codeStyle,
+    );
+
+/// Builds the widget for a `#` heading.
+///
+/// [level] is 1 to 6, [content] is the rendered heading text, and [style] is
+/// the resolved [HeadingStyle]. A builder owns the whole heading, including
+/// the rule an h1 draws by default — check `style.showDivider` if you want to
+/// keep that behaviour.
+typedef HeadingBuilder =
+    Widget Function(
+      BuildContext context,
+      int level,
+      Widget content,
+      HeadingStyle style,
+    );
+
+/// Builds the widget for a task-list checkbox and its label.
+///
+/// [checked] is the state parsed from the source, [content] is the rendered
+/// label, and [style] is the resolved [CheckboxStyle]. Wire taps through
+/// `GptMarkdown.onCheckboxChanged` — the source text is the model, so nothing
+/// changes state on its own.
+typedef CheckboxBuilder =
+    Widget Function(
+      BuildContext context,
+      bool checked,
+      Widget content,
+      CheckboxStyle style,
+    );
+
+/// Builds the widget for a radio option and its label.
+///
+/// [selected] is the state parsed from the source, [content] is the rendered
+/// label, and [style] is the resolved [CheckboxStyle].
+typedef RadioOptionBuilder =
+    Widget Function(
+      BuildContext context,
+      bool selected,
+      Widget content,
+      CheckboxStyle style,
+    );
+
+/// Builds the widget for a horizontal rule.
+///
+/// [style] is the resolved [HrStyle], so a builder can follow the theme's
+/// thickness and colour rather than restating them.
+typedef HrBuilder = Widget Function(BuildContext context, HrStyle style);
+
+/// Builds the widget for a blockquote.
+///
+/// [content] is the already-rendered quoted content, and [style] is the
+/// resolved [BlockQuoteStyle] — reuse its colours rather than hard-coding your
+/// own, so the quote still follows the theme.
+typedef BlockQuoteBuilder =
+    Widget Function(
+      BuildContext context,
+      Widget content,
+      BlockQuoteStyle style,
     );
 
 /// A builder function for the image.
@@ -121,6 +190,8 @@ class GptMarkdownConfig {
     this.codeBuilder,
     this.sourceTagBuilder,
     this.inlineCodeBuilder,
+    @Deprecated('Use inlineCodeBuilder. Will be removed in 2.0.0.')
+    this.highlightBuilder,
     this.orderedListBuilder,
     this.unOrderedListBuilder,
     this.linkBuilder,
@@ -132,6 +203,16 @@ class GptMarkdownConfig {
     this.inlinePatterns,
     this.tableBuilder,
     this.inlineCodeStyle,
+    this.styleSheet,
+    this.blockQuoteBuilder,
+    this.headingBuilder,
+    this.checkboxBuilder,
+    this.radioOptionBuilder,
+    this.hrBuilder,
+    this.onCheckboxChanged,
+    this.onCodeCopy,
+    this.onImageTap,
+    this.onSourceTagTap,
     this.autolink = true,
     this.autolinkSchemes = const <String>{},
     this.scope = MarkdownScope.content,
@@ -182,6 +263,15 @@ class GptMarkdownConfig {
   /// Builds the span for inline `` `code` ``, overriding the default chip.
   final InlineCodeBuilder? inlineCodeBuilder;
 
+  /// Builds a widget for inline `` `code` ``.
+  ///
+  /// Used only when [inlineCodeBuilder] is null. The result is wrapped in a
+  /// baseline-aligned [WidgetSpan], which is the shape that made this hook a
+  /// problem — prefer [inlineCodeBuilder], or [GptMarkdown.inlineCodeStyle]
+  /// when you only want to restyle.
+  @Deprecated('Use inlineCodeBuilder. Will be removed in 2.0.0.')
+  final HighlightBuilder? highlightBuilder;
+
   /// The link builder.
   final LinkBuilder? linkBuilder;
 
@@ -199,6 +289,39 @@ class GptMarkdownConfig {
 
   /// Overrides the themed inline `code` style for this widget only.
   final InlineCodeStyle? inlineCodeStyle;
+
+  /// Per-component appearance for this widget. See [GptMarkdown.styleSheet].
+  final GptMarkdownStyleSheet? styleSheet;
+
+  /// Replaces the whole blockquote widget.
+  final BlockQuoteBuilder? blockQuoteBuilder;
+
+  /// Replaces the whole heading widget.
+  final HeadingBuilder? headingBuilder;
+
+  /// Replaces the whole checkbox row.
+  final CheckboxBuilder? checkboxBuilder;
+
+  /// Replaces the whole radio row.
+  final RadioOptionBuilder? radioOptionBuilder;
+
+  /// Replaces the horizontal rule.
+  final HrBuilder? hrBuilder;
+
+  /// Called when a task-list checkbox is tapped.
+  ///
+  /// Only fires when `CheckboxStyle.interactive` is set — Markdown checkboxes
+  /// are a rendering of the source text, so they are read-only by default.
+  final void Function(bool value)? onCheckboxChanged;
+
+  /// Called with the code after a code block's copy button is used.
+  final void Function(String code)? onCodeCopy;
+
+  /// Called with the image URL when an image is tapped.
+  final void Function(String url)? onImageTap;
+
+  /// Called with the tag content when a `[1]` citation chip is tapped.
+  final void Function(String content)? onSourceTagTap;
 
   /// Whether bare URLs, `www.` hosts, emails and `<...>` autolinks are linked.
   final bool autolink;
@@ -232,6 +355,8 @@ class GptMarkdownConfig {
     final int? maxLines,
     final TextOverflow? overflow,
     final InlineCodeBuilder? inlineCodeBuilder,
+    @Deprecated('Use inlineCodeBuilder. Will be removed in 2.0.0.')
+    final HighlightBuilder? highlightBuilder,
     final LinkBuilder? linkBuilder,
     final ImageBuilder? imageBuilder,
     final OrderedListBuilder? orderedListBuilder,
@@ -241,6 +366,16 @@ class GptMarkdownConfig {
     final List<InlinePattern>? inlinePatterns,
     final TableBuilder? tableBuilder,
     final InlineCodeStyle? inlineCodeStyle,
+    final GptMarkdownStyleSheet? styleSheet,
+    final BlockQuoteBuilder? blockQuoteBuilder,
+    final HeadingBuilder? headingBuilder,
+    final CheckboxBuilder? checkboxBuilder,
+    final RadioOptionBuilder? radioOptionBuilder,
+    final HrBuilder? hrBuilder,
+    final void Function(bool value)? onCheckboxChanged,
+    final void Function(String code)? onCodeCopy,
+    final void Function(String url)? onImageTap,
+    final void Function(String content)? onSourceTagTap,
     final bool? autolink,
     final Set<String>? autolinkSchemes,
     final MarkdownScope? scope,
@@ -259,6 +394,8 @@ class GptMarkdownConfig {
       maxLines: maxLines ?? this.maxLines,
       overflow: overflow ?? this.overflow,
       inlineCodeBuilder: inlineCodeBuilder ?? this.inlineCodeBuilder,
+      // ignore: deprecated_member_use_from_same_package
+      highlightBuilder: highlightBuilder ?? this.highlightBuilder,
       linkBuilder: linkBuilder ?? this.linkBuilder,
       imageBuilder: imageBuilder ?? this.imageBuilder,
       orderedListBuilder: orderedListBuilder ?? this.orderedListBuilder,
@@ -268,6 +405,16 @@ class GptMarkdownConfig {
       inlinePatterns: inlinePatterns ?? this.inlinePatterns,
       tableBuilder: tableBuilder ?? this.tableBuilder,
       inlineCodeStyle: inlineCodeStyle ?? this.inlineCodeStyle,
+      styleSheet: styleSheet ?? this.styleSheet,
+      blockQuoteBuilder: blockQuoteBuilder ?? this.blockQuoteBuilder,
+      headingBuilder: headingBuilder ?? this.headingBuilder,
+      checkboxBuilder: checkboxBuilder ?? this.checkboxBuilder,
+      radioOptionBuilder: radioOptionBuilder ?? this.radioOptionBuilder,
+      hrBuilder: hrBuilder ?? this.hrBuilder,
+      onCheckboxChanged: onCheckboxChanged ?? this.onCheckboxChanged,
+      onCodeCopy: onCodeCopy ?? this.onCodeCopy,
+      onImageTap: onImageTap ?? this.onImageTap,
+      onSourceTagTap: onSourceTagTap ?? this.onSourceTagTap,
       autolink: autolink ?? this.autolink,
       autolinkSchemes: autolinkSchemes ?? this.autolinkSchemes,
       scope: scope ?? this.scope,
@@ -341,6 +488,7 @@ class GptMarkdownConfig {
         // output.
         setEquals(autolinkSchemes, other.autolinkSchemes) &&
         inlineCodeStyle == other.inlineCodeStyle &&
+        styleSheet == other.styleSheet &&
         // `InlinePattern` holds a builder closure and has no value equality,
         // so this falls back to element identity. A consumer that rebuilds the
         // list inline pays a regeneration per rebuild — the safe direction.
