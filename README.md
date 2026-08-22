@@ -1,68 +1,167 @@
-# ✨ gpt_markdown — Render AI Answers Beautifully in Flutter
+# 📦 GPT Markdown & LaTeX for Flutter
 
 [![CI](https://github.com/Infinitix-LLC/gpt_markdown/actions/workflows/ci.yml/badge.svg)](https://github.com/Infinitix-LLC/gpt_markdown/actions/workflows/ci.yml) [![Pub Version](https://img.shields.io/pub/v/gpt_markdown)](https://pub.dev/packages/gpt_markdown) [![Pub Likes](https://img.shields.io/pub/likes/gpt_markdown)](https://pub.dev/packages/gpt_markdown) [![Pub Points](https://img.shields.io/pub/points/gpt_markdown)](https://pub.dev/packages/gpt_markdown) [![GitHub](https://img.shields.io/badge/github-gpt__markdown-blue?logo=github)](https://github.com/Infinitix-LLC/gpt_markdown)
 
-One native Flutter widget for the full shape of a modern AI answer: streaming
-Markdown, LaTeX, code, tables, links, images, citations, task lists, and the
-product-specific components your assistant needs.
+A production-ready Flutter package for rendering rich Markdown and LaTeX in
+your app—built for AI output from ChatGPT, Gemini, Claude, and any model that
+speaks Markdown. Render explanations, formulas, code, tables, links, images,
+citations, and interactive lists in one native Flutter surface.
 
-Built for ChatGPT, Gemini, Claude, and any model that returns Markdown.
+Use it as a drop-in alternative to `flutter_markdown` when your app needs
+first-class LaTeX, streaming responses, rich customization, and AI-oriented
+interactions.
 
 🌐 [gptmarkdown.com](https://gptmarkdown.com) · 📖 [Documentation](https://gptmarkdown.com/docs) · 🎮 [Live Playground](https://gptmarkdown.com/playground)
 
-<p align="center">
-  <img
-    width="614"
-    alt="A complete AI response rendered by gpt_markdown in Flutter"
-    src="https://github.com/Infinitix-LLC/gpt_markdown/assets/59507062/8f4a4068-a12c-45d1-a954-ebaf3822e754"
-  >
-</p>
+---
 
-<p align="center"><em>Markdown, LaTeX, code, and structured content—rendered together as one native Flutter answer.</em></p>
+## 🚀 Why Use GPT Markdown?
+
+- **Optimized for AI outputs**: Render the rich mixture of text, math, code,
+  tables, links, citations, and checklists that AI assistants produce.
+- **LaTeX out of the box**: Render inline and block mathematics without
+  building a separate math surface.
+- **Beautiful while streaming**: Reveal a growing response smoothly while
+  keeping the settled part of the document stable.
+- **Complete Markdown support**: Headings, emphasis, lists, tables, block
+  quotes, images, links, code blocks, task lists, radio options, and more.
+- **Rich customization**: Style every major component, inherit your Flutter
+  theme, or replace individual components with your own builders.
+- **App-specific syntax**: Add `@mentions`, `#channels`, `:emoji:`, source
+  tags, and other inline patterns without forking the parser.
+- **Selectable and accessible**: Work with `SelectionArea`, RTL content, text
+  scaling, and reduced-motion preferences.
+- **Ready for every Flutter surface**: Mobile, desktop, web, and WASM support
+  without platform plugins.
 
 ---
 
-## 🚀 Built for the Way AI Answers Actually Look
+## Supported Markdown & LaTeX Features
 
-AI output is rarely just a paragraph. It is an explanation followed by a
-formula, a table, a code block, a citation, and a checklist—often while the
-answer is still arriving. `gpt_markdown` renders the whole response in one
-cohesive Flutter surface.
+| ✨ Feature | ✅ Supported | 🔜 Upcoming |
+| --- | --- | --- |
+| 💻 Inline and fenced code | ✅ | |
+| 📊 Table | ✅ | |
+| 📝 Heading | ✅ | |
+| 📌 Unordered List | ✅ | |
+| 📋 Ordered List | ✅ | |
+| 🔘 Radio Button | ✅ | |
+| ☑️ Check Box and task list | ✅ | |
+| ➖ Horizontal Line | ✅ | |
+| 🔢 Inline and block LaTeX math | ✅ | |
+| ↩️ Indent | ✅ | |
+| 💬 BlockQuote | ✅ | |
+| 🖼️ Image with optional dimensions | ✅ | |
+| ✨ Highlighted Text | ✅ | |
+| ✂️ Strike Text | ✅ | |
+| 🔵 Bold Text | ✅ | |
+| 📜 Italic Text | ✅ | |
+| 🔗 Links and automatic links | ✅ | |
+| 📱 Selectable content | ✅ | |
+| 🧩 Custom components | ✅ | |
+| 🌊 Streaming reveal | ✅ | |
+| 🎨 Per-component styles and builders | ✅ | |
+| 🌍 RTL and text scaling | ✅ | |
 
-- **Show the complete answer** — rich Markdown, math, code, tables, links,
-  images, citations, and interactive task controls work together.
-- **Stream without the jank** — keep the stable prefix of a reply intact while
-  newly generated text reveals naturally.
-- **Make it belong in your app** — use your theme, style individual components,
-  or replace any piece with a custom Flutter builder.
-- **Teach it your product language** — add `@mentions`, `#channels`,
-  `:emoji:`, source tags, and other inline patterns without forking the parser.
-- **Respect real users** — selection, RTL, text scaling, and reduced motion are
-  built into the rendering experience.
+## ✨ Key Features
+
+Render a wide variety of content with full Markdown and LaTeX support, all in
+the same answer users see from an AI assistant.
+
+### Lists, rules, links, and images
+
+```markdown
+- Unordered list item
+1. Ordered list item
 
 ---
 
-## ✨ Everything Your Assistant Can Send
+[Read the documentation](https://gptmarkdown.com/docs)
 
-| Category | Built-in support |
-| --- | --- |
-| 📝 Rich text | Headings, bold, italic, strikethrough, underline, highlight, indentation, and horizontal rules |
-| 📋 Structured content | Ordered lists, unordered lists, tables, block quotes, task lists, and radio options |
-| 💻 Code | Fenced code blocks, language labels, copy callbacks, custom viewers, and baseline-aligned inline code |
-| 🔢 Mathematics | Inline `\(...\)` and block `\[...\]` LaTeX, optional dollar delimiters, and custom math builders |
-| 🔗 Connected content | Markdown links, GFM-style autolinks, email links, app URL schemes, images, and citation/source tags |
-| 🧩 Product-specific UI | Custom block and inline components, `InlinePattern`, `MarkdownScope`, and component builders |
-| 🌊 Streaming | Animated reveal, stable-prefix rendering, pacing, fast-forward on completion, and reduced-motion support |
-| 🎨 Design control | Per-component styles, app-wide themes, callbacks, and custom Flutter builders |
-| 🌍 Production details | `SelectionArea`, RTL, proportional text scaling, mobile, desktop, web, and WASM support |
+![100x200 image description](https://example.com/image.png)
+```
+
+Images can include dimensions in the alt text, and their rendering can be
+replaced with `imageBuilder` when your app needs its own image provider,
+placeholder, or viewer.
+
+### Tables
+
+```markdown
+| Name  | Score |
+|-------|-------|
+| Alice | 98    |
+| Bob   | 87    |
+```
+
+### Text formatting
+
+```markdown
+~~Strikethrough~~
+**Bold text**
+*Italic text*
+<u>Underline text</u>
+```
+
+### Headings
+
+```markdown
+# Heading 1
+## Heading 2
+### Heading 3
+#### Heading 4
+##### Heading 5
+###### Heading 6
+```
+
+### LaTeX formulas
+
+Use inline `\(\frac a b\)` or block `\[\frac ab\]` expressions beside ordinary
+Markdown:
+
+```markdown
+Inline: \( E = mc^2 \)
+
+\[
+x = \frac{-b \pm \sqrt{b^2 - 4ac}}{2a}
+\]
+```
+
+### Radio buttons and checkboxes
+
+```markdown
+() Unchecked radio
+(x) Checked radio
+[] Unchecked checkbox
+[x] Checked checkbox
+```
+
+Task-list checkboxes can be connected to application state with
+`onCheckboxChanged` and `CheckboxStyle(interactive: true)`.
+
+### Selectable content
+
+Enable highlighting and copying with Flutter's selection system:
+
+```dart
+SelectionArea(
+  child: GptMarkdown(markdownText),
+)
+```
 
 ---
 
-## 🛠️ Render a Complete Answer in Minutes
+## 🛠️ Getting Started
+
+Run this command:
 
 ```bash
 flutter pub add gpt_markdown
 ```
+
+## 📖 Usage
+
+This example combines the formats an AI assistant commonly returns:
 
 ```dart
 import 'package:flutter/material.dart';
@@ -70,38 +169,80 @@ import 'package:gpt_markdown/gpt_markdown.dart';
 
 GptMarkdown(
   r'''
-## Your release is ready
+## Hello from gpt_markdown!
 
-Here is the **short version**: faster answers, richer formatting, and
-math that reads naturally.
+Render **bold**, *italic*, ~~strikethrough~~, `inline code`, and <u>underline</u>.
+
+Inline LaTeX: \( E = mc^2 \) and block math:
 
 \[
-E = mc^2
+x = \frac{-b \pm \sqrt{b^2 - 4ac}}{2a}
 \]
 
-| Capability | Status |
-| --- | --- |
-| Streaming | Ready |
-| LaTeX | Ready |
-| Custom UI | Ready |
+| Name  | Score |
+|-------|-------|
+| Alice | 98    |
+| Bob   | 87    |
 
-- [x] Review the response
-- [ ] Share it with the team
+- [x] Task complete
+- [ ] Task pending
   ''',
-  onLinkTap: (url, title) => debugPrint('Open: $url'),
+  onLinkTap: (url, title) => debugPrint('Tapped: $url'),
 )
 ```
 
-That single widget renders headings, emphasis, LaTeX, tables, task lists,
-inline code, links, and every other supported component in the same answer.
+For the complete walkthrough, see the
+[documentation](https://gptmarkdown.com/docs).
 
----
+## 💡 ChatGPT Response Examples
 
-## 🌊 Make Streaming Feel Native
+`gpt_markdown` is made for the kind of rich answer users expect from an AI
+assistant:
 
-Pass the accumulated response text as it grows. The settled portion stays
-stable; only the unfinished tail needs to update. When generation stops, the
-renderer fast-forwards to the complete answer.
+```markdown
+## ChatGPT Response
+
+Here is a clear answer with Markdown, LaTeX, and structured content:
+
+### Markdown Example
+
+- **Bold Text** for important ideas
+- *Italic Text* for emphasis
+- [Links](https://www.example.com) users can open
+- Ordered and unordered lists for step-by-step answers
+
+### LaTeX Example
+
+The quadratic function is \( f(x) = x^2 + 2x + 1 \).
+
+\[
+\begin{bmatrix}
+1 & 2 & 3 \\
+4 & 5 & 6 \\
+7 & 8 & 9
+\end{bmatrix}
+\]
+
+### Conclusion
+
+Markdown and LaTeX can live naturally inside the same Flutter conversation.
+```
+
+### Output from gpt_markdown
+
+<p align="center">
+  <img width="614" alt="A complete AI response rendered by gpt_markdown in Flutter" src="https://github.com/Infinitix-LLC/gpt_markdown/assets/59507062/8f4a4068-a12c-45d1-a954-ebaf3822e754">
+</p>
+
+If you are using `flutter_markdown` and need LaTeX, streaming, richer
+customization, or AI-oriented interactions, `gpt_markdown` gives you one
+renderer for the whole answer.
+
+## 🌊 Streaming AI Responses
+
+Pass the accumulated response text as it grows. The stable prefix stays
+intact while the unfinished tail is revealed, and the renderer fast-forwards
+to the complete answer when generation ends.
 
 ```dart
 GptMarkdown(
@@ -114,12 +255,13 @@ GptMarkdown(
 Streaming is opt-in, supports configurable pacing, and respects
 `MediaQuery.disableAnimations` for users who prefer reduced motion.
 
----
+See the [streaming guide](docs/streaming.md) for pacing, completion, and
+integration patterns.
 
-## 🎨 Style It Like Your App
+## 🎨 Styling and Theming
 
-Use `GptMarkdownStyleSheet` to customize exactly the pieces that need your
-brand. Unset fields continue to inherit from Flutter's `ColorScheme`.
+Customize only what you need with `GptMarkdownStyleSheet`. Unset values keep
+following your Flutter `ColorScheme`.
 
 ```dart
 GptMarkdown(
@@ -144,7 +286,7 @@ GptMarkdown(
 )
 ```
 
-Set the same defaults app-wide with `GptMarkdownThemeData`:
+Set consistent defaults app-wide with `GptMarkdownThemeData`:
 
 ```dart
 ThemeData(
@@ -160,42 +302,139 @@ ThemeData(
 )
 ```
 
-Style classes cover headings, links, lists, code, tables, images, LaTeX, block
-quotes, horizontal rules, task lists, radio options, source tags, and inline
-code.
+## 🧩 Builders and Callbacks
+
+When styling is not enough, replace exactly the part of the response your
+product needs to own:
+
+- `codeBuilder` for a custom code viewer
+- `latexBuilder` for a different math renderer
+- `linkBuilder` and `imageBuilder` for product-specific interactions
+- `tableBuilder` for a custom data table
+- `headingBuilder`, `blockQuoteBuilder`, and `hrBuilder` for branded structure
+- `orderedListBuilder` and `unOrderedListBuilder` for custom list layouts
+- `checkboxBuilder` and `radioOptionBuilder` for interactive controls
+- `inlineCodeBuilder` for custom inline code spans
+- `sourceTagBuilder` for citations and references
+
+Callbacks include `onLinkTap`, `onImageTap`, `onCodeCopy`,
+`onSourceTagTap`, and `onCheckboxChanged`.
 
 ---
 
-## 🧩 Go Beyond Markdown
+## 🔗 Autolinks
 
-When your answer needs product-specific interaction, keep the parser and swap
-only the surface you need.
-
-### Builders and callbacks
-
-Use builders for custom code viewers, math renderers, links, images, tables,
-headings, block quotes, lists, task controls, radio options, inline code, and
-source tags. Connect the result to your product with callbacks:
+Bare URLs, `www.` hosts, and email addresses become links with no preprocessing:
 
 ```dart
 GptMarkdown(
-  reply,
-  onLinkTap: (url, title) => openUrl(url),
-  onImageTap: (url) => showImage(url),
-  onSourceTagTap: (source) => openSource(source),
-  onCodeCopy: (code) => copyToClipboard(code),
-  onCheckboxChanged: (value) => saveTaskState(value),
+  'Ship it: https://pub.dev/packages/gpt_markdown or mail ada@example.com',
 )
 ```
 
-### Custom inline syntax
+Bare autolinks follow the [GFM autolink extension](https://github.github.com/gfm/#autolinks-extension-), so punctuation and balanced parentheses are handled correctly:
 
-Add the tokens your product understands—without subclassing or parser forks:
+| Input | Link |
+|---|---|
+| `see https://x.com.` | `https://x.com` — the period stays outside |
+| `(https://x.com)` | `https://x.com` — the unbalanced `)` stays outside |
+| `https://en.wikipedia.org/wiki/Foo_(bar)` | The whole URL — parentheses balance |
+| `www.example.com` | `http://www.example.com` |
+| `ada@example.com` | `mailto:ada@example.com` |
+| `**https://x.com**` | A bold link — `**` never reaches the URL |
+
+`<https://x.com>`, `<mailto:a@b.com>`, and `<a@b.com>` follow CommonMark §6.5.
+
+### Schemes
+
+`http`, `https`, `mailto`, and `xmpp` are linked bare. Anything else is opt-in
+because a bare `myapp://thing` in prose may not be intended as a link:
+
+```dart
+GptMarkdown(text, autolinkSchemes: const {'myapp'})
+```
+
+Angle autolinks accept any scheme without the allowlist because the author
+wrote the brackets deliberately. Turn automatic linking off with
+`autolink: false`; explicit `[label](url)` links continue to work.
+
+## 💬 Inline Code
+
+Inline `` `code` `` renders as a rounded, tinted monospace chip. Unlike a
+widget-based chip, it wraps across lines, stays selectable, sits on the text
+baseline, and works inside links, headings, and table cells.
+
+Restyle it with one field; everything you leave out is derived from the ambient
+`ColorScheme`:
+
+```dart
+GptMarkdown(
+  text,
+  inlineCodeStyle: const InlineCodeStyle(
+    fontFamily: 'JetBrainsMono',
+    color: Color(0xFFE01E5A),
+  ),
+)
+```
+
+Set the same style app-wide with `GptMarkdownThemeData.inlineCode`:
+
+```dart
+ThemeData(
+  extensions: [
+    GptMarkdownThemeData(
+      brightness: Brightness.light,
+      inlineCode: const InlineCodeStyle(
+        borderRadius: Radius.circular(6),
+      ),
+    ),
+  ],
+)
+```
+
+| Field | Default |
+|---|---|
+| `fontFamily` | Bundled JetBrains Mono, shared with code blocks |
+| `fontSizeFactor` | `0.94` of the surrounding text |
+| `color` | `ColorScheme.onSurface` |
+| `backgroundColor` | `onSurface` at 10% light / 14% dark |
+| `borderColor` | `onSurface` at 28% light / 34% dark |
+| `borderWidth` | `1.0` — set `0` for no outline |
+| `borderRadius` | `Radius.circular(4)` |
+| `padding` | `vertical: 1` — no horizontal padding |
+
+### When styling is not enough
+
+`inlineCodeBuilder` returns an `InlineSpan`, keeping inline code on the
+baseline, selectable, and able to wrap across lines:
+
+```dart
+GptMarkdown(
+  text,
+  inlineCodeBuilder: (context, code, style, codeStyle) => CodeTextSpan(
+    text: code,
+    style: style,
+    codeStyle: codeStyle.copyWith(
+      backgroundColor: code.startsWith('TODO') ? Colors.amber : null,
+    ),
+  ),
+)
+```
+
+Return another `TextSpan` to remove the chip. If the design genuinely needs a
+widget, use `baselineWidgetSpan`; a `WidgetSpan` cannot wrap across lines and
+is skipped by selection, so prefer a `CodeTextSpan` where possible.
+
+## 🏷️ Custom Inline Syntax (`@mention`, `#channel`, `:emoji:`)
+
+Chat and social apps layer their own inline tokens on top of Markdown. Register
+them with `inlinePatterns`—no subclassing and no parser fork:
 
 ```dart
 GptMarkdown(
   text,
   inlinePatterns: [
+    // Only known channels become chips, so #2959 can remain an issue number.
     InlinePattern.prefixed(
       prefix: '#',
       knownNames: myChannelNames,
@@ -207,50 +446,71 @@ GptMarkdown(
         ),
       ),
     ),
+
+    // TextSpan patterns remain selectable and wrap like ordinary text.
+    InlinePattern(
+      pattern: RegExp(r'(?<![\w-])GH-(\d+)\b'),
+      builder: (context, match, style) => TextSpan(
+        text: match.group(0),
+        style: style.copyWith(fontWeight: FontWeight.w600),
+        recognizer: TapGestureRecognizer()
+          ..onTap = () => openIssue(match.group(1)!),
+      ),
+    ),
   ],
 )
 ```
 
-`MarkdownScope` lets custom content behave correctly in ordinary text,
-headings, tables, and link labels. Prefer `TextSpan` patterns when you want
-the token to stay selectable and wrap naturally.
+Patterns are matched **ahead of** built-in components, so your app-specific
+syntax can take precedence when it needs to.
+
+### Nesting scopes
+
+Markdown nests—link labels can contain bold text and table cells can contain
+links. `MarkdownScope` lets a component declare where it applies:
+
+| Scope | Where |
+|---|---|
+| `content` | Ordinary document and inline text |
+| `linkLabel` | Inside the label of `[label](url)` |
+| `tableCell` | Inside a table cell |
+| `heading` | Inside a heading |
+
+By default, `InlinePattern` applies everywhere except link labels. This keeps
+custom `WidgetSpan`s from becoming nested placeholders that cannot paint on
+iOS. Opt into all scopes when your builder returns a `TextSpan`:
+
+```dart
+InlinePattern(
+  pattern: ...,
+  builder: ...,
+  scopes: MarkdownComponent.allScopes,
+)
+```
+
+The same scope controls are available on custom `MarkdownComponent`s.
 
 ---
 
-## 🔍 The Details That Make It Feel Polished
+## 🌍 Built for Real Flutter Interfaces
 
-- **Autolinks that behave correctly** — bare URLs, `www.` hosts, and email
-  addresses follow the GFM autolink extension; punctuation and balanced
-  parentheses stay where users expect them.
-- **Inline code that behaves like text** — it wraps across lines, stays
-  selectable, sits on the text baseline, and works inside links, headings, and
-  table cells.
-- **Math that fits the answer** — use the included renderer or provide
-  `latexBuilder` for a different engine.
-- **Selection and accessibility** — wrap output in `SelectionArea`; text
-  scales proportionally and streaming respects reduced-motion preferences.
-- **RTL that stays visually correct** — inline widgets render in the intended
-  visual order within mixed-direction paragraphs.
-- **Safe rendering** — malformed links and unclaimed patterns stay readable
+- **RTL support**: Inline widgets render in the correct visual order in mixed
+  direction paragraphs.
+- **Text scaling**: Components scale proportionally with the user's text size.
+- **Reduced motion**: Streaming animation respects
+  `MediaQuery.disableAnimations`.
+- **Selection**: Answers can participate in Flutter's `SelectionArea`.
+- **Web and WASM**: No platform plugins are required.
+- **Safe rendering**: Malformed links and unclaimed patterns stay readable
   rather than disappearing silently.
 
 ---
 
-## 📚 Explore the Full API
+## 🔗 Additional Information
 
-- [Getting started](docs/getting-started.md) — installation, syntax, callbacks,
-  LaTeX, RTL, and selection
-- [Customization](docs/customization.md) — style classes, builders, and themes
-- [Streaming](docs/streaming.md) — pacing, performance, and reduced motion
-- [Inline syntax](docs/inline-syntax.md) — autolinks, patterns, and scopes
-- [Custom components](docs/custom-components.md) — block and inline components
-- [Testing](docs/testing.md) — testing rendered Markdown and custom components
-
----
+- 🐛 [Issue tracker](https://github.com/Infinitix-LLC/gpt_markdown/issues)
+- 💬 [Publisher](https://infinitix.tech)
+- 📄 [License](LICENSE)
 
 ⭐ If you find this package helpful, please give it a like on
 [pub.dev](https://pub.dev/packages/gpt_markdown)! Your support means a lot. ⭐
-
-Need help? [Open an issue](https://github.com/Infinitix-LLC/gpt_markdown/issues)
-· [Publisher](https://infinitix.tech)
-· [License](LICENSE)
