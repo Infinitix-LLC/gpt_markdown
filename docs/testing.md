@@ -232,6 +232,13 @@ Unlike goldens, nothing compares them — they are documentation, so any machine
 can regenerate them. `flutter test` only looks in `test/`, so they never run on
 CI and never gate a build.
 
+> [!IMPORTANT]
+> After regenerating, **bump the `?v=` on every image URL in `README.md`**.
+> GitHub serves README images through a proxy that caches by URL, so without a
+> new query string a reader keeps seeing the previous picture — for a long time,
+> and with nothing to indicate it is stale. Commit and push the PNGs too: the
+> URLs point at `main`, so an uncommitted image simply does not exist yet.
+
 > [!NOTE]
 > Two things in the images are harness artefacts, not defects in what a reader
 > would see. Text that resolves to a null font family — the code block's copy

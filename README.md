@@ -49,13 +49,12 @@
 
 ## 🖼️ What it renders
 
-Every image is one `GptMarkdown` widget with no styling applied — the defaults, in a dark theme.
+Every image is one `GptMarkdown` widget with no styling applied — the defaults, in a dark theme. Click any of them for full size.
 
-|  |  |
-|:--|:--|
-| <img alt="Rich text rendered by gpt_markdown" src="https://raw.githubusercontent.com/Infinitix-LLC/gpt_markdown/main/screenshots/rich-text.png"><br>**Rich text** — Headings, emphasis, strikethrough, nested lists, quotes, rules, autolinks. | <img alt="LaTeX rendered by gpt_markdown" src="https://raw.githubusercontent.com/Infinitix-LLC/gpt_markdown/main/screenshots/math.png"><br>**LaTeX** — Inline and display equations, sitting on the text baseline. |
-| <img alt="Tables rendered by gpt_markdown" src="https://raw.githubusercontent.com/Infinitix-LLC/gpt_markdown/main/screenshots/tables.png"><br>**Tables** — Per-column alignment, with Markdown inside the cells. | <img alt="Code rendered by gpt_markdown" src="https://raw.githubusercontent.com/Infinitix-LLC/gpt_markdown/main/screenshots/code.png"><br>**Code** — Fenced blocks with a language header, and inline code that wraps. |
-| <img alt="Task lists rendered by gpt_markdown" src="https://raw.githubusercontent.com/Infinitix-LLC/gpt_markdown/main/screenshots/lists.png"><br>**Task lists** — Checkboxes, ordered and nested lists, citation tags. | <img alt="Inline patterns rendered by gpt_markdown" src="https://raw.githubusercontent.com/Infinitix-LLC/gpt_markdown/main/screenshots/inline-patterns.png"><br>**Inline patterns** — Mentions, channels and shortcodes as widgets. `#2959` stays plain text. |
+|  |  |  |
+|:--|:--|:--|
+| <img alt="Rich text rendered by gpt_markdown" src="https://raw.githubusercontent.com/Infinitix-LLC/gpt_markdown/main/screenshots/rich-text.png?v=2"><br>**Rich text**<br>Headings, emphasis, lists, quotes, rules, autolinks. | <img alt="LaTeX rendered by gpt_markdown" src="https://raw.githubusercontent.com/Infinitix-LLC/gpt_markdown/main/screenshots/math.png?v=2"><br>**LaTeX**<br>Inline and display equations, on the text baseline. | <img alt="Tables rendered by gpt_markdown" src="https://raw.githubusercontent.com/Infinitix-LLC/gpt_markdown/main/screenshots/tables.png?v=2"><br>**Tables**<br>Per-column alignment, Markdown inside cells. |
+| <img alt="Code rendered by gpt_markdown" src="https://raw.githubusercontent.com/Infinitix-LLC/gpt_markdown/main/screenshots/code.png?v=2"><br>**Code**<br>Fenced blocks with a language header, wrapping inline code. | <img alt="Task lists rendered by gpt_markdown" src="https://raw.githubusercontent.com/Infinitix-LLC/gpt_markdown/main/screenshots/lists.png?v=2"><br>**Task lists**<br>Checkboxes, ordered and nested lists, citation tags. | <img alt="Inline patterns rendered by gpt_markdown" src="https://raw.githubusercontent.com/Infinitix-LLC/gpt_markdown/main/screenshots/inline-patterns.png?v=2"><br>**Inline patterns**<br>Mentions, channels, shortcodes. `#2959` stays text. |
 
 ## 🛠️ Quick start
 
