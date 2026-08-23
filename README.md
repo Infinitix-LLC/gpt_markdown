@@ -1,20 +1,30 @@
 <p align="center">
-  <img src="assets/gpt-mark.png" width="150" alt="gpt_markdown logo">
+  <img src="assets/gpt-mark.png" width="112" alt="gpt_markdown logo">
 </p>
 
 <h1 align="center">gpt_markdown</h1>
 
 <p align="center"><strong>The Flutter renderer for AI output.</strong></p>
 
-<p align="center">Production-grade Markdown and LaTeX rendering for Flutter AI interfaces.</p>
+<p align="center">
+  Production-grade Markdown and LaTeX rendering for streaming Flutter AI interfaces.<br>
+  Render rich assistant replies, math, code, tables, citations, images, and custom inline UI in one widget.
+</p>
 
-[![CI](https://github.com/Infinitix-LLC/gpt_markdown/actions/workflows/ci.yml/badge.svg)](https://github.com/Infinitix-LLC/gpt_markdown/actions/workflows/ci.yml) [![Pub Version](https://img.shields.io/pub/v/gpt_markdown)](https://pub.dev/packages/gpt_markdown) [![Pub Likes](https://img.shields.io/pub/likes/gpt_markdown)](https://pub.dev/packages/gpt_markdown) [![Pub Points](https://img.shields.io/pub/points/gpt_markdown)](https://pub.dev/packages/gpt_markdown) [![License: BSD-3-Clause](https://img.shields.io/badge/license-BSD--3--Clause-blue.svg)](LICENSE)
+<p align="center">
+  <a href="https://github.com/Infinitix-LLC/gpt_markdown/actions/workflows/ci.yml"><img src="https://github.com/Infinitix-LLC/gpt_markdown/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://pub.dev/packages/gpt_markdown"><img src="https://img.shields.io/pub/v/gpt_markdown" alt="Pub Version"></a>
+  <a href="https://img.shields.io/pub/likes/gpt_markdown"><img src="https://img.shields.io/pub/likes/gpt_markdown" alt="Pub Likes"></a>
+  <a href="https://img.shields.io/pub/points/gpt_markdown"><img src="https://img.shields.io/pub/points/gpt_markdown" alt="Pub Points"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-BSD--3--Clause-blue.svg" alt="BSD-3-Clause license"></a>
+</p>
 
-Render streaming assistant replies, Markdown, LaTeX, code, tables, citations, autolinks, images, and custom inline UI—with the control production apps need.
-
-Built for production Flutter AI interfaces. Trusted by apps reaching millions of users.
-
-[🌐 Website](https://gptmarkdown.com) · [📖 Documentation](https://gptmarkdown.com/docs) · [🎮 Live Playground](https://gptmarkdown.com/playground) · [📦 pub.dev](https://pub.dev/packages/gpt_markdown)
+<p align="center">
+  <a href="https://gptmarkdown.com">🌐 Website</a> ·
+  <a href="https://gptmarkdown.com/docs">📖 Documentation</a> ·
+  <a href="https://gptmarkdown.com/playground">🎮 Live Playground</a> ·
+  <a href="https://pub.dev/packages/gpt_markdown">📦 pub.dev</a>
+</p>
 
 ---
 
