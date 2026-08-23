@@ -210,4 +210,150 @@ void main() {
       expect(allRichText(tester), contains('#text'));
     });
   });
+
+  group('InlinePattern.delimited', () {
+    /// A chip built from the `name` group, so the test proves the group
+    /// contract as well as the match.
+    InlinePattern namedChip({
+      required String open,
+      String? close,
+      Iterable<String> knownNames = const [],
+      String? genericTokenPattern,
+    }) {
+      return InlinePattern.delimited(
+        open: open,
+        close: close,
+        knownNames: knownNames,
+        genericTokenPattern: genericTokenPattern,
+        builder: (context, match, style) {
+          final name = match.namedGroup('name');
+          return WidgetSpan(
+            alignment: PlaceholderAlignment.baseline,
+            baseline: TextBaseline.alphabetic,
+            child: Text('CHIP:${name ?? '?'}'),
+          );
+        },
+      );
+    }
+
+    testWidgets('consumes both delimiters', (tester) async {
+      await pumpWithPatterns(tester, 'ship it :tada: now', [
+        namedChip(open: ':', knownNames: const ['tada']),
+      ]);
+      expect(find.text('CHIP:tada'), findsOneWidget);
+      // The closing colon is consumed, not left behind as text.
+      // The chip's own label is a RichText too, so look for the trailing
+      // colon specifically: `CHIP:tada` has none, an unconsumed `:tada:` does.
+      expect(allRichText(tester), isNot(contains('tada:')));
+      expect(allRichText(tester), contains('ship it'));
+    });
+
+    testWidgets('exposes the name as group 1 as well', (tester) async {
+      await pumpWithPatterns(tester, 'a :fire: b', [
+        InlinePattern.delimited(
+          open: ':',
+          knownNames: const ['fire'],
+          builder:
+              (context, match, style) =>
+                  WidgetSpan(child: Text('G1:${match.group(1)}')),
+        ),
+      ]);
+      expect(find.text('G1:fire'), findsOneWidget);
+    });
+
+    testWidgets('close defaults to open', (tester) async {
+      await pumpWithPatterns(tester, 'x |redacted| y', [
+        namedChip(open: '|', knownNames: const ['redacted']),
+      ]);
+      expect(find.text('CHIP:redacted'), findsOneWidget);
+    });
+
+    testWidgets('supports a distinct closing delimiter', (tester) async {
+      await pumpWithPatterns(tester, 'a {{tada}} b', [
+        namedChip(open: '{{', close: '}}', knownNames: const ['tada']),
+      ]);
+      expect(find.text('CHIP:tada'), findsOneWidget);
+    });
+
+    testWidgets('supports a multi-character delimiter', (tester) async {
+      await pumpWithPatterns(tester, 'a ::spoiler:: b', [
+        namedChip(open: '::', knownNames: const ['spoiler']),
+      ]);
+      expect(find.text('CHIP:spoiler'), findsOneWidget);
+    });
+
+    testWidgets('leaves unknown names alone without a generic fallback', (
+      tester,
+    ) async {
+      await pumpWithPatterns(tester, 'a :nope: b', [
+        namedChip(open: ':', knownNames: const ['tada']),
+      ]);
+      expect(find.textContaining('CHIP:'), findsNothing);
+      expect(allRichText(tester), contains(':nope:'));
+    });
+
+    testWidgets('claims unknown names when a generic fallback is given', (
+      tester,
+    ) async {
+      await pumpWithPatterns(tester, 'a :nope: b', [
+        namedChip(
+          open: ':',
+          knownNames: const ['tada'],
+          genericTokenPattern: r'[a-z0-9_+-]+',
+        ),
+      ]);
+      expect(find.text('CHIP:nope'), findsOneWidget);
+    });
+
+    testWidgets('does not claim the colons in a clock time', (tester) async {
+      await pumpWithPatterns(tester, 'at 10:30:45 today', [
+        namedChip(open: ':', genericTokenPattern: r'[a-z0-9_+-]+'),
+      ]);
+      expect(find.textContaining('CHIP:'), findsNothing);
+      expect(allRichText(tester), contains('10:30:45'));
+    });
+
+    testWidgets('does not claim the colon in a URL port', (tester) async {
+      await pumpWithPatterns(tester, 'see http://host:8080/x here', [
+        namedChip(open: ':', genericTokenPattern: r'[a-z0-9_+-]+'),
+      ]);
+      expect(find.textContaining('CHIP:'), findsNothing);
+    });
+
+    testWidgets('does not claim a token glued to a following word', (
+      tester,
+    ) async {
+      await pumpWithPatterns(tester, 'a :tada:xyz b', [
+        namedChip(open: ':', knownNames: const ['tada']),
+      ]);
+      expect(find.textContaining('CHIP:'), findsNothing);
+    });
+
+    testWidgets('matches two tokens in a row', (tester) async {
+      await pumpWithPatterns(tester, ':fire::fire:', [
+        namedChip(open: ':', knownNames: const ['fire']),
+      ]);
+      expect(find.text('CHIP:fire'), findsNWidgets(2));
+    });
+
+    testWidgets('matches known names case-insensitively', (tester) async {
+      await pumpWithPatterns(tester, 'a :TADA: b', [
+        namedChip(open: ':', knownNames: const ['tada']),
+      ]);
+      expect(find.text('CHIP:TADA'), findsOneWidget);
+    });
+
+    testWidgets('prefers the longest known name', (tester) async {
+      await pumpWithPatterns(tester, 'a :party-tada: b', [
+        namedChip(open: ':', knownNames: const ['tada', 'party-tada']),
+      ]);
+      expect(find.text('CHIP:party-tada'), findsOneWidget);
+    });
+
+    testWidgets('never matches when there is nothing to match', (tester) async {
+      await pumpWithPatterns(tester, 'a :tada: b', [namedChip(open: ':')]);
+      expect(find.textContaining('CHIP:'), findsNothing);
+      expect(allRichText(tester), contains(':tada:'));
+    });
+  });
 }

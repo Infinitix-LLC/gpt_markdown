@@ -221,6 +221,24 @@ If a golden fails on CI, download the `golden-failures` artifact from the run �
 it contains the expected, actual and diff images, which is the only readable
 way to see what moved.
 
+## README screenshots
+
+`./scripts/screenshots.sh` regenerates the showcase images in `screenshots/`
+from `tool/screenshots/`. They render through the test harness because that is
+the supported way to rasterise a widget to a file without opening a window.
+
+Unlike goldens, nothing compares them — they are documentation, so any machine
+can regenerate them. `flutter test` only looks in `test/`, so they never run on
+CI and never gate a build.
+
+> [!NOTE]
+> Two things in the images are harness artefacts, not defects in what a reader
+> would see. Text that resolves to a null font family — the code block's copy
+> button, for one — draws in the test font, whose glyphs are filled boxes, so
+> that button is switched off for the screenshots. Fonts are otherwise loaded
+> from paths resolved out of the SDK and `.dart_tool/package_config.json`, never
+> hardcoded.
+
 ## Documentation snippets are compiled
 
 Every snippet in `docs/` lives in `test/docs/snippets_test.dart` and is

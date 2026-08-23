@@ -14,8 +14,9 @@ void main() {
     // Known channel and person become chips.
     expect(find.text('design-review'), findsWidgets);
     expect(find.text('ada'), findsWidgets);
-    // Emoji shortcode is replaced.
-    expect(find.text('🎉'), findsWidgets);
+    // Emoji shortcode is replaced. It is a TextSpan inside the paragraph
+    // rather than its own widget, so the finder has to look at rich text.
+    expect(find.textContaining('🎉', findRichText: true), findsWidgets);
     // Unknown tokens are left as text — no chip named '2959' or 'nobody'.
     expect(find.text('2959'), findsNothing);
     expect(find.text('nobody'), findsNothing);

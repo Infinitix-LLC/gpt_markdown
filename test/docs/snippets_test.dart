@@ -219,19 +219,47 @@ List<InlinePattern> scopedPatterns() {
       builder: (context, match, style) => TextSpan(text: match.group(0)),
       scopes: const {MarkdownScope.content},
     ),
-    InlinePattern(
-      pattern: RegExp(':(tada|rocket|fire):'),
-      builder:
-          (context, match, style) => WidgetSpan(
-            alignment: PlaceholderAlignment.middle,
-            child: Text(
-              const {'tada': '🎉', 'rocket': '🚀', 'fire': '🔥'}[match.group(
-                    1,
-                  )] ??
-                  '',
-              style: TextStyle(fontSize: (style.fontSize ?? 14) * 1.15),
-            ),
-          ),
+  ];
+}
+
+/// The delimited-token snippets from `docs/inline-syntax.md`.
+const _emoji = {'tada': '🎉', 'rocket': '🚀', 'fire': '🔥'};
+const _iconTable = {'bug': Icons.bug_report, 'ship': Icons.rocket_launch};
+
+List<InlinePattern> delimitedPatterns() {
+  return [
+    InlinePattern.delimited(
+      open: ':',
+      knownNames: _emoji.keys,
+      builder: (context, match, style) {
+        final name = match.namedGroup('name');
+        final glyph = name == null ? null : _emoji[name];
+        if (glyph == null) {
+          return TextSpan(text: match.group(0), style: style);
+        }
+        return TextSpan(text: glyph, style: style);
+      },
+    ),
+    InlinePattern.delimited(
+      open: ':',
+      knownNames: _iconTable.keys,
+      builder: (context, match, style) {
+        final name = match.namedGroup('name');
+        final icon = name == null ? null : _iconTable[name];
+        if (icon == null) {
+          return TextSpan(text: match.group(0), style: style);
+        }
+        return WidgetSpan(
+          alignment: PlaceholderAlignment.middle,
+          child: Icon(icon, size: (style.fontSize ?? 14) * 1.15),
+        );
+      },
+    ),
+    InlinePattern.delimited(
+      open: '{{',
+      close: '}}',
+      knownNames: const ['token'],
+      builder: (context, match, style) => TextSpan(text: match.group(0)),
     ),
   ];
 }
@@ -406,7 +434,8 @@ void main() {
     expect(ShoutMd().exp, isA<RegExp>());
     expect(CalloutMd().expString, isA<String>());
     expect(builderSnippets, isNotNull);
-    expect(scopedPatterns(), hasLength(3));
+    expect(scopedPatterns(), hasLength(2));
+    expect(delimitedPatterns(), hasLength(3));
     expect(plainTextSnippet, isNotNull);
     expect(() => safeLinkTap('https://example.com'), returnsNormally);
     expect(ReplyView, isNotNull);

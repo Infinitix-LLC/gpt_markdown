@@ -143,21 +143,67 @@ InlinePattern.prefixed(
 
 ### Emoji shortcodes
 
+Shortcodes have their own helper, because `prefixed` cannot express them: it
+has no closing delimiter, so `:tada:` would match `:tada` and leave a stray
+colon behind.
+
 ```dart
-InlinePattern(
-  pattern: RegExp(':(tada|rocket|fire):'),
-  builder: (context, match, style) => WidgetSpan(
-    alignment: PlaceholderAlignment.middle,
-    child: Text(
-      const {'tada': '🎉', 'rocket': '🚀', 'fire': '🔥'}[match.group(1)] ?? '',
-      style: TextStyle(fontSize: (style.fontSize ?? 14) * 1.15),
-    ),
-  ),
+const emoji = {'tada': '🎉', 'rocket': '🚀', 'fire': '🔥'};
+
+InlinePattern.delimited(
+  open: ':',                    // close defaults to open
+  knownNames: emoji.keys,
+  builder: (context, match, style) {
+    final name = match.namedGroup('name');
+    final glyph = name == null ? null : emoji[name];
+    if (glyph == null) {
+      return TextSpan(text: match.group(0), style: style);
+    }
+    return TextSpan(text: glyph, style: style);
+  },
 )
 ```
 
-Build the alternation from your palette, longest first, so a longer shortcode
-is not shadowed by a shorter prefix.
+The token name is the named group `name`, and also group 1 — whatever groups
+your own `genericTokenPattern` contains.
+
+Boundaries come with it: `10:30:45` and `http://host:8080/x` are not claimed,
+`:tada:xyz` is not a shortcode, and `:fire::fire:` matches twice.
+
+Emoji are characters, so a `TextSpan` works — selectable, wrapping, on the
+baseline. Reach for a `WidgetSpan` only when the glyph is a real icon or image:
+
+```dart
+InlinePattern.delimited(
+  open: ':',
+  knownNames: iconTable.keys,
+  builder: (context, match, style) {
+    final name = match.namedGroup('name');
+    final icon = name == null ? null : iconTable[name];
+    if (icon == null) {
+      return TextSpan(text: match.group(0), style: style);
+    }
+    return WidgetSpan(
+      alignment: PlaceholderAlignment.middle,
+      // Sized off the surrounding style, not a constant, so it stays
+      // proportional when the paragraph's text style changes.
+      child: Icon(icon, size: (style.fontSize ?? 14) * 1.15),
+    );
+  },
+)
+```
+
+> [!TIP]
+> Return the raw `match.group(0)` when the name is not in your table, as both
+> examples do. Skip that branch and an unknown `:shrug:` renders as an empty
+> gap instead of as the text the author typed.
+
+`delimited` also handles asymmetric and multi-character delimiters —
+`::spoiler::`, `{{token}}`, `|redacted|`:
+
+```dart
+InlinePattern.delimited(open: '{{', close: '}}', knownNames: …, builder: …)
+```
 
 ### Prefer a TextSpan
 

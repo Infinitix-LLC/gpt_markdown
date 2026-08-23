@@ -141,6 +141,118 @@ class InlinePattern {
       multiLine: true,
     );
   }
+
+  /// A pattern for delimited tokens such as `:emoji:`, `::spoiler::` or
+  /// `|redacted|`.
+  ///
+  /// [InlinePattern.prefixed] cannot express these: it has no closing
+  /// delimiter, so `:tada:` would match `:tada` and leave a stray colon behind.
+  ///
+  /// [close] defaults to [open], which is the common case.
+  ///
+  /// The token name is available as the named group `name`, and as group 1:
+  ///
+  /// ```dart
+  /// InlinePattern.delimited(
+  ///   open: ':',
+  ///   knownNames: emojiTable.keys,
+  ///   builder: (context, match, style) {
+  ///     final name = match.namedGroup('name');
+  ///     final glyph = name == null ? null : emojiTable[name];
+  ///     if (glyph == null) {
+  ///       return TextSpan(text: match.group(0), style: style);
+  ///     }
+  ///     return TextSpan(text: glyph, style: style);
+  ///   },
+  /// )
+  /// ```
+  ///
+  /// [knownNames] and [genericTokenPattern] behave as they do on
+  /// [InlinePattern.prefixed]: known names are matched exactly, longest first,
+  /// and leaving [genericTokenPattern] null matches only those names.
+  factory InlinePattern.delimited({
+    required String open,
+    required InlinePatternBuilder builder,
+    String? close,
+    Iterable<String> knownNames = const [],
+    String? genericTokenPattern,
+    Set<MarkdownScope> scopes = MarkdownComponent.allScopesExceptLinkLabel,
+  }) {
+    return InlinePattern(
+      pattern: buildDelimitedPattern(
+        open: open,
+        close: close,
+        knownNames: knownNames,
+        genericTokenPattern: genericTokenPattern,
+      ),
+      builder: builder,
+      scopes: scopes,
+    );
+  }
+
+  /// The regex used by [InlinePattern.delimited], exposed for consumers that
+  /// build their own [InlinePattern] or [MarkdownComponent].
+  ///
+  /// Returns a regex that can never match when [knownNames] is empty and
+  /// [genericTokenPattern] is null.
+  ///
+  /// Write [genericTokenPattern] as tightly as the syntax allows and use
+  /// non-capturing groups in it. A loose pattern such as `.+` runs past the
+  /// closing delimiter and swallows the rest of the line.
+  static RegExp buildDelimitedPattern({
+    required String open,
+    String? close,
+    Iterable<String> knownNames = const [],
+    String? genericTokenPattern,
+  }) {
+    assert(open.isNotEmpty, 'open delimiter must not be empty');
+
+    final String closing;
+    if (close == null || close.isEmpty) {
+      closing = open;
+    } else {
+      closing = close;
+    }
+
+    final names =
+        knownNames
+            .map((name) => name.trim())
+            .where((name) => name.isNotEmpty)
+            .toSet()
+            .toList()
+          ..sort((a, b) => b.length.compareTo(a.length));
+
+    if (names.isEmpty && genericTokenPattern == null) {
+      // Never matches. `generate` then skips this pattern entirely.
+      return RegExp(r'(?!x)x');
+    }
+
+    final alternatives = <String>[
+      if (names.isNotEmpty) names.map(RegExp.escape).join('|'),
+      if (genericTokenPattern != null) '(?:$genericTokenPattern)',
+    ];
+
+    // The closing delimiter ends the token, so the only boundary that matters
+    // is the opening one: without it a `:` opener claims the middle of
+    // `10:30:45` and of `http://host:8080/x`.
+    //
+    // Unlike the prefixed boundary this does not exclude `:`, because a token
+    // may start immediately after another one closes — `:fire::fire:`.
+    const leadingBoundary = r'(?<![\w./-])';
+    // A token is a whole thing, not the start of a word: `:tada:xyz` is not a
+    // shortcode.
+    const trailingBoundary = r'(?!\w)';
+
+    // The name is captured before any group inside [genericTokenPattern], so
+    // it is group 1 whatever the consumer's pattern contains.
+    return RegExp(
+      '$leadingBoundary${RegExp.escape(open)}'
+      '(?<name>(?:${alternatives.join('|')}))'
+      '${RegExp.escape(closing)}$trailingBoundary',
+      caseSensitive: false,
+      multiLine: true,
+    );
+  }
 }
 
 /// Adapts an [InlinePattern] to the [MarkdownComponent] pipeline.

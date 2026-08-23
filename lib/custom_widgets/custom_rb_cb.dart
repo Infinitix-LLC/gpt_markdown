@@ -92,20 +92,20 @@ class CustomRb extends StatelessWidget {
     return _markerRow(
       textDirection: textDirection,
       spacing: spacing,
-      marker: _sized(
-        style.size,
-        Radio<bool>(
-          value: value,
-          // Keep the package compatible with the declared Flutter >=3.0
-          // range. RadioGroup is only available in newer Flutter SDKs.
-          groupValue: true,
-          onChanged: (v) {
-            if (interactive && changed != null && v != null) {
-              changed(v);
-            }
-          },
-          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-          fillColor: checked == null ? null : WidgetStatePropertyAll(checked),
+      marker: RadioGroup(
+        groupValue: true,
+        onChanged: (v) {
+          if (interactive && changed != null && v != null) {
+            changed(v);
+          }
+        },
+        child: _sized(
+          style.size,
+          Radio<bool>(
+            value: value,
+            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            fillColor: checked == null ? null : WidgetStatePropertyAll(checked),
+          ),
         ),
       ),
       child: child,

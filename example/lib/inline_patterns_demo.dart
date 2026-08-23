@@ -82,15 +82,28 @@ List<InlinePattern> demoInlinePatterns(
     ),
 
     // ---- :emoji: --------------------------------------------------------
-    InlinePattern(
-      pattern: RegExp(':(${demoEmoji.keys.join('|')}):'),
-      builder: (context, match, style) => WidgetSpan(
-        alignment: PlaceholderAlignment.middle,
-        child: Text(
-          demoEmoji[match.group(1)] ?? '',
-          style: TextStyle(fontSize: (style.fontSize ?? 14) * 1.15),
-        ),
-      ),
+    // `prefixed` cannot express this — it has no closing delimiter — so
+    // shortcodes use `delimited`, which consumes both colons.
+    InlinePattern.delimited(
+      open: ':',
+      knownNames: demoEmoji.keys,
+      builder: (context, match, style) {
+        final name = match.namedGroup('name');
+        final glyph = name == null ? null : demoEmoji[name];
+        if (glyph == null) {
+          // Unknown shortcode: render what the author typed.
+          return TextSpan(text: match.group(0), style: style);
+        }
+        // A glyph is a character, so no placeholder is needed — this stays
+        // selectable and wraps with the paragraph.
+        return TextSpan(
+          text: glyph,
+          style: style.copyWith(fontSize: (style.fontSize ?? 14) * 1.15),
+          mouseCursor: SystemMouseCursors.click,
+          recognizer: TapGestureRecognizer()
+            ..onTap = () => onTap?.call('emoji :$name:'),
+        );
+      },
     ),
 
     // ---- GH-123, built as a TextSpan ------------------------------------

@@ -1,3 +1,19 @@
+## 1.2.1
+
+### Changed
+
+* Radio list markers use `RadioGroup` instead of `Radio.groupValue` and
+  `Radio.onChanged`, which Flutter deprecated in 3.32. No visual or behavioural
+  change — the marker looks and responds exactly as before.
+* Minimum Flutter is now **3.32.0**, the release `RadioGroup` was added in.
+
+### Added
+
+* `InlinePattern.delimited` for tokens that open and close, such as `:emoji:`,
+  `::spoiler::` or `{{token}}` — the counterpart to `InlinePattern.prefixed`,
+  which cannot express a closing delimiter. The token name is the named group
+  `name`. See [docs/inline-syntax.md](docs/inline-syntax.md).
+
 ## 1.2.0
 
 Upgrading from 1.1.x? See [MIGRATION.md](MIGRATION.md).
