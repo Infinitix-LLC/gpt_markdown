@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# A newer push supersedes an in-flight run on the same branch.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    # Pinned: golden files are platform-sensitive, so they must be generated
+    # and verified on one image. Changing this will fail every golden test.
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Format, analyze, test
+        run: ./scripts/check.sh
+
+      - name: Upload golden failures
+        # Golden diffs are the one failure that is impossible to debug from a
+        # log, so keep the images when they happen.
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: golden-failures
+          path: test/golden/failures/
+          if-no-files-found: ignore
+
+  score:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: pub.dev score
+        # 160 is a perfect score. Anything less is a regression: a missing
+        # dartdoc, a stale dependency, a packaging mistake.
+        run: ./scripts/score.sh 160

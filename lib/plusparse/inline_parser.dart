@@ -17,6 +17,8 @@ const int _lt = 0x3C; // '<'
 const int _backslash = 0x5C; // '\'
 const int _dollar = 0x24; // '$'
 const int _openParen = 0x28; // '('
+const int _closeBracket = 0x5D; // ']'
+const int _closeParen = 0x29; // ')'
 const int _g = 0x67; // 'g'
 const int _quote = 0x22; // '"'
 const int _openBrace = 0x7B; // '{'
@@ -76,7 +78,9 @@ List<MdNode> parseInline(String text, bool useDollar) {
         if (end != -1) {
           flush();
           nodes.add(
-            MdBold(children: parseInline(text.substring(i + 2, end), useDollar)),
+            MdBold(
+              children: parseInline(text.substring(i + 2, end), useDollar),
+            ),
           );
           i = end + 2;
           matched = true;
@@ -97,12 +101,17 @@ List<MdNode> parseInline(String text, bool useDollar) {
     }
 
     // ~~strike~~
-    if (!matched && c == _tilde && i + 1 < n && text.codeUnitAt(i + 1) == _tilde) {
+    if (!matched &&
+        c == _tilde &&
+        i + 1 < n &&
+        text.codeUnitAt(i + 1) == _tilde) {
       final end = text.indexOf('~~', i + 2);
       if (end != -1) {
         flush();
         nodes.add(
-          MdStrike(children: parseInline(text.substring(i + 2, end), useDollar)),
+          MdStrike(
+            children: parseInline(text.substring(i + 2, end), useDollar),
+          ),
         );
         i = end + 2;
         matched = true;
@@ -147,7 +156,10 @@ List<MdNode> parseInline(String text, bool useDollar) {
     }
 
     // \( inline latex \)
-    if (!matched && c == _backslash && i + 1 < n && text.codeUnitAt(i + 1) == _openParen) {
+    if (!matched &&
+        c == _backslash &&
+        i + 1 < n &&
+        text.codeUnitAt(i + 1) == _openParen) {
       final end = text.indexOf('\\)', i + 2);
       if (end != -1) {
         flush();
@@ -194,9 +206,60 @@ List<MdNode> parseInline(String text, bool useDollar) {
 
 typedef _InlineMatch = ({MdNode node, int next});
 
+/// Scans a bracketed label starting at [open] (the index of `[`), returning
+/// the index of its matching `]`.
+///
+/// Nesting matters: the label of `[![alt](img)](url)` contains a `]` that does
+/// not close it, and taking the first one instead splits the link into
+/// literal text.
+int _matchingBracket(String text, int open) {
+  var depth = 0;
+  for (var k = open; k < text.length; k++) {
+    final c = text.codeUnitAt(k);
+    if (c == 0x5C /* backslash */ ) {
+      k += 1;
+      continue;
+    }
+    if (c == _openBracket) {
+      depth += 1;
+    } else if (c == _closeBracket) {
+      depth -= 1;
+      if (depth == 0) {
+        return k;
+      }
+    }
+  }
+  return -1;
+}
+
+/// Scans a destination starting at [open] (the index of `(`), returning the
+/// index of its matching `)`.
+///
+/// A URL may contain balanced parentheses — `(https://en.wikipedia.org/wiki/
+/// Dart_(programming_language))` — so the first `)` is not necessarily the end.
+int _matchingParen(String text, int open) {
+  var depth = 0;
+  for (var k = open; k < text.length; k++) {
+    final c = text.codeUnitAt(k);
+    if (c == 0x5C /* backslash */ ) {
+      k += 1;
+      continue;
+    }
+    if (c == _openParen) {
+      depth += 1;
+    } else if (c == _closeParen) {
+      depth -= 1;
+      if (depth == 0) {
+        return k;
+      }
+    }
+  }
+  return -1;
+}
+
 _InlineMatch? _tryImage(String text, int i) {
   final n = text.length;
-  var j = text.indexOf(']', i + 2); // past "!["
+  var j = _matchingBracket(text, i + 1); // past '!'
   if (j == -1) {
     return null;
   }
@@ -205,7 +268,7 @@ _InlineMatch? _tryImage(String text, int i) {
   if (j >= n || text.codeUnitAt(j) != _openParen) {
     return null;
   }
-  final close = text.indexOf(')', j + 1);
+  final close = _matchingParen(text, j);
   if (close == -1) {
     return null;
   }
@@ -253,7 +316,7 @@ bool _allAsciiDigits(String s) {
 
 _InlineMatch? _tryLink(String text, int i, bool useDollar) {
   final n = text.length;
-  var j = text.indexOf(']', i + 1); // past '['
+  var j = _matchingBracket(text, i);
   if (j == -1) {
     return null;
   }
@@ -262,7 +325,7 @@ _InlineMatch? _tryLink(String text, int i, bool useDollar) {
   if (j >= n || text.codeUnitAt(j) != _openParen) {
     return null;
   }
-  final close = text.indexOf(')', j + 1);
+  final close = _matchingParen(text, j);
   if (close == -1) {
     return null;
   }
@@ -284,7 +347,7 @@ _InlineMatch? _tryGenUi(String text, int i) {
   while (k < n) {
     final c = text.codeUnitAt(k);
     if (inString) {
-      if (c == 0x5C /* backslash */) {
+      if (c == 0x5C /* backslash */ ) {
         k += 2;
         continue;
       }

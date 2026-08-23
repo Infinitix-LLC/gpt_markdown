@@ -388,7 +388,7 @@ List<String> _splitPipes(String line) {
 }
 
 List<MdTableCell> _splitTableRow(String line, bool useDollar) {
-  return _splitPipes(line)
-      .map((c) => MdTableCell(content: parseInline(c.trim(), useDollar)))
-      .toList();
+  return _splitPipes(
+    line,
+  ).map((c) => MdTableCell(content: parseInline(c.trim(), useDollar))).toList();
 }

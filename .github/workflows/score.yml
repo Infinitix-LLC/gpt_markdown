@@ -1,0 +1,77 @@
+name: Score watch
+
+# Two of pana's eleven categories — "dependencies support latest version" and
+# "supports latest stable SDKs" — decay without anyone touching the code. A
+# Flutter release or an aging dependency silently costs points on pub.dev.
+# This catches that within a week instead of at the next release.
+on:
+  schedule:
+    - cron: '0 6 * * 1'   # Mondays, 06:00 UTC
+  workflow_dispatch:
+
+jobs:
+  stable:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: pub.dev score
+        id: pana
+        run: ./scripts/score.sh 160
+
+      - name: Open an issue when the score drops
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = 'pub.dev score dropped below 160';
+            const { data: existing } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'score',
+            });
+            // One open issue at a time — a weekly cron would otherwise file
+            // one every Monday until it is fixed.
+            if (existing.some((issue) => issue.title === title)) return;
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title,
+              labels: ['score'],
+              body: [
+                'The weekly score check failed.',
+                '',
+                `Run: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+                '',
+                'Usually one of:',
+                '- a dependency has a newer major version',
+                '- a new stable Flutter or Dart SDK is out',
+                '- a new lint landed in the SDK',
+                '',
+                'Reproduce locally with `./scripts/score.sh`.',
+              ].join('\n');
+            });
+
+  beta:
+    # Early warning: the same checks against the next SDK, so a lint or
+    # deprecation landing in stable is not a surprise.
+    runs-on: ubuntu-latest
+    continue-on-error: true
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: beta
+          cache: true
+
+      - name: Analyze and test against beta
+        run: ./scripts/check.sh

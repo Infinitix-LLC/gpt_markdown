@@ -42,9 +42,18 @@ void main() {
   group('ported Rust parser tests', () {
     test('heading levels', () {
       final doc = p('# H1\n## H2\n###### H6\n####### not a heading');
-      expect(doc.children[0], isA<MdHeading>().having((h) => h.level, 'level', 1));
-      expect(doc.children[1], isA<MdHeading>().having((h) => h.level, 'level', 2));
-      expect(doc.children[2], isA<MdHeading>().having((h) => h.level, 'level', 6));
+      expect(
+        doc.children[0],
+        isA<MdHeading>().having((h) => h.level, 'level', 1),
+      );
+      expect(
+        doc.children[1],
+        isA<MdHeading>().having((h) => h.level, 'level', 2),
+      );
+      expect(
+        doc.children[2],
+        isA<MdHeading>().having((h) => h.level, 'level', 6),
+      );
       // 7 hashes is not a heading -> paragraph
       expect(doc.children[3], isA<MdParagraph>());
     });
@@ -52,22 +61,27 @@ void main() {
     test('emphasis inline', () {
       final doc = p('**bold** *italic* ~~strike~~ `code` <u>under</u>');
       final para = doc.children[0] as MdParagraph;
-      final kinds = para.children
-          .map((n) => switch (n) {
-                MdBold() => 'bold',
-                MdItalic() => 'italic',
-                MdStrike() => 'strike',
-                MdInlineCode() => 'code',
-                MdUnderline() => 'under',
-                _ => null,
-              })
-          .nonNulls
-          .toList();
+      final kinds =
+          para.children
+              .map(
+                (n) => switch (n) {
+                  MdBold() => 'bold',
+                  MdItalic() => 'italic',
+                  MdStrike() => 'strike',
+                  MdInlineCode() => 'code',
+                  MdUnderline() => 'under',
+                  _ => null,
+                },
+              )
+              .nonNulls
+              .toList();
       expect(kinds, ['bold', 'italic', 'strike', 'code', 'under']);
     });
 
     test('links, images and source tags', () {
-      final doc = p('See [docs](https://x.com) and ![100x200](img.png) and [1]');
+      final doc = p(
+        'See [docs](https://x.com) and ![100x200](img.png) and [1]',
+      );
       final para = doc.children[0] as MdParagraph;
 
       final link = para.children.whereType<MdLink>().single;
@@ -87,17 +101,13 @@ void main() {
       final para = doc.children[0] as MdParagraph;
       expect(
         para.children.whereType<MdInlineLatex>().any(
-              (n) => n.tex.contains('e^{i\\pi}'),
-            ),
+          (n) => n.tex.contains('e^{i\\pi}'),
+        ),
         isTrue,
       );
       expect(
         doc.children[1],
-        isA<MdBlockLatex>().having(
-          (n) => n.tex,
-          'tex',
-          contains('\\int_0^1'),
-        ),
+        isA<MdBlockLatex>().having((n) => n.tex, 'tex', contains('\\int_0^1')),
       );
     });
 
@@ -122,8 +132,7 @@ void main() {
       final list = doc.children[0] as MdUnorderedList;
       expect(list.items, hasLength(1));
       // item has inline text "Lists:" then a nested ordered list
-      final nested =
-          list.items[0].children.whereType<MdOrderedList>().single;
+      final nested = list.items[0].children.whereType<MdOrderedList>().single;
       expect(nested.start, 1);
       expect(nested.items, hasLength(3));
     });
@@ -200,8 +209,8 @@ void main() {
       // contains the block-latex matrix
       expect(
         doc.children.whereType<MdBlockLatex>().any(
-              (n) => n.tex.contains('bmatrix'),
-            ),
+          (n) => n.tex.contains('bmatrix'),
+        ),
         isTrue,
       );
     });
@@ -217,7 +226,10 @@ void main() {
     });
 
     test('dollar-dollar block form', () {
-      final doc = Plusparse.parse(r'$$\frac{a}{b}$$', useDollarSignsForLatex: true);
+      final doc = Plusparse.parse(
+        r'$$\frac{a}{b}$$',
+        useDollarSignsForLatex: true,
+      );
       final para = doc.children[0] as MdParagraph;
       expect(
         para.children.whereType<MdInlineLatex>().single.tex,
@@ -254,10 +266,14 @@ void main() {
 
     test('image size variants', () {
       double? w(String md) =>
-          ((p(md).children[0] as MdParagraph).children.whereType<MdImage>().single)
+          ((p(md).children[0] as MdParagraph).children
+                  .whereType<MdImage>()
+                  .single)
               .width;
       double? h(String md) =>
-          ((p(md).children[0] as MdParagraph).children.whereType<MdImage>().single)
+          ((p(md).children[0] as MdParagraph).children
+                  .whereType<MdImage>()
+                  .single)
               .height;
       expect(w('![100x](u)'), 100.0);
       expect(h('![100x](u)'), isNull);
@@ -342,10 +358,7 @@ void main() {
     test('large document parses with expected structure', () {
       final doc = p(buildLargeDocument(repeat: 5));
       expect(doc.children.whereType<MdTable>().length, 5);
-      expect(
-        doc.children.whereType<MdCodeBlock>().length,
-        5,
-      );
+      expect(doc.children.whereType<MdCodeBlock>().length, 5);
       expect(doc.children.whereType<MdHorizontalRule>().length, 5);
       expect(doc.children.whereType<MdHeading>().length, greaterThan(20));
     });
@@ -365,7 +378,10 @@ void main() {
       );
       final para = doc.children[0] as MdParagraph;
       final genUi = para.children.whereType<MdGenUi>().single;
-      expect(genUi.payload, r'{"val_scene": {"id": "a}b", "frame": "wide{x}"}}');
+      expect(
+        genUi.payload,
+        r'{"val_scene": {"id": "a}b", "frame": "wide{x}"}}',
+      );
     });
 
     test('unterminated genui stays literal text (streaming)', () {
@@ -379,8 +395,10 @@ void main() {
       final doc = p('emoji 🎉 and **möre ünïcode** ⸺ done');
       final para = doc.children[0] as MdParagraph;
       expect(inlineText(para.children), 'emoji 🎉 and möre ünïcode ⸺ done');
-      expect(inlineText(para.children.whereType<MdBold>().single.children),
-          'möre ünïcode');
+      expect(
+        inlineText(para.children.whereType<MdBold>().single.children),
+        'möre ünïcode',
+      );
     });
   });
 }

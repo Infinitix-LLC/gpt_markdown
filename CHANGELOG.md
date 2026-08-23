@@ -1,7 +1,78 @@
-## Unreleased
+## 1.2.1
 
-* 🔡 Fixed inline widgets (LaTeX, images, links) rendering in reverse order when a paragraph mixes right-to-left text with two or more of them — e.g. `واحد $two^2$ ثلاثة أربعة five ستة سبعة $eight^8$` used to swap the two formulas. This works around [flutter/flutter#54400](https://github.com/flutter/flutter/issues/54400), where the engine fills a line's inline-placeholder slots left to right in logical order regardless of the line's direction. Affected paragraphs now render through `BidiText`, which computes the correct visual order per line with the Unicode bidi reordering rule (UAX #9, L2); everything else keeps using a plain `Text`.
-* `GptMarkdownConfig.getRich` now returns `Widget` instead of `Text`.
+### Changed
+
+* Radio list markers use `RadioGroup` instead of `Radio.groupValue` and
+  `Radio.onChanged`, which Flutter deprecated in 3.32. No visual or behavioural
+  change — the marker looks and responds exactly as before.
+* Minimum Flutter is now **3.32.0**, the release `RadioGroup` was added in.
+
+### Added
+
+* `InlinePattern.delimited` for tokens that open and close, such as `:emoji:`,
+  `::spoiler::` or `{{token}}` — the counterpart to `InlinePattern.prefixed`,
+  which cannot express a closing delimiter. The token name is the named group
+  `name`. See [docs/inline-syntax.md](docs/inline-syntax.md).
+
+## 1.2.0
+
+Upgrading from 1.1.x? See [MIGRATION.md](MIGRATION.md).
+
+### Changed
+
+* Deprecated `highlightBuilder`. Use `inlineCodeStyle` for appearance, or
+  `inlineCodeBuilder` for full control. It still works, is now aligned on the
+  text baseline, and will be removed in 2.0.0.
+* Inline code renders as a monospace chip that wraps across lines. Restyle with
+  `inlineCodeStyle`.
+* Autolinking is on by default. Disable with `autolink: false`, and remove any
+  pre-processor that rewrites bare URLs.
+* `ImageMd`, `TableMd` and `ATagMd` no longer render inside link labels. Custom
+  components opt out with `scopes`.
+* Malformed links and unclaimed matches render as plain text instead of being
+  dropped silently.
+* Component dispatch is anchored as `^(?:pattern)$`, so a pattern containing a
+  top-level `|` no longer claims matches it does not cover.
+* Case-insensitive component patterns now match.
+* Tests using `find.byType(RichText)` need
+  `find.byWidgetPredicate((w) => w is RichText)` — some paragraphs render as a
+  `RichText` subclass.
+
+### Added
+
+* Streaming reveal for generated replies, off by default:
+  `GptMarkdown(text, animation: GptMarkdownAnimation.fade, isStreaming: true)`.
+  Only the part of the reply that can still change is rebuilt, so the cost per
+  token stays flat as the reply grows. The reveal keeps up with a fast model,
+  fast-forwards when `isStreaming` turns false, and honours reduced motion.
+  See [docs/streaming.md](docs/streaming.md).
+* `GptMarkdownStyleSheet` with twelve per-component style classes, settable per
+  widget or app-wide on `GptMarkdownThemeData`. Unset fields keep the previous
+  defaults.
+* Builders for every component: `blockQuoteBuilder`, `headingBuilder`,
+  `checkboxBuilder`, `radioOptionBuilder`, `hrBuilder`.
+* Callbacks `onCheckboxChanged`, `onCodeCopy`, `onImageTap`, `onSourceTagTap`.
+* `InlinePattern` for app-specific inline syntax such as `@mention`,
+  `#channel` and `:emoji:`, with `InlinePattern.prefixed` for the common case.
+* `MarkdownScope` and `MarkdownComponent.scopes` — components declare which
+  nesting contexts they render in.
+* Autolinks following the GFM autolink extension and CommonMark §6.5, with
+  `autolinkSchemes` for app schemes.
+* `GptMarkdownConfig` and the builder typedefs are exported from the main
+  import.
+
+### Fixed
+
+* Text scaling: components rendered through a `WidgetSpan` reserved up to 39x
+  the space they needed at a 2x system font setting. Every component now scales
+  proportionally.
+* Theme changes did not repaint — colours are resolved when spans are built,
+  and the cache was not invalidated.
+* `GptMarkdownConfig.isSame` ignored several fields, so runtime changes to
+  components, inline patterns and styles did nothing.
+* Inline widgets in right-to-left paragraphs render in visual order
+  ([flutter#54400](https://github.com/flutter/flutter/issues/54400)).
+* `GptMarkdownConfig.getRich` returns `Widget` instead of `Text`.
 
 ## 1.1.8
 

@@ -1,0 +1,32 @@
+version: 2
+
+# "All of the package dependencies are supported in the latest version" is
+# worth 10 points on pub.dev, and it decays without anyone doing anything.
+# Keeping dependencies current is the maintenance that protects it.
+updates:
+  - package-ecosystem: pub
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    labels: [dependencies]
+
+  - package-ecosystem: pub
+    directory: /example
+    schedule:
+      interval: monthly
+    labels: [dependencies]
+
+  - package-ecosystem: pub
+    directory: /widgetbook
+    schedule:
+      interval: monthly
+    labels: [dependencies]
+
+  # The actions themselves go stale too, and a deprecated runner image or
+  # action version breaks CI without touching the package.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    labels: [dependencies]

@@ -17,7 +17,6 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:gpt_markdown/custom_widgets/markdown_config.dart';
 import 'package:gpt_markdown/gpt_markdown.dart';
 
 import 'sample_documents.dart';
@@ -126,8 +125,10 @@ void main() {
     const headers = ['scenario', 'legacy regex', 'plusparse', 'speedup'];
     final widths = List<int>.generate(
       headers.length,
-      (c) => [headers[c].length, ...rows.map((r) => r[c].length)]
-          .reduce((a, b) => a > b ? a : b),
+      (c) => [
+        headers[c].length,
+        ...rows.map((r) => r[c].length),
+      ].reduce((a, b) => a > b ? a : b),
     );
     String line(List<String> cells) => cells
         .asMap()
@@ -137,9 +138,7 @@ void main() {
     debugPrint('');
     debugPrint('plusparse vs legacy regex pipeline (avg per parse, debug VM)');
     debugPrint(line(headers));
-    debugPrint(
-      widths.map((w) => ''.padRight(w, '-')).join('--+--'),
-    );
+    debugPrint(widths.map((w) => ''.padRight(w, '-')).join('--+--'));
     for (final r in rows) {
       debugPrint(line(r));
     }

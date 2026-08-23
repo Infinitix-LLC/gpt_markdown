@@ -84,37 +84,54 @@ class PlusparseRenderer {
     switch (node) {
       case MdParagraph(:final children):
         return _inlineSpans(context, children, config);
-      case MdHeading():
-        return [_blockSpan(_heading(context, node, config))];
-      case MdHorizontalRule():
-        final theme = GptMarkdownTheme.of(context);
+      case MdHeading(:final level, :final children):
         return [
           _blockSpan(
-            CustomDivider(
-              height: theme.hrLineThickness,
-              color: theme.hrLineColor,
-              padding: theme.hrLinePadding,
+            headingWidget(
+              context,
+              config,
+              level: level,
+              buildChildren: (conf) => _inlineSpans(context, children, conf),
             ),
           ),
         ];
+      case MdHorizontalRule():
+        return [_blockSpan(hrWidget(context, config))];
       case MdCodeBlock(:final language, :final code, :final closed):
         return [
           _blockSpan(
-            config.codeBuilder?.call(context, language, code, closed) ??
-                CodeField(name: language, codes: code),
+            codeBlockWidget(
+              context,
+              config,
+              name: language,
+              code: code,
+              closed: closed,
+            ),
           ),
         ];
       case MdBlockLatex(:final tex):
-        return [_blockSpan(_latex(context, tex, config, inline: false))];
+        return [
+          _blockSpan(latexWidget(context, config, tex: tex, inline: false)),
+        ];
       case MdBlockQuote(:final children):
-        return [_blockQuote(context, children, config)];
+        return [
+          blockQuoteSpan(
+            context,
+            config,
+            buildContent:
+                (conf) => conf.getRich(
+                  TextSpan(children: _blockSpans(context, children, conf)),
+                ),
+          ),
+        ];
       case MdCheckbox(:final checked, :final children):
         return [
           _blockSpan(
-            CustomCb(
-              value: checked,
-              textDirection: config.textDirection,
-              child: config.getRich(
+            checkboxWidget(
+              context,
+              config,
+              checked: checked,
+              label: config.getRich(
                 TextSpan(children: _inlineSpans(context, children, config)),
               ),
             ),
@@ -123,10 +140,11 @@ class PlusparseRenderer {
       case MdRadio(:final selected, :final children):
         return [
           _blockSpan(
-            CustomRb(
-              value: selected,
-              textDirection: config.textDirection,
-              child: config.getRich(
+            radioWidget(
+              context,
+              config,
+              selected: selected,
+              label: config.getRich(
                 TextSpan(children: _inlineSpans(context, children, config)),
               ),
             ),
@@ -143,76 +161,6 @@ class PlusparseRenderer {
       default:
         return _inlineSpans(context, [node], config);
     }
-  }
-
-  static Widget _heading(
-    BuildContext context,
-    MdHeading node,
-    GptMarkdownConfig config,
-  ) {
-    final theme = GptMarkdownTheme.of(context);
-    final conf = config.copyWith(
-      style:
-          [
-            theme.h1,
-            theme.h2,
-            theme.h3,
-            theme.h4,
-            theme.h5,
-            theme.h6,
-          ][node.level - 1],
-    );
-    return conf.getRich(
-      TextSpan(
-        children: [
-          ..._inlineSpans(context, node.children, conf),
-          if (node.level == 1 && theme.autoAddDividerLineAfterH1) ...[
-            const TextSpan(
-              text: "\n ",
-              style: TextStyle(fontSize: 0, height: 0),
-            ),
-            WidgetSpan(
-              child: CustomDivider(
-                height: theme.hrLineThickness,
-                color: theme.hrLineColor,
-                padding: theme.hrLinePadding,
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  static InlineSpan _blockQuote(
-    BuildContext context,
-    List<MdNode> children,
-    GptMarkdownConfig config,
-  ) {
-    final child = TextSpan(
-      children: _blockSpans(context, children, config),
-    );
-    return TextSpan(
-      children: [
-        WidgetSpan(
-          child: Directionality(
-            textDirection: config.textDirection,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 2),
-              child: BlockQuoteWidget(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-                direction: config.textDirection,
-                width: 3,
-                child: Padding(
-                  padding: const EdgeInsetsDirectional.only(start: 8.0),
-                  child: config.getRich(child),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
   }
 
   static List<InlineSpan> _list(
@@ -248,48 +196,9 @@ class PlusparseRenderer {
       );
       if (ordered) {
         final no = "${item.number ?? (start + i)}";
-        spans.add(
-          _blockSpan(
-            config.orderedListBuilder?.call(
-                  context,
-                  no,
-                  itemChild,
-                  config.copyWith(),
-                ) ??
-                OrderedListView(
-                  no: "$no.",
-                  textDirection: config.textDirection,
-                  style: (config.style ?? const TextStyle()).copyWith(
-                    fontWeight: FontWeight.w100,
-                  ),
-                  child: itemChild,
-                ),
-          ),
-        );
+        spans.add(_blockSpan(orderedListItem(context, config, no, itemChild)));
       } else {
-        spans.add(
-          _blockSpan(
-            config.unOrderedListBuilder?.call(
-                  context,
-                  itemChild,
-                  config.copyWith(),
-                ) ??
-                UnorderedListView(
-                  bulletColor:
-                      (config.style?.color ??
-                          DefaultTextStyle.of(context).style.color),
-                  padding: 7,
-                  spacing: 10,
-                  bulletSize:
-                      0.3 *
-                      (config.style?.fontSize ??
-                          DefaultTextStyle.of(context).style.fontSize ??
-                          kDefaultFontSize),
-                  textDirection: config.textDirection,
-                  child: itemChild,
-                ),
-          ),
-        );
+        spans.add(_blockSpan(unorderedListItem(context, config, itemChild)));
       }
     }
     return spans;
@@ -339,9 +248,10 @@ class PlusparseRenderer {
         final row = rows[index];
         final fields = List<CustomTableField>.generate(maxCol, (col) {
           return CustomTableField(
-            data: col < row.cells.length
-                ? _plainText(row.cells[col].content)
-                : "",
+            data:
+                col < row.cells.length
+                    ? _plainText(row.cells[col].content)
+                    : "",
             alignment: columnAlignments[col],
           );
         });
@@ -357,6 +267,10 @@ class PlusparseRenderer {
       );
     }
 
+    final tableStyle = (resolvedStyleSheet(context, config).table ??
+            const TableStyle())
+        .resolve(Theme.of(context).colorScheme);
+    final tableRadius = tableStyle.borderRadius;
     final controller = ScrollController();
     return _blockSpan(
       Scrollbar(
@@ -369,31 +283,37 @@ class PlusparseRenderer {
             defaultColumnWidth: CustomTableColumnWidth(),
             defaultVerticalAlignment: TableCellVerticalAlignment.middle,
             border: TableBorder.all(
-              width: 1,
-              color: Theme.of(context).colorScheme.onSurface,
+              width: tableStyle.borderWidth ?? 1,
+              color:
+                  tableStyle.borderColor ??
+                  Theme.of(context).colorScheme.onSurface,
+              borderRadius:
+                  tableRadius == null
+                      ? BorderRadius.zero
+                      : BorderRadius.all(tableRadius),
             ),
             children: List<TableRow>.generate(rows.length, (index) {
               final row = rows[index];
               return TableRow(
-                decoration: index == 0
-                    ? BoxDecoration(
-                        color: Theme.of(
-                          context,
-                        ).colorScheme.surfaceContainerHighest,
-                      )
-                    : null,
+                decoration:
+                    index == 0
+                        ? BoxDecoration(
+                          color:
+                              tableStyle.headerBackground ??
+                              Theme.of(
+                                context,
+                              ).colorScheme.surfaceContainerHighest,
+                        )
+                        : null,
                 children: List<Widget>.generate(maxCol, (col) {
-                  final cell = col < row.cells.length
-                      ? row.cells[col]
-                      : null;
+                  final cell = col < row.cells.length ? row.cells[col] : null;
                   if (cell == null || cell.content.isEmpty) {
                     return const SizedBox();
                   }
                   Widget content = Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
+                    padding:
+                        tableStyle.cellPadding ??
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     child: config.getRich(
                       TextSpan(
                         children: _inlineSpans(context, cell.content, config),
@@ -443,14 +363,61 @@ class PlusparseRenderer {
     return spans;
   }
 
+  /// Runs a run of plain text through the consumer-facing inline syntaxes:
+  /// [GptMarkdownConfig.inlinePatterns] first, then autolinking.
+  ///
+  /// Both are regex components, so they are dispatched by
+  /// [MarkdownComponent.generate] with a component list holding nothing else —
+  /// which is what keeps their scope filtering, boundary rules and precedence
+  /// identical to the regex pipeline instead of reimplemented here.
+  static List<InlineSpan> _textSpans(
+    BuildContext context,
+    String text,
+    GptMarkdownConfig config,
+  ) {
+    final patterns = config.inlinePatterns;
+    final hasPatterns = patterns != null && patterns.isNotEmpty;
+    if (!hasPatterns && !config.autolink) {
+      return [TextSpan(text: text, style: config.style)];
+    }
+    return MarkdownComponent.generate(
+      context,
+      text,
+      config.copyWith(inlineComponents: [if (config.autolink) AutolinkMd()]),
+      false,
+    );
+  }
+
   static InlineSpan _inline(
     BuildContext context,
     MdNode node,
     GptMarkdownConfig config,
   ) {
+    // Contexts a placeholder must not appear in. A link label is already
+    // rendered inside the link's own `WidgetSpan`, and a second one nested in
+    // it does not paint on iOS.
+    if (config.scope == MarkdownScope.linkLabel) {
+      switch (node) {
+        case MdImage(:final alt, :final url):
+          return TextSpan(text: '![$alt]($url)', style: config.style);
+        case MdLink(:final children):
+          // CommonMark forbids a link inside a link label; render the label's
+          // own content and drop the nested link.
+          return TextSpan(
+            children: _inlineSpans(context, children, config),
+            style: config.style,
+          );
+        default:
+          break;
+      }
+    }
+
     switch (node) {
       case MdText(:final text):
-        return TextSpan(text: text, style: config.style);
+        return TextSpan(
+          children: _textSpans(context, text, config),
+          style: config.style,
+        );
       case MdLineBreak():
         return TextSpan(text: "\n", style: config.style);
       case MdBold(:final children):
@@ -498,19 +465,25 @@ class PlusparseRenderer {
           style: conf.style,
         );
       case MdInlineCode(:final text):
-        return _inlineCode(context, text, config);
+        return inlineCodeSpan(context, text, config);
       case MdInlineLatex(:final tex):
         return WidgetSpan(
           alignment: PlaceholderAlignment.baseline,
           baseline: TextBaseline.alphabetic,
-          child: _latex(context, tex, config, inline: true),
+          child: latexWidget(context, config, tex: tex, inline: true),
         );
       case MdLink(:final children, :final url):
         return _link(context, children, url, config);
-      case MdImage():
-        return _image(context, node, config);
+      case MdImage(:final url, :final width, :final height):
+        return imageSpan(
+          context,
+          config,
+          url: url,
+          width: width,
+          height: height,
+        );
       case MdSourceTag(:final id):
-        return _sourceTag(context, id, config);
+        return sourceTagSpan(context, id, config);
       case MdGenUi(:final payload):
         final builder = config.genUiBuilder;
         if (builder == null) {
@@ -524,105 +497,8 @@ class PlusparseRenderer {
       // block rendering.
       default:
         final blocks = _block(context, node, config);
-        return blocks.length == 1
-            ? blocks.first
-            : TextSpan(children: blocks);
+        return blocks.length == 1 ? blocks.first : TextSpan(children: blocks);
     }
-  }
-
-  static InlineSpan _inlineCode(
-    BuildContext context,
-    String text,
-    GptMarkdownConfig config,
-  ) {
-    if (config.highlightBuilder != null) {
-      return WidgetSpan(
-        alignment: PlaceholderAlignment.middle,
-        child: config.highlightBuilder!(
-          context,
-          text,
-          config.style ?? const TextStyle(),
-        ),
-      );
-    }
-    final style =
-        config.style?.copyWith(
-          fontWeight: FontWeight.bold,
-          background:
-              Paint()
-                ..color = GptMarkdownTheme.of(context).highlightColor
-                ..strokeCap = StrokeCap.round
-                ..strokeJoin = StrokeJoin.round,
-        ) ??
-        TextStyle(
-          fontWeight: FontWeight.bold,
-          background:
-              Paint()
-                ..color = GptMarkdownTheme.of(context).highlightColor
-                ..strokeCap = StrokeCap.round
-                ..strokeJoin = StrokeJoin.round,
-        );
-    return TextSpan(text: text, style: style);
-  }
-
-  static Widget _latex(
-    BuildContext context,
-    String tex,
-    GptMarkdownConfig config, {
-    required bool inline,
-  }) {
-    final workaround = config.latexWorkaround ?? (String tex) => tex;
-    final builder =
-        config.latexBuilder ??
-        (BuildContext context, String tex, TextStyle textStyle, bool inline) =>
-            SelectableAdapter(
-              selectedText: tex,
-              child: Math.tex(
-                tex,
-                textStyle: textStyle,
-                mathStyle: MathStyle.display,
-                textScaleFactor: 1,
-                settings: const TexParserSettings(strict: Strict.ignore),
-                options: MathOptions(
-                  sizeUnderTextStyle: MathSize.large,
-                  color:
-                      config.style?.color ??
-                      Theme.of(context).colorScheme.onSurface,
-                  fontSize:
-                      config.style?.fontSize ??
-                      Theme.of(context).textTheme.bodyMedium?.fontSize,
-                  mathFontOptions: FontOptions(
-                    fontFamily: "Main",
-                    fontWeight: config.style?.fontWeight ?? FontWeight.normal,
-                    fontShape: FontStyle.normal,
-                  ),
-                  textFontOptions: FontOptions(
-                    fontFamily: "Main",
-                    fontWeight: config.style?.fontWeight ?? FontWeight.normal,
-                    fontShape: FontStyle.normal,
-                  ),
-                  style: MathStyle.display,
-                ),
-                onErrorFallback: (err) {
-                  return Text(
-                    workaround(tex),
-                    textDirection: config.textDirection,
-                    style: (config.style ?? const TextStyle()).copyWith(
-                      color:
-                          (!kDebugMode)
-                              ? null
-                              : Theme.of(context).colorScheme.error,
-                    ),
-                  );
-                },
-              ),
-            );
-    return builder(
-      context,
-      workaround(tex),
-      config.style ?? const TextStyle(),
-      inline,
-    );
   }
 
   static InlineSpan _link(
@@ -631,130 +507,12 @@ class PlusparseRenderer {
     String url,
     GptMarkdownConfig config,
   ) {
-    final linkText = _plainText(children);
-    final theme = GptMarkdownTheme.of(context);
-    final builder = config.linkBuilder;
-
-    if (builder != null) {
-      final linkStyle = (config.style ?? const TextStyle()).copyWith(
-        color: theme.linkColor,
-        decorationColor: theme.linkColor,
-        decoration: TextDecoration.underline,
-      );
-      final linkConfig = config.copyWith(style: linkStyle);
-      final linkTextSpan = TextSpan(
-        children: _inlineSpans(context, children, linkConfig),
-        style: linkStyle,
-      );
-      return WidgetSpan(
-        baseline: TextBaseline.alphabetic,
-        alignment: PlaceholderAlignment.baseline,
-        child: GestureDetector(
-          onTap: () => config.onLinkTap?.call(url, linkText),
-          child: builder(
-            context,
-            linkTextSpan,
-            url,
-            config.style ?? const TextStyle(),
-          ),
-        ),
-      );
-    }
-
-    return WidgetSpan(
-      alignment: PlaceholderAlignment.baseline,
-      baseline: TextBaseline.alphabetic,
-      child: LinkButton(
-        hoverColor: theme.linkHoverColor,
-        color: theme.linkColor,
-        onPressed: () {
-          config.onLinkTap?.call(url, linkText);
-        },
-        text: linkText,
-        config: config,
-        spanBuilder: (color) {
-          final spanStyle = (config.style ?? const TextStyle()).copyWith(
-            color: color,
-            decorationColor: color,
-            decoration: TextDecoration.underline,
-          );
-          return TextSpan(
-            children: _inlineSpans(
-              context,
-              children,
-              config.copyWith(style: spanStyle),
-            ),
-            style: spanStyle,
-          );
-        },
-      ),
-    );
-  }
-
-  static InlineSpan _image(
-    BuildContext context,
-    MdImage node,
-    GptMarkdownConfig config,
-  ) {
-    final Widget image;
-    if (config.imageBuilder != null) {
-      image = config.imageBuilder!(context, node.url, node.width, node.height);
-    } else {
-      image = SizedBox(
-        width: node.width,
-        height: node.height,
-        child: Image(
-          image: NetworkImage(node.url),
-          loadingBuilder: (
-            BuildContext context,
-            Widget child,
-            ImageChunkEvent? loadingProgress,
-          ) {
-            if (loadingProgress == null) {
-              return child;
-            }
-            return CustomImageLoading(
-              progress:
-                  loadingProgress.expectedTotalBytes != null
-                      ? loadingProgress.cumulativeBytesLoaded /
-                          loadingProgress.expectedTotalBytes!
-                      : 1,
-            );
-          },
-          fit: BoxFit.fill,
-          errorBuilder: (context, error, stackTrace) {
-            return const CustomImageError();
-          },
-        ),
-      );
-    }
-    return WidgetSpan(alignment: PlaceholderAlignment.bottom, child: image);
-  }
-
-  static InlineSpan _sourceTag(
-    BuildContext context,
-    String id,
-    GptMarkdownConfig config,
-  ) {
-    return WidgetSpan(
-      alignment: PlaceholderAlignment.middle,
-      child: Padding(
-        padding: const EdgeInsets.all(2),
-        child:
-            config.sourceTagBuilder?.call(context, id, const TextStyle()) ??
-            SizedBox(
-              width: 20,
-              height: 20,
-              child: Material(
-                color: Theme.of(context).colorScheme.onInverseSurface,
-                shape: const OvalBorder(),
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Text(id, textDirection: config.textDirection),
-                ),
-              ),
-            ),
-      ),
+    return buildLinkSpan(
+      context,
+      config,
+      url: url,
+      label: _plainText(children),
+      buildLabelSpans: (conf) => _inlineSpans(context, children, conf),
     );
   }
 
