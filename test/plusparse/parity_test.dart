@@ -260,4 +260,96 @@ void main() {
       }
     });
   });
+
+  group('app-specific inline syntax', () {
+    /// The three tokens chat apps layer on Markdown. None is built in — the
+    /// app supplies the pattern and the builder — so what is under test is
+    /// that both parsers dispatch them identically, including where they sit
+    /// next to other inline syntax.
+    List<InlinePattern> patterns() => [
+      InlinePattern.prefixed(
+        prefix: '#',
+        knownNames: const ['general', 'design-review'],
+        builder:
+            (context, match, style) =>
+                WidgetSpan(child: Text('CH:${match.group(0)}')),
+      ),
+      InlinePattern.prefixed(
+        prefix: '@',
+        knownNames: const ['ada', 'grace'],
+        builder:
+            (context, match, style) =>
+                WidgetSpan(child: Text('MN:${match.group(0)}')),
+      ),
+      InlinePattern.delimited(
+        open: ':',
+        knownNames: const ['tada', 'fire'],
+        builder:
+            (context, match, style) =>
+                WidgetSpan(child: Text('EM:${match.namedGroup('name')}')),
+      ),
+    ];
+
+    /// Every chip rendered, sorted so the comparison does not depend on
+    /// widget-tree traversal order.
+    List<String> chips(WidgetTester tester) =>
+        tester
+            .widgetList<Text>(find.byType(Text))
+            .map((t) => t.data ?? '')
+            .where(
+              (d) =>
+                  d.startsWith('CH:') ||
+                  d.startsWith('MN:') ||
+                  d.startsWith('EM:'),
+            )
+            .toList()
+          ..sort();
+
+    const cases = <String, String>{
+      'a channel': 'see #general now',
+      'a mention': 'hi @ada there',
+      'a shortcode': 'ship it :tada: yes',
+      'two shortcodes in a row': ':fire::fire:',
+      'beside bold': '**bold** @ada and #general',
+      'inside bold': '**@ada**',
+      'after inline code': '`code` :tada:',
+      'in a list': '- @ada\n- #general',
+      'in a heading': '# hi @ada',
+      'in a table cell': '| a | b |\n|---|---|\n| @ada | :tada: |',
+      'unknown tokens stay text': 'issue #2959 and @nobody and :shrug:',
+    };
+
+    for (final entry in cases.entries) {
+      testWidgets(entry.key, (tester) async {
+        tester.view.physicalSize = const Size(1200, 2000);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.reset);
+
+        final rendered = <List<String>>[];
+        for (final incremental in [false, true]) {
+          await _pump(
+            tester,
+            GptMarkdown(
+              entry.value,
+              incremental: incremental,
+              inlinePatterns: patterns(),
+            ),
+          );
+          rendered.add(chips(tester));
+        }
+        expect(rendered[1], rendered[0]);
+      });
+    }
+
+    testWidgets('unknown tokens render nothing at all', (tester) async {
+      await _pump(
+        tester,
+        GptMarkdown(
+          'issue #2959 and @nobody and :shrug:',
+          inlinePatterns: patterns(),
+        ),
+      );
+      expect(chips(tester), isEmpty);
+    });
+  });
 }
