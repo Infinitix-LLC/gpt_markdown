@@ -127,17 +127,16 @@ Your app supplies the names and the builder; the package supplies the matching.
 
 /// Logical width of one card. About a phone's worth, so the wrapping in the
 /// image matches what a reader will see in their own app.
-const _cardWidth = 420.0;
-const _gap = 24.0;
-const _pagePadding = 32.0;
+const _cardWidth = 440.0;
+const _pagePadding = 26.0;
 
 void main() {
   setUpAll(loadShowcaseFonts);
 
   for (final scene in _scenes.entries) {
     testWidgets(scene.key, (tester) async {
-      const width = _pagePadding * 2 + _cardWidth * 2 + _gap;
-      tester.view.physicalSize = const Size(width * 2, 1600);
+      const width = _pagePadding * 2 + _cardWidth;
+      tester.view.physicalSize = const Size(width * 2, 1800);
       tester.view.devicePixelRatio = 2.0;
       addTearDown(tester.view.reset);
 
@@ -279,7 +278,7 @@ InlineSpan _chipSpan({
   );
 }
 
-/// The light and dark cards, side by side on a soft page.
+/// One dark card on a slate page.
 class _Showcase extends StatelessWidget {
   const _Showcase({required this.markdown});
 
@@ -302,21 +301,10 @@ class _Showcase extends StatelessWidget {
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: [Color(0xFFF1F3F6), Color(0xFFDFE3E9)],
+                colors: [Color(0xFF2B313C), Color(0xFF171B22)],
               ),
             ),
-            // No IntrinsicHeight: it forces a dry layout, which RenderTable
-            // and the equation renderer both refuse. Both cards hold the same
-            // content, so their heights already agree.
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _Card(markdown: markdown, brightness: Brightness.light),
-                const SizedBox(width: _gap),
-                _Card(markdown: markdown, brightness: Brightness.dark),
-              ],
-            ),
+            child: _Card(markdown: markdown),
           ),
         ),
       ),
@@ -324,35 +312,34 @@ class _Showcase extends StatelessWidget {
   }
 }
 
-/// A single themed card, drawn as a small window so the two themes read as the
-/// same app rather than as two unrelated pictures.
+/// The card, drawn as a small window so the image reads as a piece of an app
+/// rather than as a slab of text.
 class _Card extends StatelessWidget {
-  const _Card({required this.markdown, required this.brightness});
+  const _Card({required this.markdown});
 
   final String markdown;
-  final Brightness brightness;
 
   @override
   Widget build(BuildContext context) {
-    final isDark = brightness == Brightness.dark;
+    // Plain Material 3 dark, so the image shows the defaults a reader gets
+    // before touching any of the styling API.
     final theme = ThemeData(
       useMaterial3: true,
-      brightness: brightness,
+      brightness: Brightness.dark,
       fontFamily: 'Roboto',
-      extensions: [GptMarkdownThemeData(brightness: brightness)],
+      extensions: [GptMarkdownThemeData(brightness: Brightness.dark)],
     );
-    final surface = theme.colorScheme.surface;
 
     return SizedBox(
       width: _cardWidth,
       child: DecoratedBox(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(18),
-          boxShadow: [
+          boxShadow: const [
             BoxShadow(
-              color: Color(isDark ? 0x38000000 : 0x14101828),
-              blurRadius: 22,
-              offset: const Offset(0, 8),
+              color: Color(0x59000000),
+              blurRadius: 26,
+              offset: Offset(0, 10),
             ),
           ],
         ),
@@ -361,12 +348,12 @@ class _Card extends StatelessWidget {
           child: Theme(
             data: theme,
             child: Material(
-              color: surface,
+              color: theme.colorScheme.surface,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  _TitleBar(brightness: brightness),
+                  const _TitleBar(),
                   Padding(
                     padding: const EdgeInsets.fromLTRB(20, 16, 20, 22),
                     child: GptMarkdown(
@@ -392,34 +379,39 @@ class _Card extends StatelessWidget {
   }
 }
 
-/// Three dots and a hairline — enough for the eye to read "app window"
-/// without adding anything to interpret.
+/// A window title bar: three lights and a hairline, enough for the eye to read
+/// "app" without adding anything to interpret.
 class _TitleBar extends StatelessWidget {
-  const _TitleBar({required this.brightness});
+  const _TitleBar();
 
-  final Brightness brightness;
+  /// The familiar macOS traffic lights. Recognisable at a glance, and the one
+  /// spot of colour in an otherwise monochrome frame.
+  static const _lights = [
+    Color(0xFFFF5F57),
+    Color(0xFFFEBC2E),
+    Color(0xFF28C840),
+  ];
 
   @override
   Widget build(BuildContext context) {
-    final isDark = brightness == Brightness.dark;
-    final dot = Color(isDark ? 0x33FFFFFF : 0x22000000);
-    final line = Color(isDark ? 0x1FFFFFFF : 0x14000000);
-
     return Container(
       height: 38,
       padding: const EdgeInsets.symmetric(horizontal: 16),
-      decoration: BoxDecoration(
-        border: Border(bottom: BorderSide(color: line)),
+      decoration: const BoxDecoration(
+        border: Border(bottom: BorderSide(color: Color(0x1FFFFFFF))),
       ),
       child: Row(
         children: [
-          for (var i = 0; i < 3; i++) ...[
+          for (var i = 0; i < _lights.length; i++) ...[
             Container(
-              width: 9,
-              height: 9,
-              decoration: BoxDecoration(color: dot, shape: BoxShape.circle),
+              width: 10,
+              height: 10,
+              decoration: BoxDecoration(
+                color: _lights[i],
+                shape: BoxShape.circle,
+              ),
             ),
-            if (i < 2) const SizedBox(width: 7),
+            if (i < _lights.length - 1) const SizedBox(width: 7),
           ],
         ],
       ),

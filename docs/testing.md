@@ -224,7 +224,8 @@ way to see what moved.
 ## README screenshots
 
 `./scripts/screenshots.sh` regenerates the showcase images in `screenshots/`
-from `tool/screenshots/`. They render through the test harness because that is
+from `tool/screenshots/`. One dark card per capability, laid out as a grid in
+the README. They render through the test harness because that is
 the supported way to rasterise a widget to a file without opening a window.
 
 Unlike goldens, nothing compares them — they are documentation, so any machine

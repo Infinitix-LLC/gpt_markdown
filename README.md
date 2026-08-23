@@ -47,57 +47,15 @@
 | 🔗 | Links, autolinks, and images | 🌓 | Theme-aware rendering | 👆 | Interaction callbacks |
 | ☑️ | Lists, tasks, and citations | 🛡️ | Graceful malformed input | 📱 | Custom URL schemes |
 
-## 🖼️ The same widget, every theme
+## 🖼️ What it renders
 
-Every image below is one `GptMarkdown` widget with no styling applied — the defaults, in light and dark.
+Every image is one `GptMarkdown` widget with no styling applied — the defaults, in a dark theme.
 
-### Rich text
-
-Headings, emphasis, strikethrough, nested lists, quotes, rules and autolinks.
-
-<p align="center">
-  <img width="820" alt="Rich text rendered by gpt_markdown in light and dark themes" src="https://raw.githubusercontent.com/Infinitix-LLC/gpt_markdown/main/screenshots/rich-text.png">
-</p>
-
-### LaTeX
-
-Inline and display equations, sitting on the text baseline.
-
-<p align="center">
-  <img width="820" alt="LaTeX rendered by gpt_markdown in light and dark themes" src="https://raw.githubusercontent.com/Infinitix-LLC/gpt_markdown/main/screenshots/math.png">
-</p>
-
-### Tables
-
-Per-column alignment, with Markdown inside the cells.
-
-<p align="center">
-  <img width="820" alt="Tables rendered by gpt_markdown in light and dark themes" src="https://raw.githubusercontent.com/Infinitix-LLC/gpt_markdown/main/screenshots/tables.png">
-</p>
-
-### Code
-
-Fenced blocks with a language header, and inline code that wraps.
-
-<p align="center">
-  <img width="820" alt="Code rendered by gpt_markdown in light and dark themes" src="https://raw.githubusercontent.com/Infinitix-LLC/gpt_markdown/main/screenshots/code.png">
-</p>
-
-### Task lists
-
-Checkboxes, ordered and nested lists, and citation tags.
-
-<p align="center">
-  <img width="820" alt="Task lists rendered by gpt_markdown in light and dark themes" src="https://raw.githubusercontent.com/Infinitix-LLC/gpt_markdown/main/screenshots/lists.png">
-</p>
-
-### Inline patterns
-
-App-specific syntax — mentions, channels and shortcodes — rendered as widgets by your own builders. Unknown tokens like `#2959` stay plain text.
-
-<p align="center">
-  <img width="820" alt="Mentions, channels and shortcodes rendered by gpt_markdown in light and dark themes" src="https://raw.githubusercontent.com/Infinitix-LLC/gpt_markdown/main/screenshots/inline-patterns.png">
-</p>
+|  |  |
+|:--|:--|
+| <img alt="Rich text rendered by gpt_markdown" src="https://raw.githubusercontent.com/Infinitix-LLC/gpt_markdown/main/screenshots/rich-text.png"><br>**Rich text** — Headings, emphasis, strikethrough, nested lists, quotes, rules, autolinks. | <img alt="LaTeX rendered by gpt_markdown" src="https://raw.githubusercontent.com/Infinitix-LLC/gpt_markdown/main/screenshots/math.png"><br>**LaTeX** — Inline and display equations, sitting on the text baseline. |
+| <img alt="Tables rendered by gpt_markdown" src="https://raw.githubusercontent.com/Infinitix-LLC/gpt_markdown/main/screenshots/tables.png"><br>**Tables** — Per-column alignment, with Markdown inside the cells. | <img alt="Code rendered by gpt_markdown" src="https://raw.githubusercontent.com/Infinitix-LLC/gpt_markdown/main/screenshots/code.png"><br>**Code** — Fenced blocks with a language header, and inline code that wraps. |
+| <img alt="Task lists rendered by gpt_markdown" src="https://raw.githubusercontent.com/Infinitix-LLC/gpt_markdown/main/screenshots/lists.png"><br>**Task lists** — Checkboxes, ordered and nested lists, citation tags. | <img alt="Inline patterns rendered by gpt_markdown" src="https://raw.githubusercontent.com/Infinitix-LLC/gpt_markdown/main/screenshots/inline-patterns.png"><br>**Inline patterns** — Mentions, channels and shortcodes as widgets. `#2959` stays plain text. |
 
 ## 🛠️ Quick start
 
