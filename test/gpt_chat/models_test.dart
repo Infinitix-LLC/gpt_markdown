@@ -12,19 +12,57 @@ void main() {
   group('CompletionChunk', () {
     test('reads a streaming delta', () {
       final chunk = CompletionChunk.fromJson({
-        'choices': [
-          {'delta': {'content': 'hi'}, 'finish_reason': null},
-        ],
+        'type': 'response.output_text.delta',
+        'delta': 'hi',
       });
 
       expect(chunk.content, 'hi');
       expect(chunk.isDone, isFalse);
     });
 
+    test('a lifecycle event carries no text and is not terminal', () {
+      final chunk = CompletionChunk.fromJson({
+        'type': 'response.output_item.added',
+        'item': {'type': 'message'},
+      });
+
+      expect(chunk.content, isEmpty);
+      expect(chunk.isDone, isFalse);
+    });
+
+    test('response.completed is terminal without repeating the text', () {
+      // The whole response rides on this event, but every character of it has
+      // already been streamed — reading it again would double the reply.
+      final chunk = CompletionChunk.fromJson({
+        'type': 'response.completed',
+        'response': {
+          'status': 'completed',
+          'output': [
+            {
+              'type': 'message',
+              'content': [
+                {'type': 'output_text', 'text': 'already streamed'},
+              ],
+            },
+          ],
+        },
+      });
+
+      expect(chunk.content, isEmpty);
+      expect(chunk.finishReason, 'completed');
+      expect(chunk.isDone, isTrue);
+    });
+
     test('reads a non-streaming message', () {
       final chunk = CompletionChunk.fromJson({
-        'choices': [
-          {'message': {'content': 'done'}, 'finish_reason': 'stop'},
+        'status': 'completed',
+        'output': [
+          {
+            'type': 'message',
+            'content': [
+              {'type': 'output_text', 'text': 'done'},
+            ],
+          },
         ],
       });
 
@@ -34,7 +72,7 @@ void main() {
 
     test('reads artifacts from the x_plusfinity extension', () {
       final chunk = CompletionChunk.fromJson({
-        'choices': [],
+        'type': 'response.output_item.added',
         'x_plusfinity': {
           'artifacts': [
             {'id': 'a1', 'name': 'Seed', 'status': 'queued', 'token': 't'},
@@ -46,21 +84,31 @@ void main() {
       expect(chunk.artifacts.single.token, 't');
     });
 
-    test('tolerates an empty choices list', () {
-      expect(CompletionChunk.fromJson({'choices': []}).content, isEmpty);
+    test('tolerates a payload it does not recognise', () {
+      final chunk = CompletionChunk.fromJson({'object': 'response'});
+
+      expect(chunk.content, isEmpty);
+      expect(chunk.isDone, isFalse);
+      expect(chunk.artifacts, isEmpty);
     });
   });
 
   group('ChatException', () {
     test('extracts the API error message', () {
-      final error = ChatException.fromResponse(401, '{"error":{"message":"Invalid API key"}}');
+      final error = ChatException.fromResponse(
+        401,
+        '{"error":{"message":"Invalid API key"}}',
+      );
 
       expect(error.message, 'Invalid API key');
       expect(error.statusCode, 401);
     });
 
     test('falls back to the status code', () {
-      expect(ChatException.fromResponse(429, 'slow down').message, contains('429'));
+      expect(
+        ChatException.fromResponse(429, 'slow down').message,
+        contains('429'),
+      );
     });
   });
 
@@ -73,9 +121,13 @@ void main() {
         'frame': 'landscape',
         'script': 'scene {}',
         'narrations': [
-          {'text': 'A seed sprouts.', 'audio': 'https://x.dev/a.mp3', 'marks': [
-            {'time': 0},
-          ]},
+          {
+            'text': 'A seed sprouts.',
+            'audio': 'https://x.dev/a.mp3',
+            'marks': [
+              {'time': 0},
+            ],
+          },
         ],
       });
 
@@ -87,8 +139,17 @@ void main() {
     });
 
     test('merge keeps the token from the original tag', () {
-      const tagged = ValArtifact(id: 'a1', name: 'Seed', status: ArtifactStatus.queued, token: 't');
-      const update = ValArtifact(id: 'a1', name: 'Seed', status: ArtifactStatus.generating);
+      const tagged = ValArtifact(
+        id: 'a1',
+        name: 'Seed',
+        status: ArtifactStatus.queued,
+        token: 't',
+      );
+      const update = ValArtifact(
+        id: 'a1',
+        name: 'Seed',
+        status: ArtifactStatus.generating,
+      );
 
       final merged = tagged.mergedWith(update);
 
@@ -133,14 +194,17 @@ void main() {
 
     test('defaults to the gateway base url', () {
       expect(
-        config.completionsUri.toString(),
-        'https://us-central1-yalagpt.cloudfunctions.net/v1/chat/completions',
+        config.responsesUri.toString(),
+        'https://us-central1-yalagpt.cloudfunctions.net/v1/responses',
       );
       expect(config.modelsUri.path, endsWith('/models'));
     });
 
     test('puts the artifact token in the query string', () {
-      expect(config.artifactUri('a1', 'tok').toString(), endsWith('/artifacts/a1?token=tok'));
+      expect(
+        config.artifactUri('a1', 'tok').toString(),
+        endsWith('/artifacts/a1?token=tok'),
+      );
       expect(
         config.artifactEventsUri('a1', 'tok').toString(),
         endsWith('/artifacts/a1/events?token=tok'),
@@ -175,10 +239,10 @@ void main() {
     test('widget selection maps to its wire value', () {
       expect(WidgetSelection.defaults.toWire(), true);
       expect(WidgetSelection.none.toWire(), false);
-      expect(
-        WidgetSelection.only(const ['bar_chart', 'surface_3d']).toWire(),
-        ['bar_chart', 'surface_3d'],
-      );
+      expect(WidgetSelection.only(const ['bar_chart', 'surface_3d']).toWire(), [
+        'bar_chart',
+        'surface_3d',
+      ]);
     });
 
     test('compares by value', () {

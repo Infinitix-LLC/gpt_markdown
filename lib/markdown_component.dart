@@ -1,7 +1,59 @@
 part of 'gpt_markdown.dart';
 
+/// The nesting context a [MarkdownComponent] is being rendered in.
+///
+/// Markdown nests: a link label may contain bold text, a table cell may
+/// contain a link, a heading may contain inline code. A component declares the
+/// contexts it is meaningful in through [MarkdownComponent.scopes] and is
+/// skipped everywhere else.
+///
+/// This is what stops, for example, an app-specific `#channel` chip from also
+/// rendering *inside* `[#channel](url)`. That produced a [WidgetSpan] nested
+/// in the link's own [WidgetSpan], which does not paint on iOS.
+enum MarkdownScope {
+  /// Ordinary document or inline content. The default.
+  content,
+
+  /// Inside the `label` half of a `[label](url)` link.
+  linkLabel,
+
+  /// Inside a table cell.
+  tableCell,
+
+  /// Inside a `#` heading.
+  heading,
+}
+
 /// Markdown components
 abstract class MarkdownComponent {
+  /// Every scope — the default value of [scopes].
+  ///
+  /// Declared `const` so reading [scopes] allocates nothing; it is read once
+  /// per component per [generate] call, and [generate] recurses.
+  static const Set<MarkdownScope> allScopes = {
+    MarkdownScope.content,
+    MarkdownScope.linkLabel,
+    MarkdownScope.tableCell,
+    MarkdownScope.heading,
+  };
+
+  /// Every scope except [MarkdownScope.linkLabel].
+  ///
+  /// The right default for anything rendering a [WidgetSpan]: a placeholder
+  /// nested inside the link's own placeholder does not paint on iOS.
+  static const Set<MarkdownScope> allScopesExceptLinkLabel = {
+    MarkdownScope.content,
+    MarkdownScope.tableCell,
+    MarkdownScope.heading,
+  };
+
+  /// The nesting contexts this component is allowed to render in.
+  ///
+  /// Defaults to [allScopes], so existing components keep their behaviour.
+  /// Override it to opt out of a context — most commonly
+  /// [allScopesExceptLinkLabel].
+  Set<MarkdownScope> get scopes => allScopes;
+
   static List<MarkdownComponent> get globalComponents => [
     CodeBlockMd(),
     LatexMathMultiLine(),
@@ -22,6 +74,7 @@ abstract class MarkdownComponent {
     GenUiMd(),
     ATagMd(),
     ImageMd(),
+    AutolinkMd(),
     TableMd(),
     StrikeMd(),
     BoldMd(),
@@ -32,6 +85,43 @@ abstract class MarkdownComponent {
     HighlightedText(),
     SourceTag(),
   ];
+
+  /// Compiled combined regexes, keyed by the joined pattern string.
+  ///
+  /// Building and compiling the combined pattern is the most expensive part of
+  /// [generate], and [generate] recurses once per nested span. The joined
+  /// pattern string fully determines the [RegExp], so it is the natural key.
+  static final Map<String, RegExp> _combinedRegexCache = {};
+
+  /// Upper bound on [_combinedRegexCache].
+  ///
+  /// Components may be built from runtime data (a channel list, an emoji
+  /// palette), so the set of distinct patterns is not bounded by the package.
+  /// The cache is dropped wholesale rather than grown without limit.
+  static const int _combinedRegexCacheLimit = 64;
+
+  static RegExp _combinedRegexFor(List<MarkdownComponent> components) {
+    final pattern = components.map<String>((e) => e.exp.pattern).join("|");
+    // The combined regex carries one set of flags for every alternative, so a
+    // single case-insensitive component makes the whole alternation
+    // case-insensitive. Without this its matches never reach the dispatch loop
+    // at all — the combined regex simply does not find them.
+    final caseSensitive = components.every((e) => e.exp.isCaseSensitive);
+    final key = caseSensitive ? pattern : 'i:$pattern';
+    final cached = _combinedRegexCache[key];
+    if (cached != null) {
+      return cached;
+    }
+    if (_combinedRegexCache.length >= _combinedRegexCacheLimit) {
+      _combinedRegexCache.clear();
+    }
+    return _combinedRegexCache[key] = RegExp(
+      pattern,
+      multiLine: true,
+      dotAll: true,
+      caseSensitive: caseSensitive,
+    );
+  }
 
   /// Generate widget for markdown widget
   static List<InlineSpan> generate(
@@ -44,29 +134,62 @@ abstract class MarkdownComponent {
         includeGlobalComponents
             ? config.components ?? MarkdownComponent.globalComponents
             : config.inlineComponents ?? MarkdownComponent.inlineComponents;
+
+    // Consumer patterns are matched ahead of the built-ins, and only in the
+    // inline pass. The global pass resolves block structure (headings, lists,
+    // tables); everything it does not claim comes straight back here with
+    // [includeGlobalComponents] false, so inline patterns still see all of it.
+    final inlinePatterns = config.inlinePatterns;
+    if (!includeGlobalComponents &&
+        inlinePatterns != null &&
+        inlinePatterns.isNotEmpty) {
+      components = [...inlinePatterns.map(InlinePatternMd.new), ...components];
+    }
+
+    // Filter *before* the combined regex is built, not just in the dispatch
+    // loop below. Filtering only the dispatch loop would leave the combined
+    // regex claiming text that no component then handles.
+    final scope = config.scope;
+    components = components
+        .where((e) => e.scopes.contains(scope))
+        .toList(growable: false);
+
     List<InlineSpan> spans = [];
-    Iterable<String> regexes = components.map<String>((e) => e.exp.pattern);
-    final combinedRegex = RegExp(
-      regexes.join("|"),
-      multiLine: true,
-      dotAll: true,
-    );
+    if (components.isEmpty) {
+      // An empty pattern matches everywhere and would consume the text.
+      return [TextSpan(text: text, style: config.style)];
+    }
+    final combinedRegex = _combinedRegexFor(components);
     text.splitMapJoin(
       combinedRegex,
       onMatch: (p0) {
         String element = p0[0] ?? "";
         for (var each in components) {
           var p = each.exp.pattern;
+          // The group matters: `^a|b$` anchors only the first and last
+          // alternative, so any component whose pattern has a top-level `|`
+          // would claim matches it does not actually cover.
           var exp = RegExp(
-            '^$p\$',
+            '^(?:$p)\$',
             multiLine: each.exp.isMultiLine,
             dotAll: each.exp.isDotAll,
+            caseSensitive: each.exp.isCaseSensitive,
           );
           if (exp.hasMatch(element)) {
             spans.add(each.span(context, element, config));
             return "";
           }
         }
+        // The combined regex matched but no single component claims the whole
+        // match. Show the source text rather than dropping it silently.
+        assert(() {
+          debugPrint(
+            'gpt_markdown: no component claimed "$element"; '
+            'rendering it as plain text.',
+          );
+          return true;
+        }());
+        spans.add(TextSpan(text: element, style: config.style));
         return "";
       },
       onNonMatch: (p0) {
@@ -142,11 +265,7 @@ abstract class BlockMd extends MarkdownComponent {
       mainAxisSize: MainAxisSize.min,
       children: [Flexible(child: child)],
     );
-    return WidgetSpan(
-      child: child,
-      alignment: PlaceholderAlignment.baseline,
-      baseline: TextBaseline.alphabetic,
-    );
+    return scaledWidgetSpan(child: child, config: config);
   }
 
   Widget build(
@@ -201,44 +320,19 @@ class HTag extends BlockMd {
     String text,
     final GptMarkdownConfig config,
   ) {
-    var theme = GptMarkdownTheme.of(context);
     var match = this.exp.firstMatch(text.trim());
-    var conf = config.copyWith(
-      style:
-          [
-            theme.h1,
-            theme.h2,
-            theme.h3,
-            theme.h4,
-            theme.h5,
-            theme.h6,
-          ][match![1]!.length - 1],
-    );
-    return config.getRich(
-      TextSpan(
-        children: [
-          ...(MarkdownComponent.generate(
+    final hashes = match?.namedGroup('hash');
+    return headingWidget(
+      context,
+      config,
+      level: hashes == null ? 1 : hashes.length,
+      buildChildren:
+          (conf) => MarkdownComponent.generate(
             context,
-            "${match.namedGroup('data')}",
+            "${match?.namedGroup('data')}",
             conf,
             false,
-          )),
-          if (match.namedGroup('hash')!.length == 1 &&
-              theme.autoAddDividerLineAfterH1) ...[
-            const TextSpan(
-              text: "\n ",
-              style: TextStyle(fontSize: 0, height: 0),
-            ),
-            WidgetSpan(
-              child: CustomDivider(
-                height: theme.hrLineThickness,
-                color: theme.hrLineColor,
-                padding: theme.hrLinePadding,
-              ),
-            ),
-          ],
-        ],
-      ),
+          ),
     );
   }
 }
@@ -273,12 +367,7 @@ class HrLine extends BlockMd {
     String text,
     final GptMarkdownConfig config,
   ) {
-    final gptTheme = GptMarkdownTheme.of(context);
-    return CustomDivider(
-      height: gptTheme.hrLineThickness,
-      color: gptTheme.hrLineColor,
-      padding: gptTheme.hrLinePadding,
-    );
+    return hrWidget(context, config);
   }
 }
 
@@ -294,10 +383,11 @@ class CheckBoxMd extends BlockMd {
     final GptMarkdownConfig config,
   ) {
     var match = this.exp.firstMatch(text.trim());
-    return CustomCb(
-      value: ("${match?[1]}" == "x"),
-      textDirection: config.textDirection,
-      child: MdWidget(context, "${match?[2]}", false, config: config),
+    return checkboxWidget(
+      context,
+      config,
+      checked: "${match?[1]}" == "x",
+      label: MdWidget(context, "${match?[2]}", false, config: config),
     );
   }
 }
@@ -314,10 +404,11 @@ class RadioButtonMd extends BlockMd {
     final GptMarkdownConfig config,
   ) {
     var match = this.exp.firstMatch(text.trim());
-    return CustomRb(
-      value: ("${match?[1]}" == "x"),
-      textDirection: config.textDirection,
-      child: MdWidget(context, "${match?[2]}", false, config: config),
+    return radioWidget(
+      context,
+      config,
+      selected: "${match?[1]}" == "x",
+      label: MdWidget(context, "${match?[2]}", false, config: config),
     );
   }
 }
@@ -326,10 +417,9 @@ class RadioButtonMd extends BlockMd {
 class BlockQuote extends InlineMd {
   @override
   bool get inline => false;
+
   @override
-  RegExp get exp =>
-  // RegExp(r"(?<=\n\n)(\ +)(.+?)(?=\n\n)", dotAll: true, multiLine: true);
-  RegExp(
+  RegExp get exp => RegExp(
     r"(?:(?:^)\ *>[^\n]+)(?:(?:\n)\ *>[^\n]+)*",
     dotAll: true,
     multiLine: true,
@@ -356,29 +446,16 @@ class BlockQuote extends InlineMd {
       }
     }
     var data = dataBuilder.toString().trim();
-    var child = TextSpan(
-      children: MarkdownComponent.generate(context, data, config, true),
-    );
-    return TextSpan(
-      children: [
-        WidgetSpan(
-          child: Directionality(
-            textDirection: config.textDirection,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 2),
-              child: BlockQuoteWidget(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-                direction: config.textDirection,
-                width: 3,
-                child: Padding(
-                  padding: const EdgeInsetsDirectional.only(start: 8.0),
-                  child: config.getRich(child),
-                ),
-              ),
+
+    return blockQuoteSpan(
+      context,
+      config,
+      buildContent:
+          (conf) => conf.getRich(
+            TextSpan(
+              children: MarkdownComponent.generate(context, data, conf, true),
             ),
           ),
-        ),
-      ],
     );
   }
 }
@@ -398,24 +475,7 @@ class UnOrderedList extends BlockMd {
 
     var child = MdWidget(context, "${match?[1]?.trim()}", true, config: config);
 
-    return config.unOrderedListBuilder?.call(
-          context,
-          child,
-          config.copyWith(),
-        ) ??
-        UnorderedListView(
-          bulletColor:
-              (config.style?.color ?? DefaultTextStyle.of(context).style.color),
-          padding: 7,
-          spacing: 10,
-          bulletSize:
-              0.3 *
-              (config.style?.fontSize ??
-                  DefaultTextStyle.of(context).style.fontSize ??
-                  kDefaultFontSize),
-          textDirection: config.textDirection,
-          child: child,
-        );
+    return unorderedListItem(context, config, child);
   }
 }
 
@@ -435,21 +495,45 @@ class OrderedList extends BlockMd {
     var no = "${match?[1]}".trim();
 
     var child = MdWidget(context, "${match?[2]}".trim(), true, config: config);
-    return config.orderedListBuilder?.call(
-          context,
-          no,
-          child,
-          config.copyWith(),
-        ) ??
-        OrderedListView(
-          no: "$no.",
-          textDirection: config.textDirection,
-          style: (config.style ?? const TextStyle()).copyWith(
-            fontWeight: FontWeight.w100,
-          ),
-          child: child,
-        );
+    return orderedListItem(context, config, no, child);
   }
+}
+
+/// Builds the span for one run of inline `` `code` ``.
+///
+/// Shared by [HighlightedText] and the plusparse renderer so the two parsers
+/// cannot drift apart on the thing a reader sees most often.
+InlineSpan inlineCodeSpan(
+  BuildContext context,
+  String code,
+  GptMarkdownConfig config,
+) {
+  // A plain TextSpan, tagged so the paragraph paints a rounded chip behind
+  // it — see `custom_widgets/inline_code.dart`. Keeping it out of a
+  // WidgetSpan is what lets inline code wrap across lines, stay selectable,
+  // sit on the surrounding baseline, and appear inside a link label.
+  final codeStyle = (config.inlineCodeStyle ??
+          GptMarkdownTheme.of(context).inlineCode)
+      .resolve(Theme.of(context).colorScheme);
+  final textStyle = codeStyle.applyTo(config.style ?? const TextStyle());
+
+  final builder = config.inlineCodeBuilder;
+  if (builder != null) {
+    return builder(context, code, textStyle, codeStyle);
+  }
+
+  // ignore: deprecated_member_use_from_same_package
+  final legacyBuilder = config.highlightBuilder;
+  if (legacyBuilder != null) {
+    // Kept so 1.1.x code compiles. Wrapped on the baseline rather than at
+    // the old hardcoded `PlaceholderAlignment.middle`, which sat visibly off
+    // the surrounding text.
+    return baselineWidgetSpan(
+      legacyBuilder(context, code, config.style ?? textStyle),
+    );
+  }
+
+  return CodeTextSpan(text: code, codeStyle: codeStyle, style: textStyle);
 }
 
 class HighlightedText extends InlineMd {
@@ -463,38 +547,7 @@ class HighlightedText extends InlineMd {
     final GptMarkdownConfig config,
   ) {
     var match = exp.firstMatch(text.trim());
-    var highlightedText = match?[1] ?? "";
-
-    if (config.highlightBuilder != null) {
-      return WidgetSpan(
-        alignment: PlaceholderAlignment.middle,
-        child: config.highlightBuilder!(
-          context,
-          highlightedText,
-          config.style ?? const TextStyle(),
-        ),
-      );
-    }
-
-    var style =
-        config.style?.copyWith(
-          fontWeight: FontWeight.bold,
-          background:
-              Paint()
-                ..color = GptMarkdownTheme.of(context).highlightColor
-                ..strokeCap = StrokeCap.round
-                ..strokeJoin = StrokeJoin.round,
-        ) ??
-        TextStyle(
-          fontWeight: FontWeight.bold,
-          background:
-              Paint()
-                ..color = GptMarkdownTheme.of(context).highlightColor
-                ..strokeCap = StrokeCap.round
-                ..strokeJoin = StrokeJoin.round,
-        );
-
-    return TextSpan(text: highlightedText, style: style);
+    return inlineCodeSpan(context, match?[1] ?? "", config);
   }
 }
 
@@ -623,7 +676,6 @@ class ItalicMd extends InlineMd {
 class LatexMathMultiLine extends BlockMd {
   @override
   String get expString => (r"\ *\\\[((?:.)*?)\\\]");
-  // (r"\ *\\\[((?:(?!\n\n\n).)*?)\\\]|(\\begin.*?\\end{.*?})");
   @override
   RegExp get exp => RegExp(expString, dotAll: true, multiLine: true);
 
@@ -634,59 +686,11 @@ class LatexMathMultiLine extends BlockMd {
     final GptMarkdownConfig config,
   ) {
     var p0 = exp.firstMatch(text.trim());
-    String mathText = p0?[1] ?? p0?[2] ?? '';
-    var workaround = config.latexWorkaround ?? (String tex) => tex;
-
-    var builder =
-        config.latexBuilder ??
-        (BuildContext context, String tex, TextStyle textStyle, bool inline) =>
-            SelectableAdapter(
-              selectedText: tex,
-              child: Math.tex(
-                tex,
-                textStyle: textStyle,
-                mathStyle: MathStyle.display,
-                textScaleFactor: 1,
-                settings: const TexParserSettings(strict: Strict.ignore),
-                options: MathOptions(
-                  sizeUnderTextStyle: MathSize.large,
-                  color:
-                      config.style?.color ??
-                      Theme.of(context).colorScheme.onSurface,
-                  fontSize:
-                      config.style?.fontSize ??
-                      Theme.of(context).textTheme.bodyMedium?.fontSize,
-                  mathFontOptions: FontOptions(
-                    fontFamily: "Main",
-                    fontWeight: config.style?.fontWeight ?? FontWeight.normal,
-                    fontShape: FontStyle.normal,
-                  ),
-                  textFontOptions: FontOptions(
-                    fontFamily: "Main",
-                    fontWeight: config.style?.fontWeight ?? FontWeight.normal,
-                    fontShape: FontStyle.normal,
-                  ),
-                  style: MathStyle.display,
-                ),
-                onErrorFallback: (err) {
-                  return Text(
-                    workaround(mathText),
-                    textDirection: config.textDirection,
-                    style: textStyle.copyWith(
-                      color:
-                          (!kDebugMode)
-                              ? null
-                              : Theme.of(context).colorScheme.error,
-                    ),
-                  );
-                },
-              ),
-            );
-    return builder(
+    return latexWidget(
       context,
-      workaround(mathText),
-      config.style ?? const TextStyle(),
-      false,
+      config,
+      tex: p0?[1] ?? p0?[2] ?? '',
+      inline: false,
     );
   }
 }
@@ -711,61 +715,9 @@ class LatexMath extends InlineMd {
     var p0 = exp.firstMatch(text.trim());
     p0?.group(0);
     String mathText = p0?[1]?.toString() ?? "";
-    var workaround = config.latexWorkaround ?? (String tex) => tex;
-    var builder =
-        config.latexBuilder ??
-        (BuildContext context, String tex, TextStyle textStyle, bool inline) =>
-            SelectableAdapter(
-              selectedText: tex,
-              child: Math.tex(
-                tex,
-                textStyle: textStyle,
-                mathStyle: MathStyle.display,
-                textScaleFactor: 1,
-                settings: const TexParserSettings(strict: Strict.ignore),
-                options: MathOptions(
-                  sizeUnderTextStyle: MathSize.large,
-                  color:
-                      config.style?.color ??
-                      Theme.of(context).colorScheme.onSurface,
-                  fontSize:
-                      config.style?.fontSize ??
-                      Theme.of(context).textTheme.bodyMedium?.fontSize,
-                  mathFontOptions: FontOptions(
-                    fontFamily: "Main",
-                    fontWeight: config.style?.fontWeight ?? FontWeight.normal,
-                    fontShape: FontStyle.normal,
-                  ),
-                  textFontOptions: FontOptions(
-                    fontFamily: "Main",
-                    fontWeight: config.style?.fontWeight ?? FontWeight.normal,
-                    fontShape: FontStyle.normal,
-                  ),
-                  style: MathStyle.display,
-                ),
-                onErrorFallback: (err) {
-                  return Text(
-                    workaround(mathText),
-                    textDirection: config.textDirection,
-                    style: textStyle.copyWith(
-                      color:
-                          (!kDebugMode)
-                              ? null
-                              : Theme.of(context).colorScheme.error,
-                    ),
-                  );
-                },
-              ),
-            );
-    return WidgetSpan(
-      alignment: PlaceholderAlignment.baseline,
-      baseline: TextBaseline.alphabetic,
-      child: builder(
-        context,
-        workaround(mathText),
-        config.style ?? const TextStyle(),
-        true,
-      ),
+    return scaledWidgetSpan(
+      config: config,
+      child: latexWidget(context, config, tex: mathText, inline: true),
     );
   }
 }
@@ -786,34 +738,7 @@ class SourceTag extends InlineMd {
     if (content == null) {
       return const TextSpan();
     }
-    return WidgetSpan(
-      alignment: PlaceholderAlignment.middle,
-      child: Padding(
-        padding: const EdgeInsets.all(2),
-        child:
-            config.sourceTagBuilder?.call(
-              context,
-              content,
-              const TextStyle(),
-            ) ??
-            SizedBox(
-              width: 20,
-              height: 20,
-              child: Material(
-                color: Theme.of(context).colorScheme.onInverseSurface,
-                shape: const OvalBorder(),
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Text(
-                    content,
-                    // style: (style ?? const TextStyle()).copyWith(),
-                    textDirection: config.textDirection,
-                  ),
-                ),
-              ),
-            ),
-      ),
-    );
+    return sourceTagSpan(context, content, config);
   }
 }
 
@@ -821,6 +746,12 @@ class SourceTag extends InlineMd {
 class ATagMd extends InlineMd {
   @override
   RegExp get exp => RegExp(r"(?<!\!)\[.*?\]\([^\s]*\)");
+
+  /// CommonMark forbids links inside link labels, and the label is rendered
+  /// inside this component's own [WidgetSpan] — a second one nested in it does
+  /// not paint on iOS.
+  @override
+  Set<MarkdownScope> get scopes => MarkdownComponent.allScopesExceptLinkLabel;
 
   @override
   InlineSpan span(
@@ -843,8 +774,9 @@ class ATagMd extends InlineMd {
       }
     }
 
-    if (text[end + 1] != '(') {
-      return const TextSpan();
+    if (end + 1 >= text.length || text[end + 1] != '(') {
+      // Malformed link. Show the source text instead of deleting it.
+      return TextSpan(text: text, style: config.style);
     }
 
     // First try to find the basic pattern
@@ -877,13 +809,12 @@ class ATagMd extends InlineMd {
     }
 
     if (urlEnd == urlStart) {
-      // No closing parenthesis found
-      return const TextSpan();
+      // No closing parenthesis found. Show the source text instead of
+      // deleting it.
+      return TextSpan(text: text, style: config.style);
     }
 
     final url = text.substring(urlStart, urlEnd).trim();
-
-    var builder = config.linkBuilder;
 
     var ending = text.substring(urlEnd + 1);
 
@@ -893,82 +824,138 @@ class ATagMd extends InlineMd {
       config,
       false,
     );
-    var theme = GptMarkdownTheme.of(context);
 
-    // Use custom builder if provided
-    WidgetSpan? child;
-    if (builder != null) {
-      // Build a styled span to hand off to the custom linkBuilder.
-      final linkStyle = (config.style ?? const TextStyle()).copyWith(
-        color: theme.linkColor,
-        decorationColor: theme.linkColor,
-        decoration: TextDecoration.underline,
-      );
-      final linkConfig = config.copyWith(style: linkStyle);
-      final linkTextSpan = TextSpan(
-        children: MarkdownComponent.generate(
-          context,
-          linkText,
-          linkConfig,
-          false,
-        ),
-        style: linkStyle,
-      );
-      child = WidgetSpan(
-        baseline: TextBaseline.alphabetic,
-        alignment: PlaceholderAlignment.baseline,
-        child: GestureDetector(
-          onTap: () => config.onLinkTap?.call(url, linkText),
-          child: builder(
-            context,
-            linkTextSpan,
-            url,
-            config.style ?? const TextStyle(),
-          ),
-        ),
-      );
-    }
-
-    // Default rendering — LinkButton rebuilds the span on every hover change
-    // so bold/italic text inside a link also picks up the hover colour.
-    child ??= WidgetSpan(
-      alignment: PlaceholderAlignment.baseline,
-      baseline: TextBaseline.alphabetic,
-      child: LinkButton(
-        hoverColor: theme.linkHoverColor,
-        color: theme.linkColor,
-        onPressed: () {
-          config.onLinkTap?.call(url, linkText);
-        },
-        text: linkText,
-        config: config,
-        spanBuilder: (color) {
-          final spanStyle = (config.style ?? const TextStyle()).copyWith(
-            color: color,
-            decorationColor: color,
-            decoration: TextDecoration.underline,
-          );
-          return TextSpan(
-            children: MarkdownComponent.generate(
-              context,
-              linkText,
-              config.copyWith(style: spanStyle),
-              false,
-            ),
-            style: spanStyle,
-          );
-        },
-      ),
-    );
+    final child = buildLinkSpan(context, config, url: url, label: linkText);
     var textSpan = TextSpan(children: [child, ...endingSpans]);
     return textSpan;
   }
+}
+
+/// The style sheet in force: the widget's, merged over the theme's, field by
+/// field, with anything still unset resolved to the package default.
+///
+/// Kept in one place so every component resolves its style the same way and a
+/// widget override never discards the rest of the theme.
+GptMarkdownStyleSheet resolvedStyleSheet(
+  BuildContext context,
+  GptMarkdownConfig config,
+) {
+  final widgetSheet = config.styleSheet ?? const GptMarkdownStyleSheet();
+  return widgetSheet.merge(GptMarkdownTheme.of(context).styleSheet);
+}
+
+/// A [WidgetSpan] for an inline widget.
+///
+/// Note for anyone touching text scaling: a paragraph lays inline children out
+/// in *scaled* space — it divides their constraints by the scale factor and
+/// multiplies the reported size back. At a 3x setting a block widget is
+/// therefore given a third of the width, wraps into a narrow column and
+/// reserves far more height than it needs. Compensating for that inside the
+/// child was tried and produced overlapping text; the fix belongs in how
+/// blocks are composed, not in a wrapper. See CHANGELOG.
+WidgetSpan scaledWidgetSpan({
+  required Widget child,
+  required GptMarkdownConfig config,
+  PlaceholderAlignment alignment = PlaceholderAlignment.baseline,
+  TextBaseline? baseline = TextBaseline.alphabetic,
+}) {
+  return WidgetSpan(alignment: alignment, baseline: baseline, child: child);
+}
+
+/// Builds the span for a link, shared by [ATagMd] and [AutolinkMd].
+///
+/// [label] is rendered through [MarkdownComponent.generate] in the
+/// [MarkdownScope.linkLabel] scope when [parseLabel] is true. Autolinks pass
+/// false: their label *is* the URL, and running it back through the inline
+/// components would let `ItalicMd` eat the underscores out of a path such as
+/// `https://example.com/a_b_c`.
+InlineSpan buildLinkSpan(
+  BuildContext context,
+  GptMarkdownConfig config, {
+  required String url,
+  required String label,
+  bool parseLabel = true,
+  List<InlineSpan> Function(GptMarkdownConfig conf)? buildLabelSpans,
+}) {
+  final theme = GptMarkdownTheme.of(context);
+  final linkStyleSpec = (resolvedStyleSheet(context, config).link ??
+          const LinkStyle())
+      .resolve(Theme.of(context).colorScheme);
+  final baseColor = linkStyleSpec.color ?? theme.linkColor;
+  final hoverColor = linkStyleSpec.hoverColor ?? theme.linkHoverColor;
+  final decoration = linkStyleSpec.decoration ?? TextDecoration.underline;
+  final builder = config.linkBuilder;
+
+  List<InlineSpan> labelSpans(TextStyle style) {
+    final conf = config.copyWith(style: style, scope: MarkdownScope.linkLabel);
+    // The plusparse renderer already holds the label's parsed children, so it
+    // supplies them rather than having the text re-parsed.
+    final custom = buildLabelSpans;
+    if (custom != null) {
+      return custom(conf);
+    }
+    if (!parseLabel) {
+      return [TextSpan(text: label, style: style)];
+    }
+    return MarkdownComponent.generate(context, label, conf, false);
+  }
+
+  if (builder != null) {
+    // Build a styled span to hand off to the custom linkBuilder.
+    final linkStyle = (config.style ?? const TextStyle()).copyWith(
+      color: baseColor,
+      decorationColor: baseColor,
+      decoration: decoration,
+      decorationThickness: linkStyleSpec.decorationThickness,
+      fontWeight: linkStyleSpec.fontWeight,
+    );
+    return scaledWidgetSpan(
+      config: config,
+      child: GestureDetector(
+        onTap: () => config.onLinkTap?.call(url, label),
+        child: builder(
+          context,
+          TextSpan(children: labelSpans(linkStyle), style: linkStyle),
+          url,
+          config.style ?? const TextStyle(),
+        ),
+      ),
+    );
+  }
+
+  // Default rendering — LinkButton rebuilds the span on every hover change so
+  // bold/italic text inside a link also picks up the hover colour.
+  return scaledWidgetSpan(
+    config: config,
+    child: LinkButton(
+      hoverColor: hoverColor,
+      color: baseColor,
+      onPressed: () => config.onLinkTap?.call(url, label),
+      text: label,
+      config: config,
+      spanBuilder: (color) {
+        final spanStyle = (config.style ?? const TextStyle()).copyWith(
+          color: color,
+          decorationColor: color,
+          decoration: decoration,
+          decorationThickness: linkStyleSpec.decorationThickness,
+          fontWeight: linkStyleSpec.fontWeight,
+        );
+        return TextSpan(children: labelSpans(spanStyle), style: spanStyle);
+      },
+    ),
+  );
 }
 
 /// Image component
 class ImageMd extends InlineMd {
   @override
   RegExp get exp => RegExp(r"\!\[[^\[\]]*\]\([^\s]*\)");
+
+  /// An image is not meaningful as a link label, and nesting its [WidgetSpan]
+  /// inside the link's own one does not paint on iOS.
+  @override
+  Set<MarkdownScope> get scopes => MarkdownComponent.allScopesExceptLinkLabel;
 
   @override
   InlineSpan span(
@@ -1020,44 +1007,16 @@ class ImageMd extends InlineMd {
       height = double.tryParse(size?[2]?.toString().trim() ?? 'a');
     }
 
-    final Widget image;
-    if (config.imageBuilder != null) {
-      image = config.imageBuilder!(context, url, width, height);
-    } else {
-      image = SizedBox(
-        width: width,
-        height: height,
-        child: Image(
-          image: NetworkImage(url),
-          loadingBuilder: (
-            BuildContext context,
-            Widget child,
-            ImageChunkEvent? loadingProgress,
-          ) {
-            if (loadingProgress == null) {
-              return child;
-            }
-            return CustomImageLoading(
-              progress:
-                  loadingProgress.expectedTotalBytes != null
-                      ? loadingProgress.cumulativeBytesLoaded /
-                          loadingProgress.expectedTotalBytes!
-                      : 1,
-            );
-          },
-          fit: BoxFit.fill,
-          errorBuilder: (context, error, stackTrace) {
-            return const CustomImageError();
-          },
-        ),
-      );
-    }
-    return WidgetSpan(alignment: PlaceholderAlignment.bottom, child: image);
+    return imageSpan(context, config, url: url, width: width, height: height);
   }
 }
 
 /// Table component
 class TableMd extends BlockMd {
+  /// A table cannot be a link label.
+  @override
+  Set<MarkdownScope> get scopes => MarkdownComponent.allScopesExceptLinkLabel;
+
   @override
   String get expString =>
       (r"(((\|[^\n\|]+\|)((([^\n\|]+\|)+)?)\ *)(\n\ *(((\|[^\n\|]+\|)(([^\n\|]+\|)+)?))\ *)+)$");
@@ -1067,6 +1026,10 @@ class TableMd extends BlockMd {
     String text,
     final GptMarkdownConfig config,
   ) {
+    final tableStyle = (resolvedStyleSheet(context, config).table ??
+            const TableStyle())
+        .resolve(Theme.of(context).colorScheme);
+    final tableRadius = tableStyle.borderRadius;
     final List<Map<int, String>> value =
         text
             .split('\n')
@@ -1165,8 +1128,14 @@ class TableMd extends BlockMd {
           defaultColumnWidth: CustomTableColumnWidth(),
           defaultVerticalAlignment: TableCellVerticalAlignment.middle,
           border: TableBorder.all(
-            width: 1,
-            color: Theme.of(context).colorScheme.onSurface,
+            width: tableStyle.borderWidth ?? 1,
+            color:
+                tableStyle.borderColor ??
+                Theme.of(context).colorScheme.onSurface,
+            borderRadius:
+                tableRadius == null
+                    ? BorderRadius.zero
+                    : BorderRadius.all(tableRadius),
           ),
           children:
               value
@@ -1185,6 +1154,7 @@ class TableMd extends BlockMd {
                           (hasHeader && entry.key == 0)
                               ? BoxDecoration(
                                 color:
+                                    tableStyle.headerBackground ??
                                     Theme.of(
                                       context,
                                     ).colorScheme.surfaceContainerHighest,
@@ -1200,15 +1170,19 @@ class TableMd extends BlockMd {
 
                         // Apply alignment based on column alignment
                         Widget content = Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
-                          ),
+                          padding:
+                              tableStyle.cellPadding ??
+                              const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
                           child: MdWidget(
                             context,
                             (e[index] ?? "").trim(),
                             false,
-                            config: config,
+                            config: config.copyWith(
+                              scope: MarkdownScope.tableCell,
+                            ),
                           ),
                         );
 
@@ -1255,10 +1229,13 @@ class CodeBlockMd extends BlockMd {
     String codes = this.exp.firstMatch(text)?[2] ?? "";
     String name = this.exp.firstMatch(text)?[1] ?? "";
     codes = codes.replaceAll(r"```", "");
-    bool closed = text.endsWith("```");
-
-    return config.codeBuilder?.call(context, name, codes, closed) ??
-        CodeField(name: name, codes: codes);
+    return codeBlockWidget(
+      context,
+      config,
+      name: name,
+      code: codes,
+      closed: text.endsWith("```"),
+    );
   }
 }
 

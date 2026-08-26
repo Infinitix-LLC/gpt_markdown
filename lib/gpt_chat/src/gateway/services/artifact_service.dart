@@ -17,8 +17,9 @@ class ArtifactService {
   }
 
   /// queued → generating → narrating → ready.
-  Stream<ValArtifact> watch(String id, String? token) =>
-      _client.sse(config.artifactEventsUri(id, token)).map(ValArtifact.fromJson);
+  Stream<ValArtifact> watch(String id, String? token) => _client
+      .sse(config.artifactEventsUri(id, token))
+      .map(ValArtifact.fromJson);
 
   void dispose() => _client.close();
 }

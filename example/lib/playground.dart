@@ -2,6 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:gpt_markdown/gpt_markdown.dart';
 import 'package:flutter_math_fork/flutter_math.dart';
+
+import 'autolink_demo.dart';
+import 'inline_code_demo.dart';
+import 'inline_patterns_demo.dart';
+import 'selection_demo.dart';
 // import 'package:gpt_markdown/custom_widgets/selectable_adapter.dart';
 
 void main() {
@@ -9,6 +14,10 @@ void main() {
 }
 
 const _samples = {
+  'Selection': selectionMarkdown,
+  'Autolinks': autolinkMarkdown,
+  'Inline Code': inlineCodeMarkdown,
+  'Inline Patterns': demoMarkdown,
   'Overview': r'''## Welcome to gpt_markdown Playground
 
 Type any Markdown or LaTeX in the editor and see it rendered instantly.
@@ -202,6 +211,8 @@ class _PlaygroundPageState extends State<PlaygroundPage> {
   String _activeSample = 'Overview';
   bool _selectable = false;
   bool _useDollarLatex = false;
+  bool _inlinePatterns = true;
+  bool _autolink = true;
   TextDirection _direction = TextDirection.ltr;
 
   @override
@@ -297,6 +308,24 @@ class _PlaygroundPageState extends State<PlaygroundPage> {
             icon: Icons.functions,
             active: _useDollarLatex,
             onTap: () => setState(() => _useDollarLatex = !_useDollarLatex),
+            theme: theme,
+          ),
+          const SizedBox(width: 4),
+          _ToolbarButton(
+            tooltip: _autolink ? 'Autolink: ON' : 'Autolink: OFF',
+            icon: Icons.link_rounded,
+            active: _autolink,
+            onTap: () => setState(() => _autolink = !_autolink),
+            theme: theme,
+          ),
+          const SizedBox(width: 4),
+          _ToolbarButton(
+            tooltip: _inlinePatterns
+                ? 'Inline patterns: ON'
+                : 'Inline patterns: OFF',
+            icon: Icons.alternate_email_rounded,
+            active: _inlinePatterns,
+            onTap: () => setState(() => _inlinePatterns = !_inlinePatterns),
             theme: theme,
           ),
           const SizedBox(width: 4),
@@ -451,6 +480,9 @@ class _PlaygroundPageState extends State<PlaygroundPage> {
                     _controller.text,
                     textDirection: _direction,
                     useDollarSignsForLatex: _useDollarLatex,
+                    autolink: _autolink,
+                    inlinePatterns:
+                        _inlinePatterns ? demoInlinePatterns(context) : null,
                     latexBuilder: (context, tex, textStyle, inline) {
                       final widget = Math.tex(
                         tex,
@@ -485,24 +517,14 @@ class _PlaygroundPageState extends State<PlaygroundPage> {
                         ),
                       );
                     },
-                    highlightBuilder: (context, text, style) => Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 5, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF6366F1).withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(4),
-                        border: Border.all(
-                          color: const Color(0xFF6366F1).withValues(alpha: 0.3),
-                        ),
-                      ),
-                      child: Text(
-                        text,
-                        style: style.copyWith(
-                          fontFamily: 'monospace',
-                          color: const Color(0xFF6366F1),
-                          fontSize: (style.fontSize ?? 14) * 0.9,
-                        ),
-                      ),
+                    // Styling only — no builder needed, and the chip keeps
+                    // wrapping, selection and baseline alignment.
+                    inlineCodeStyle: InlineCodeStyle(
+                      color: const Color(0xFF6366F1),
+                      backgroundColor:
+                          const Color(0xFF6366F1).withValues(alpha: 0.12),
+                      borderColor:
+                          const Color(0xFF6366F1).withValues(alpha: 0.35),
                     ),
                     onLinkTap: (url, title) {},
                   );

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../controller/chat_controller.dart';
 import '../theme/chat_theme.dart';
@@ -169,6 +170,15 @@ class ChatErrorBar extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
+              // The message is truncated to three lines, and a gateway failure
+              // carries the status and body that make it diagnosable — so
+              // offer the full text rather than making it re-typable by eye.
+              IconButton(
+                icon: const Icon(Icons.copy_rounded, size: 18),
+                onPressed: () => _copy(context),
+                tooltip: 'Copy error',
+                color: scheme.onErrorContainer,
+              ),
               if (controller.capabilities.retry)
                 TextButton(
                   onPressed: controller.onRetry,
@@ -184,6 +194,21 @@ class ChatErrorBar extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  Future<void> _copy(BuildContext context) async {
+    await Clipboard.setData(ClipboardData(text: message));
+    if (!context.mounted) {
+      return;
+    }
+    ScaffoldMessenger.maybeOf(context)
+      ?..clearSnackBars()
+      ..showSnackBar(
+        const SnackBar(
+          content: Text('Error copied'),
+          duration: Duration(seconds: 1),
+        ),
+      );
   }
 }
 

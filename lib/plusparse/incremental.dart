@@ -40,8 +40,12 @@ class _IncrementalMdViewState extends State<_IncrementalMdView> {
 
   Widget _renderSegment(BuildContext context, String segment) {
     final spans = PlusparseRenderer.render(context, segment, widget.config);
+    // Each segment is a root paragraph, not nested content. Without this the
+    // text renders at `TextScaler.noScaling` and a raised system font size has
+    // no effect at all.
     return widget.config.getRich(
       TextSpan(children: spans, style: widget.config.style?.copyWith()),
+      isRoot: true,
     );
   }
 
@@ -51,14 +55,15 @@ class _IncrementalMdViewState extends State<_IncrementalMdView> {
     final next = <String, Widget>{};
     final children = <Widget>[];
     // Approximates the "\n\n" paragraph break of the single-text pipeline:
-    // one empty line of the default 1.15 line height.
-    final gap = (widget.config.style?.fontSize ?? 14) * 1.15;
+    // one empty line of the default 1.15 line height. Scaled like the text it
+    // separates, so the gap does not shrink relative to the type when a reader
+    // raises their font size.
+    final scaler = widget.config.textScaler ?? MediaQuery.textScalerOf(context);
+    final gap = scaler.scale((widget.config.style?.fontSize ?? 14) * 1.15);
     for (var i = 0; i < segments.length; i++) {
       final segment = segments[i];
       final child =
-          next[segment] ??
-          _cache[segment] ??
-          _renderSegment(context, segment);
+          next[segment] ?? _cache[segment] ?? _renderSegment(context, segment);
       next[segment] = child;
       if (i > 0) {
         children.add(SizedBox(height: gap));

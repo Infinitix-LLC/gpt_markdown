@@ -1,7 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:gpt_markdown/gpt_markdown.dart';
 
+import 'autolink_demo.dart';
 import 'chat_demo.dart';
+import 'demo_theme.dart';
+import 'inline_code_demo.dart';
+import 'inline_patterns_demo.dart';
+import 'selection_demo.dart';
+import 'streaming_demo.dart';
+import 'text_scale_demo.dart';
 
 /// Minimal example for gpt_markdown — Markdown & LaTeX renderer for Flutter.
 ///
@@ -23,21 +30,9 @@ class App extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return DemoApp(
       title: 'gpt_markdown example',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        useMaterial3: true,
-        colorSchemeSeed: Colors.indigo,
-        extensions: [GptMarkdownThemeData(brightness: Brightness.light)],
-      ),
-      darkTheme: ThemeData(
-        useMaterial3: true,
-        colorSchemeSeed: Colors.indigo,
-        brightness: Brightness.dark,
-        extensions: [GptMarkdownThemeData(brightness: Brightness.dark)],
-      ),
-      home: const ExamplePage(),
+      pageBuilder: (toggleTheme) => ExamplePage(onToggleTheme: toggleTheme),
     );
   }
 }
@@ -108,7 +103,10 @@ for epoch in range(100):
 ''';
 
 class ExamplePage extends StatelessWidget {
-  const ExamplePage({super.key});
+  const ExamplePage({super.key, this.onToggleTheme});
+
+  /// Flips the app between light and dark.
+  final VoidCallback? onToggleTheme;
 
   @override
   Widget build(BuildContext context) {
@@ -129,7 +127,54 @@ class ExamplePage extends StatelessWidget {
             icon: const Icon(Icons.chat_bubble_outline),
             tooltip: 'Chat demo',
             onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(builder: (context) => const ChatDemoPage()),
+              MaterialPageRoute<void>(
+                builder: (context) => const ChatDemoPage(),
+              ),
+            ),
+          ),
+          DemoThemeButton(onToggle: onToggleTheme),
+          IconButton(
+            tooltip: 'Streaming demo',
+            icon: const Icon(Icons.auto_awesome_rounded),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => const StreamingPage()),
+            ),
+          ),
+          IconButton(
+            tooltip: 'Text scaling demo',
+            icon: const Icon(Icons.format_size_rounded),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => const TextScalePage()),
+            ),
+          ),
+          IconButton(
+            tooltip: 'Selection demo',
+            icon: const Icon(Icons.text_fields_rounded),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => const SelectionPage()),
+            ),
+          ),
+          IconButton(
+            tooltip: 'Autolinks demo',
+            icon: const Icon(Icons.link_rounded),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => const AutolinkPage()),
+            ),
+          ),
+          IconButton(
+            tooltip: 'Inline code demo',
+            icon: const Icon(Icons.code_rounded),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => const InlineCodePage()),
+            ),
+          ),
+          IconButton(
+            tooltip: 'Inline patterns demo',
+            icon: const Icon(Icons.alternate_email_rounded),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => const InlinePatternsPage(),
+              ),
             ),
           ),
         ],

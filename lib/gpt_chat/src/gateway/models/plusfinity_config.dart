@@ -6,7 +6,7 @@ import 'widget_selection.dart';
 
 /// Connection settings for the Plusfinity Gateway (OpenAI-compatible).
 ///
-/// `/chat/completions` blocks browsers by design — on Flutter web, point
+/// `/responses` blocks browsers by design — on Flutter web, point
 /// [baseUrl] at your own server-side proxy so the key never ships in a bundle.
 class PlusfinityConfig {
   const PlusfinityConfig({
@@ -27,7 +27,8 @@ class PlusfinityConfig {
     this.artifactsEnabled = true,
   });
 
-  static const defaultBaseUrl = 'https://us-central1-yalagpt.cloudfunctions.net/v1';
+  static const defaultBaseUrl =
+      'https://us-central1-yalagpt.cloudfunctions.net/v1';
 
   final String apiKey;
 
@@ -66,15 +67,28 @@ class PlusfinityConfig {
   /// False turns the gateway into a plain model proxy — no animations.
   final bool artifactsEnabled;
 
-  Uri get completionsUri => _endpoint('chat/completions');
+  /// The Responses endpoint. `/chat/completions` was retired by the gateway:
+  /// its shape cannot express built-in tools, conversation state or reasoning
+  /// items, and it now answers 404.
+  Uri get responsesUri => _endpoint('responses');
+
+  @Deprecated('The gateway retired /chat/completions. Use responsesUri.')
+  Uri get completionsUri => responsesUri;
   Uri get modelsUri => _endpoint('models');
 
-  Uri artifactUri(String id, String? token) => _endpoint('artifacts/$id', token);
-  Uri artifactEventsUri(String id, String? token) => _endpoint('artifacts/$id/events', token);
+  Uri artifactUri(String id, String? token) =>
+      _endpoint('artifacts/$id', token);
+  Uri artifactEventsUri(String id, String? token) =>
+      _endpoint('artifacts/$id/events', token);
 
   Uri _endpoint(String path, [String? token]) {
-    final root = baseUrl.endsWith('/') ? baseUrl.substring(0, baseUrl.length - 1) : baseUrl;
-    return Uri.parse('$root/$path').replace(queryParameters: token == null ? null : {'token': token});
+    final root =
+        baseUrl.endsWith('/')
+            ? baseUrl.substring(0, baseUrl.length - 1)
+            : baseUrl;
+    return Uri.parse(
+      '$root/$path',
+    ).replace(queryParameters: token == null ? null : {'token': token});
   }
 
   Map<String, String> get requestHeaders => {
@@ -154,6 +168,8 @@ class PlusfinityConfig {
     frame,
     languageCode,
     artifactsEnabled,
-    Object.hashAllUnordered(headers.entries.map((e) => Object.hash(e.key, e.value))),
+    Object.hashAllUnordered(
+      headers.entries.map((e) => Object.hash(e.key, e.value)),
+    ),
   );
 }

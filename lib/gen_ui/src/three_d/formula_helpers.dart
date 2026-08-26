@@ -39,7 +39,8 @@ SurfaceFn _surfaceFnFromValue(
     return (x, y) => 0;
   }
 
-  return (x, y) => compiled.evaluate([
+  return (x, y) =>
+      compiled.evaluate([
         x,
         y,
         ..._constantEvaluationValues(constants, constantValues, constantNames),
@@ -61,7 +62,8 @@ PolarSurfaceFn _polarSurfaceFnFromValue(
     return (radius, theta) => 0;
   }
 
-  return (radius, theta) => compiled.evaluate([
+  return (radius, theta) =>
+      compiled.evaluate([
         radius,
         radius,
         theta,
@@ -84,7 +86,8 @@ SphericalSurfaceFn _sphericalSurfaceFnFromValue(
     return (theta, phi) => 1;
   }
 
-  return (theta, phi) => compiled.evaluate([
+  return (theta, phi) =>
+      compiled.evaluate([
         theta,
         phi,
         ..._constantEvaluationValues(constants, constantValues, constantNames),
@@ -106,7 +109,8 @@ CylindricalSurfaceFn _cylindricalSurfaceFnFromValue(
     return (theta, z) => 1;
   }
 
-  return (theta, z) => compiled.evaluate([
+  return (theta, z) =>
+      compiled.evaluate([
         theta,
         z,
         ..._constantEvaluationValues(constants, constantValues, constantNames),
@@ -187,9 +191,10 @@ _GraphConstant? _constantFromValue(dynamic value) {
 
   return _GraphConstant(
     name: name,
-    label: value['label']?.toString().trim().isNotEmpty == true
-        ? value['label'].toString().trim()
-        : name,
+    label:
+        value['label']?.toString().trim().isNotEmpty == true
+            ? value['label'].toString().trim()
+            : name,
     value: defaultValue.clamp(min, max).toDouble(),
     min: min,
     max: max,
@@ -198,9 +203,7 @@ _GraphConstant? _constantFromValue(dynamic value) {
 }
 
 Map<String, double> _initialConstantValues(List<_GraphConstant> constants) {
-  return {
-    for (final constant in constants) constant.name: constant.value,
-  };
+  return {for (final constant in constants) constant.name: constant.value};
 }
 
 List<String> _constantVariableNames(
@@ -242,11 +245,16 @@ double? _constantExpressionValue(
   }
 
   try {
-    final result = compiled
-        .evaluate(
-          _constantEvaluationValues(constants, constantValues, constantNames),
-        )
-        .toDouble();
+    final result =
+        compiled
+            .evaluate(
+              _constantEvaluationValues(
+                constants,
+                constantValues,
+                constantNames,
+              ),
+            )
+            .toDouble();
     return result.isFinite ? result : null;
   } on PlusfinityCalculatorException {
     return null;
@@ -258,9 +266,10 @@ bool _isValidVariableName(String value) {
 }
 
 String _formatSliderValue(double value) {
-  final text = value.abs() >= 100 || value == value.roundToDouble()
-      ? value.toStringAsFixed(0)
-      : value.toStringAsFixed(3);
+  final text =
+      value.abs() >= 100 || value == value.roundToDouble()
+          ? value.toStringAsFixed(0)
+          : value.toStringAsFixed(3);
 
   return text.replaceFirst(RegExp(r'\.?0+$'), '');
 }

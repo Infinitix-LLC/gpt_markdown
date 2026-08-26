@@ -73,7 +73,9 @@ class GenBarChart extends StatelessWidget {
       attributes['color'],
       fallback: theme.colorScheme.primary,
     );
-    final maxY = items.map((item) => item.value).reduce((a, b) => a > b ? a : b);
+    final maxY = items
+        .map((item) => item.value)
+        .reduce((a, b) => a > b ? a : b);
 
     return GenUiChartCard(
       title: genUiString(attributes['title']),

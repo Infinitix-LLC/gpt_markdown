@@ -258,7 +258,9 @@ class _HostAdapter extends StreamingChatAdapter {
   @override
   ChatMessage applyDelta(ChatMessage reply, ChatDelta delta, String buffered) {
     final payload = delta.payload;
-    if (payload is List<String>) (reply as _HostMessage).sources.addAll(payload);
+    if (payload is List<String>) {
+      (reply as _HostMessage).sources.addAll(payload);
+    }
     return super.applyDelta(reply, delta, buffered);
   }
 
@@ -283,15 +285,18 @@ void _hostModelTests() {
     expect(reply.status, ChatMessageStatus.done);
   });
 
-  test('a data-only chunk routes into a field the package cannot see', () async {
-    final adapter = _HostAdapter();
-    await adapter.init();
-    await adapter.send(const ChatDraft(text: 'hi'));
-    await pumpEventQueue();
+  test(
+    'a data-only chunk routes into a field the package cannot see',
+    () async {
+      final adapter = _HostAdapter();
+      await adapter.init();
+      await adapter.send(const ChatDraft(text: 'hi'));
+      await pumpEventQueue();
 
-    final reply = adapter.snapshot.messages.last as _HostMessage;
-    expect(reply.sources, ['wikipedia.org']);
-  });
+      final reply = adapter.snapshot.messages.last as _HostMessage;
+      expect(reply.sources, ['wikipedia.org']);
+    },
+  );
 
   test('a mutable host message is its own Listenable', () async {
     final adapter = _HostAdapter();

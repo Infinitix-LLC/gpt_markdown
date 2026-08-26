@@ -96,30 +96,32 @@ void main() {
     }
   });
 
-  testWidgets('degenerate payloads render nothing, not an error',
-      (tester) async {
+  testWidgets('degenerate payloads render nothing, not an error', (
+    tester,
+  ) async {
     final registry = GenUiRegistry.defaults();
 
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
           body: Builder(
-            builder: (context) => Column(
-              children: [
-                registry.build(
-                  context,
-                  '{"bar_chart": {"title": "No data", "values": []}}',
+            builder:
+                (context) => Column(
+                  children: [
+                    registry.build(
+                      context,
+                      '{"bar_chart": {"title": "No data", "values": []}}',
+                    ),
+                    registry.build(
+                      context,
+                      '{"line_chart": {"points": "not-a-list"}}',
+                    ),
+                    registry.build(
+                      context,
+                      '{"unit_converter": {"fromUnit": "kg", "toUnit": "m"}}',
+                    ),
+                  ],
                 ),
-                registry.build(
-                  context,
-                  '{"line_chart": {"points": "not-a-list"}}',
-                ),
-                registry.build(
-                  context,
-                  '{"unit_converter": {"fromUnit": "kg", "toUnit": "m"}}',
-                ),
-              ],
-            ),
           ),
         ),
       ),

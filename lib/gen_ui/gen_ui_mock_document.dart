@@ -198,10 +198,15 @@ Every top-level key is its own widget; they stack in a column:
 
 `val_scene` (alias `val`) is the one type `GenUiRegistry.defaults()` does not
 register: it streams from a Firebase-backed artifact pipeline, which this
-package deliberately does not depend on. The next line is intentionally blank
-until a host registers a builder for it.
+package deliberately does not depend on. Without a host builder the line
+renders blank; `GenUiPreviewPage` registers a stand-in that plays a sample
+clip in the requested frame, which is what you see below.
 
-genui{"val_scene": {"id": "abc123", "frame": "reels"}}
+genui{"val_scene": {"id": "abc123", "frame": "reels", "title": "Bouncing ball"}}
+
+The same scene in a `landscape` frame:
+
+genui{"val_scene": {"id": "def456", "frame": "landscape", "title": "Wide scene"}}
 
 Register it like this:
 

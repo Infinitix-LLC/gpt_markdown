@@ -104,18 +104,16 @@ abstract class StreamingChatAdapter extends ChatAdapter {
   @override
   Future<void> deleteSession(String sessionId) async {
     await _store.delete(sessionId);
-    final remaining = _snapshot.sessions
-        .where((s) => s.id != sessionId)
-        .toList();
+    final remaining =
+        _snapshot.sessions.where((s) => s.id != sessionId).toList();
     final wasActive = sessionId == _snapshot.activeSessionId;
 
     if (wasActive) await _cancel();
     _emit(_snapshot.copyWith(sessions: remaining, isResponding: false));
 
     if (!wasActive) return;
-    final next = remaining.isNotEmpty
-        ? remaining.first
-        : await _createSession();
+    final next =
+        remaining.isNotEmpty ? remaining.first : await _createSession();
     _emit(_upsert(next).copyWith(activeSessionId: next.id));
   }
 
@@ -303,9 +301,10 @@ abstract class StreamingChatAdapter extends ChatAdapter {
     if (!session.isEmpty) return session;
 
     final trimmed = text.trim().replaceAll(RegExp(r'\s+'), ' ');
-    final title = trimmed.length > titleLength
-        ? '${trimmed.substring(0, titleLength)}…'
-        : trimmed;
+    final title =
+        trimmed.length > titleLength
+            ? '${trimmed.substring(0, titleLength)}…'
+            : trimmed;
     return title.isEmpty ? session : session.copyWith(title: title);
   }
 
@@ -327,8 +326,9 @@ abstract class StreamingChatAdapter extends ChatAdapter {
           (m) => applyDelta(m, delta, buffer.toString()),
         );
       },
-      onError: (Object error) =>
-          _failReply(sessionId, replyId, error, buffer.toString()),
+      onError:
+          (Object error) =>
+              _failReply(sessionId, replyId, error, buffer.toString()),
       onDone: () => _finishReply(sessionId, replyId, buffer.toString()),
       cancelOnError: true,
     );
@@ -398,8 +398,9 @@ abstract class StreamingChatAdapter extends ChatAdapter {
 
   /// Replaces a session in the list, newest activity first.
   ChatSnapshot _upsert(ChatSession session) {
-    final next = _snapshot.sessions.where((s) => s.id != session.id).toList()
-      ..add(session);
+    final next =
+        _snapshot.sessions.where((s) => s.id != session.id).toList()
+          ..add(session);
     next.sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
     return _snapshot.copyWith(sessions: next);
   }

@@ -18,11 +18,16 @@ class GatewayClient {
   final bool _ownsClient;
 
   Future<Map<String, dynamic>> getJson(Uri uri) async {
-    final response = await _client.get(uri, headers: config.requestHeaders).timeout(config.timeout);
+    final response = await _client
+        .get(uri, headers: config.requestHeaders)
+        .timeout(config.timeout);
     return _decode(response.statusCode, response.body);
   }
 
-  Future<Map<String, dynamic>> postJson(Uri uri, Map<String, dynamic> body) async {
+  Future<Map<String, dynamic>> postJson(
+    Uri uri,
+    Map<String, dynamic> body,
+  ) async {
     final response = await _client
         .post(uri, headers: config.requestHeaders, body: jsonEncode(body))
         .timeout(config.timeout);
@@ -30,17 +35,28 @@ class GatewayClient {
   }
 
   /// Streams decoded `data:` frames. Sends [body] as POST when given, else GET.
-  Stream<Map<String, dynamic>> sse(Uri uri, {Map<String, dynamic>? body}) async* {
+  Stream<Map<String, dynamic>> sse(
+    Uri uri, {
+    Map<String, dynamic>? body,
+  }) async* {
     final request = http.Request(body == null ? 'GET' : 'POST', uri)
-      ..headers.addAll({...config.requestHeaders, 'Accept': 'text/event-stream'});
+      ..headers.addAll({
+        ...config.requestHeaders,
+        'Accept': 'text/event-stream',
+      });
     if (body != null) request.body = jsonEncode(body);
 
     final response = await _client.send(request).timeout(config.timeout);
     if (response.statusCode >= 400) {
-      throw ChatException.fromResponse(response.statusCode, await response.stream.bytesToString());
+      throw ChatException.fromResponse(
+        response.statusCode,
+        await response.stream.bytesToString(),
+      );
     }
 
-    final lines = response.stream.transform(utf8.decoder).transform(const LineSplitter());
+    final lines = response.stream
+        .transform(utf8.decoder)
+        .transform(const LineSplitter());
     await for (final payload in decodeSse(lines)) {
       final decoded = jsonDecode(payload);
       if (decoded is Map<String, dynamic>) yield decoded;

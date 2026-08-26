@@ -15,10 +15,11 @@ enum ArtifactStatus {
   /// No further updates will arrive.
   bool get isTerminal => this == ready || this == failed;
 
-  static ArtifactStatus fromWire(String? value) => ArtifactStatus.values.firstWhere(
-    (s) => s.wireName == value,
-    orElse: () => ArtifactStatus.queued,
-  );
+  static ArtifactStatus fromWire(String? value) =>
+      ArtifactStatus.values.firstWhere(
+        (s) => s.wireName == value,
+        orElse: () => ArtifactStatus.queued,
+      );
 }
 
 /// One narrated line of an animation. [marks] are passed through untouched —
@@ -35,7 +36,10 @@ class Narration {
     return Narration(
       text: json['text'] as String? ?? '',
       audioUrl: (json['audio'] ?? json['audioUrl']) as String?,
-      marks: marks is List ? marks.whereType<Map<String, dynamic>>().toList() : const [],
+      marks:
+          marks is List
+              ? marks.whereType<Map<String, dynamic>>().toList()
+              : const [],
     );
   }
 }
@@ -79,9 +83,13 @@ class ValArtifact {
       status: ArtifactStatus.fromWire(json['status'] as String?),
       frame: ArtifactFrame.fromWire(json['frame'] as String?),
       script: json['script'] as String?,
-      narrations: narrations is List
-          ? narrations.whereType<Map<String, dynamic>>().map(Narration.fromJson).toList()
-          : const [],
+      narrations:
+          narrations is List
+              ? narrations
+                  .whereType<Map<String, dynamic>>()
+                  .map(Narration.fromJson)
+                  .toList()
+              : const [],
       error: json['error'] as String?,
     );
   }

@@ -13,7 +13,10 @@ const _tag =
 
 void main() {
   /// A pending artifact spins forever, so frames are pumped one at a time.
-  Future<FakeArtifactService> pumpCard(WidgetTester tester, {ValArtifactBuilder? builder}) async {
+  Future<FakeArtifactService> pumpCard(
+    WidgetTester tester, {
+    ValArtifactBuilder? builder,
+  }) async {
     final service = FakeArtifactService();
     await tester.pumpWidget(
       scopedChat(
@@ -27,25 +30,34 @@ void main() {
     return service;
   }
 
-  testWidgets('a genui tag in the reply becomes an artifact card', (tester) async {
+  testWidgets('a genui tag in the reply becomes an artifact card', (
+    tester,
+  ) async {
     final service = await pumpCard(tester);
 
     expect(find.byType(ValArtifactCard), findsOneWidget);
     expect(find.text('Seed Germination'), findsOneWidget);
     expect(find.text('Queued'), findsOneWidget);
-    expect(service.watched, ['a1'], reason: 'the card registers the artifact it renders');
+    expect(service.watched, [
+      'a1',
+    ], reason: 'the card registers the artifact it renders');
   });
 
   testWidgets('status updates follow the artifact stream', (tester) async {
     final service = await pumpCard(tester);
 
-    service.emit('a1', const ValArtifact(id: 'a1', name: '', status: ArtifactStatus.narrating));
+    service.emit(
+      'a1',
+      const ValArtifact(id: 'a1', name: '', status: ArtifactStatus.narrating),
+    );
     await tester.pump();
 
     expect(find.text('Recording narration'), findsOneWidget);
   });
 
-  testWidgets('a ready artifact shows the narration and the VAL source', (tester) async {
+  testWidgets('a ready artifact shows the narration and the VAL source', (
+    tester,
+  ) async {
     final service = await pumpCard(tester);
 
     service.emit(
@@ -64,13 +76,18 @@ void main() {
     expect(find.text('VAL script'), findsOneWidget);
   });
 
-  testWidgets('a custom builder replaces the default ready view', (tester) async {
+  testWidgets('a custom builder replaces the default ready view', (
+    tester,
+  ) async {
     final service = await pumpCard(
       tester,
       builder: (context, artifact) => Text('rendered ${artifact.id}'),
     );
 
-    service.emit('a1', const ValArtifact(id: 'a1', name: '', status: ArtifactStatus.ready));
+    service.emit(
+      'a1',
+      const ValArtifact(id: 'a1', name: '', status: ArtifactStatus.ready),
+    );
     await tester.pumpAndSettle();
 
     expect(find.text('rendered a1'), findsOneWidget);

@@ -163,12 +163,13 @@ class GenTimelineFlow extends StatelessWidget {
       title: genUiString(attributes['title']) ?? 'Timeline',
       subtitle: genUiString(attributes['subtitle']),
       icon: Icons.timeline_rounded,
-      child: height == null
-          ? content
-          : SizedBox(
-              height: height,
-              child: SingleChildScrollView(child: content),
-            ),
+      child:
+          height == null
+              ? content
+              : SizedBox(
+                height: height,
+                child: SingleChildScrollView(child: content),
+              ),
     );
   }
 }
@@ -192,9 +193,7 @@ class _ValuePanel extends StatelessWidget {
 
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerLowest.withValues(
-          alpha: 0.62,
-        ),
+        color: theme.colorScheme.surfaceContainerLowest.withValues(alpha: 0.62),
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
           color: theme.colorScheme.outlineVariant.withValues(alpha: 0.48),
@@ -286,9 +285,10 @@ class _TimelineRow extends StatelessWidget {
                 Expanded(
                   child: Container(
                     width: 2,
-                    color: isFirst
-                        ? Colors.transparent
-                        : theme.colorScheme.outlineVariant,
+                    color:
+                        isFirst
+                            ? Colors.transparent
+                            : theme.colorScheme.outlineVariant,
                   ),
                 ),
                 Container(
@@ -312,9 +312,10 @@ class _TimelineRow extends StatelessWidget {
                 Expanded(
                   child: Container(
                     width: 2,
-                    color: isLast
-                        ? Colors.transparent
-                        : theme.colorScheme.outlineVariant,
+                    color:
+                        isLast
+                            ? Colors.transparent
+                            : theme.colorScheme.outlineVariant,
                   ),
                 ),
               ],

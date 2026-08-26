@@ -18,10 +18,12 @@ const int _lt = 0x3C; // '<'
 const int _backslash = 0x5C; // '\'
 const int _dollar = 0x24; // '$'
 const int _openParen = 0x28; // '('
-
+const int _closeBracket = 0x5D; // ']'
+const int _closeParen = 0x29; // ')'
 
 List<MdNode> parseInline(String text, bool useDollar) {
   final n = text.length;
+  final delims = _Delims(text);
   final nodes = <MdNode>[];
   final buf = StringBuffer();
   var i = 0;
@@ -38,8 +40,11 @@ List<MdNode> parseInline(String text, bool useDollar) {
     var matched = false;
 
     // ![alt](url)
-    if (c == _bang && i + 1 < n && text.codeUnitAt(i + 1) == _openBracket) {
-      final r = _tryImage(text, i);
+    if (c == _bang &&
+        i + 1 < n &&
+        text.codeUnitAt(i + 1) == _openBracket &&
+        delims.bracket.containsKey(i + 1)) {
+      final r = _tryImage(text, i, delims);
       if (r != null) {
         flush();
         nodes.add(r.node);
@@ -50,7 +55,7 @@ List<MdNode> parseInline(String text, bool useDollar) {
 
     // [text](url)  or  [123] source tag
     if (!matched && c == _openBracket) {
-      final link = _tryLink(text, i, useDollar);
+      final link = _tryLink(text, i, useDollar, delims);
       if (link != null) {
         flush();
         nodes.add(link.node);
@@ -207,21 +212,78 @@ List<MdNode> parseInline(String text, bool useDollar) {
 
 typedef _InlineMatch = ({MdNode node, int next});
 
-_InlineMatch? _tryImage(String text, int i) {
+/// Delimiter positions, resolved once per parse.
+///
+/// A `_try*` that scans forward for its closer is O(n) per opener, so text
+/// made of unmatched or nested openers — `[[[[[[`, `[a](` repeated — costs
+/// O(n²). Both tables below are built in one pass with a stack, which makes
+/// every lookup O(1) and the whole parse linear.
+class _Delims {
+  _Delims(this.text);
+
+  final String text;
+
+  Map<int, int>? _bracket;
+  Map<int, int>? _paren;
+
+  /// Index of `[` to index of its matching `]`.
+  ///
+  /// Built on first use: most runs of text contain no brackets at all, and
+  /// paying for the table there costs more than it saves.
+  Map<int, int> get bracket =>
+      _bracket ??= _pairs(text, _openBracket, _closeBracket);
+
+  /// Index of `(` to index of its matching `)`.
+  Map<int, int> get paren => _paren ??= _pairs(text, _openParen, _closeParen);
+
+  final Map<int, int> _lastIndex = {};
+
+  /// Whether [char] occurs at or after [from]. Used for `genui{`, whose
+  /// closer cannot be paired up front because braces inside a JSON string do
+  /// not count.
+  ///
+  /// The last index is cached: probing it per opener would be the very
+  /// quadratic scan this class exists to avoid.
+  bool hasAfter(int char, int from) =>
+      (_lastIndex[char] ??= text.lastIndexOf(String.fromCharCode(char))) >=
+      from;
+
+  static Map<int, int> _pairs(String text, int open, int close) {
+    final pairs = <int, int>{};
+    final stack = <int>[];
+    for (var i = 0; i < text.length; i++) {
+      final c = text.codeUnitAt(i);
+      if (c == 0x5C /* backslash */ ) {
+        i += 1;
+        continue;
+      }
+      if (c == open) {
+        stack.add(i);
+      } else if (c == close && stack.isNotEmpty) {
+        pairs[stack.removeLast()] = i;
+      }
+    }
+    return pairs;
+  }
+}
+
+_InlineMatch? _tryImage(String text, int i, _Delims delims) {
   final n = text.length;
-  var j = text.indexOf(']', i + 2); // past "!["
-  if (j == -1) {
+  final j0 = delims.bracket[i + 1]; // past '!'
+  if (j0 == null) {
     return null;
   }
-  final alt = text.substring(i + 2, j);
-  j += 1; // past ']'
+  var j = j0 + 1; // past ']'
   if (j >= n || text.codeUnitAt(j) != _openParen) {
     return null;
   }
-  final close = text.indexOf(')', j + 1);
-  if (close == -1) {
+  final close = delims.paren[j];
+  if (close == null) {
     return null;
   }
+  // Sliced only now that the whole shape has matched. Slicing before the
+  // check copies the label of every unmatched `[` in the document.
+  final alt = text.substring(i + 2, j0);
   final url = text.substring(j + 1, close);
   final size = _parseImageSize(alt);
   return (
@@ -264,21 +326,23 @@ bool _allAsciiDigits(String s) {
   return true;
 }
 
-_InlineMatch? _tryLink(String text, int i, bool useDollar) {
+_InlineMatch? _tryLink(String text, int i, bool useDollar, _Delims delims) {
   final n = text.length;
-  var j = text.indexOf(']', i + 1); // past '['
-  if (j == -1) {
+  final j0 = delims.bracket[i];
+  if (j0 == null) {
     return null;
   }
-  final linkText = text.substring(i + 1, j);
-  j += 1; // past ']'
+  var j = j0 + 1; // past ']'
   if (j >= n || text.codeUnitAt(j) != _openParen) {
     return null;
   }
-  final close = text.indexOf(')', j + 1);
-  if (close == -1) {
+  final close = delims.paren[j];
+  if (close == null) {
     return null;
   }
+  // Sliced only now that the whole shape has matched. Slicing before the
+  // check copies the label of every unmatched `[` in the document.
+  final linkText = text.substring(i + 1, j0);
   final url = text.substring(j + 1, close);
   return (
     node: MdLink(children: parseInline(linkText, useDollar), url: url.trim()),

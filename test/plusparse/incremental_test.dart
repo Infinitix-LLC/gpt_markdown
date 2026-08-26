@@ -33,25 +33,27 @@ List<Widget> _segments(WidgetTester tester) {
 void main() {
   group('splitStreamSegments', () {
     test('splits on blank lines', () {
-      expect(
-        splitStreamSegments('# A\n\npara one\nstill one\n\npara two'),
-        ['# A', 'para one\nstill one', 'para two'],
-      );
+      expect(splitStreamSegments('# A\n\npara one\nstill one\n\npara two'), [
+        '# A',
+        'para one\nstill one',
+        'para two',
+      ]);
     });
 
     test('keeps fenced code with blank lines whole', () {
       const doc = 'before\n\n```dart\nline1\n\nline2\n```\n\nafter';
-      expect(
-        splitStreamSegments(doc),
-        ['before', '```dart\nline1\n\nline2\n```', 'after'],
-      );
+      expect(splitStreamSegments(doc), [
+        'before',
+        '```dart\nline1\n\nline2\n```',
+        'after',
+      ]);
     });
 
     test('unclosed fence consumes the rest (streaming)', () {
-      expect(
-        splitStreamSegments('intro\n\n```py\ncode\n\nmore code'),
-        ['intro', '```py\ncode\n\nmore code'],
-      );
+      expect(splitStreamSegments('intro\n\n```py\ncode\n\nmore code'), [
+        'intro',
+        '```py\ncode\n\nmore code',
+      ]);
     });
 
     test('keeps block latex with blank lines whole', () {
@@ -60,10 +62,7 @@ void main() {
     });
 
     test('single-line block latex does not open a region', () {
-      expect(
-        splitStreamSegments('\\[a+b\\]\n\nnext'),
-        ['\\[a+b\\]', 'next'],
-      );
+      expect(splitStreamSegments('\\[a+b\\]\n\nnext'), ['\\[a+b\\]', 'next']);
     });
 
     test('empty and whitespace input', () {
@@ -138,11 +137,7 @@ void main() {
     testWidgets('style change invalidates the cache', (tester) async {
       const text = 'Hello world';
       await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: GptMarkdown(text, incremental: true),
-          ),
-        ),
+        MaterialApp(home: Scaffold(body: GptMarkdown(text, incremental: true))),
       );
       await tester.pumpAndSettle();
       final before = _segments(tester).first;
@@ -163,41 +158,42 @@ void main() {
       expect(identical(before, after), isFalse);
     });
 
-    testWidgets('rebuild-time comparison while streaming (incremental vs not)', (
-      tester,
-    ) async {
-      // Simulate streaming: repeatedly append a chunk and re-pump, timing the
-      // build+layout work of each mode over the same growing document.
-      final chunks = List.generate(
-        30,
-        (i) => '\n\nParagraph $i with **bold**, `code` and \\( x_$i^2 \\).',
-      );
+    testWidgets(
+      'rebuild-time comparison while streaming (incremental vs not)',
+      (tester) async {
+        // Simulate streaming: repeatedly append a chunk and re-pump, timing the
+        // build+layout work of each mode over the same growing document.
+        final chunks = List.generate(
+          30,
+          (i) => '\n\nParagraph $i with **bold**, `code` and \\( x_$i^2 \\).',
+        );
 
-      Future<int> run(bool incremental) async {
-        var text = '# Streaming benchmark';
-        await tester.pumpWidget(_app(text, incremental: incremental));
-        await tester.pumpAndSettle();
-        final sw = Stopwatch()..start();
-        for (final chunk in chunks) {
-          text += chunk;
+        Future<int> run(bool incremental) async {
+          var text = '# Streaming benchmark';
           await tester.pumpWidget(_app(text, incremental: incremental));
-          await tester.pump();
+          await tester.pumpAndSettle();
+          final sw = Stopwatch()..start();
+          for (final chunk in chunks) {
+            text += chunk;
+            await tester.pumpWidget(_app(text, incremental: incremental));
+            await tester.pump();
+          }
+          sw.stop();
+          return sw.elapsedMilliseconds;
         }
-        sw.stop();
-        return sw.elapsedMilliseconds;
-      }
 
-      final fullMs = await run(false);
-      await tester.pumpWidget(const SizedBox());
-      final incMs = await run(true);
+        final fullMs = await run(false);
+        await tester.pumpWidget(const SizedBox());
+        final incMs = await run(true);
 
-      debugPrint(
-        'streaming rebuild total over ${chunks.length} appends: '
-        'single-text ${fullMs}ms vs incremental ${incMs}ms '
-        '(${(fullMs / incMs).toStringAsFixed(1)}x)',
-      );
-      expect(incMs, greaterThan(0));
-      expect(fullMs, greaterThan(0));
-    });
+        debugPrint(
+          'streaming rebuild total over ${chunks.length} appends: '
+          'single-text ${fullMs}ms vs incremental ${incMs}ms '
+          '(${(fullMs / incMs).toStringAsFixed(1)}x)',
+        );
+        expect(incMs, greaterThan(0));
+        expect(fullMs, greaterThan(0));
+      },
+    );
   });
 }

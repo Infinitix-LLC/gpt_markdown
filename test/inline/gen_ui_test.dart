@@ -32,9 +32,7 @@ void main() {
     testWidgets('renders payload as text without a builder', (tester) async {
       await tester.pumpWidget(
         MaterialApp(
-          home: Scaffold(
-            body: GptMarkdown(wrapGenUi('{"type":"button"}')),
-          ),
+          home: Scaffold(body: GptMarkdown(wrapGenUi('{"type":"button"}'))),
         ),
       );
       await tester.pumpAndSettle();

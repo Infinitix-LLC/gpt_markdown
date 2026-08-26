@@ -476,9 +476,9 @@ void _awaitingAnswerTests() {
         home: GptChat(
           adapter: adapter,
           builders: ChatBuilders(
-            answer: (s) => Column(
-              children: [const Text('my answer header'), s.text],
-            ),
+            answer:
+                (s) =>
+                    Column(children: [const Text('my answer header'), s.text]),
           ),
           onControllerReady: (value) => controller = value,
         ),
@@ -535,7 +535,9 @@ void _awaitingAnswerTests() {
     await tester.pumpAndSettle();
   });
 
-  testWidgets('the default still shows dots and no answer body', (tester) async {
+  testWidgets('the default still shows dots and no answer body', (
+    tester,
+  ) async {
     final adapter = ManualAdapter();
     late ChatController controller;
     await tester.pumpWidget(

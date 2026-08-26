@@ -50,24 +50,27 @@ class ChatAnswer extends StatelessWidget {
     // progress to draw, and those belong on screen from the moment the question
     // is sent — not from the first token.
     final awaiting = message.isAwaitingFirstToken;
-    final indicator = awaiting
-        ? scope.build(
-            builders.typingIndicator,
-            ChatSlot(
-              context: context,
-              controller: controller,
-              theme: theme,
-              child: const ChatTypingDots(),
-            ),
-          )
-        : const SizedBox.shrink();
+    final indicator =
+        awaiting
+            ? scope.build(
+              builders.typingIndicator,
+              ChatSlot(
+                context: context,
+                controller: controller,
+                theme: theme,
+                child: const ChatTypingDots(),
+              ),
+            )
+            : const SizedBox.shrink();
 
     final above = [
-      for (final section in builders.answerAbove ?? const <ChatBuild<ChatMessagePartSlot>>[])
+      for (final section
+          in builders.answerAbove ?? const <ChatBuild<ChatMessagePartSlot>>[])
         section(part(const SizedBox.shrink())),
     ];
     final below = [
-      for (final section in builders.answerBelow ?? const <ChatBuild<ChatMessagePartSlot>>[])
+      for (final section
+          in builders.answerBelow ?? const <ChatBuild<ChatMessagePartSlot>>[])
         section(part(const SizedBox.shrink())),
     ];
 
@@ -84,12 +87,9 @@ class ChatAnswer extends StatelessWidget {
       part(
         awaiting
             ? Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: indicator,
-                ),
-              )
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Align(alignment: Alignment.centerLeft, child: indicator),
+            )
             : ChatAnswerText(message: message),
       ),
     );
@@ -175,13 +175,14 @@ class ChatAnswerText extends StatelessWidget {
       imageBuilder: builders.image,
       highlightBuilder: builders.highlight,
       sourceTagBuilder: builders.sourceTag,
-      genUiBuilder: (context, payload) => SizedBox(
-        // Inline widgets sit inside a text span, so they need an explicit width.
-        width: theme.contentWidth - theme.gutter * 2,
-        child:
-            builders.genUi?.call(context, payload) ??
-            scope.genUi.build(context, payload),
-      ),
+      genUiBuilder:
+          (context, payload) => SizedBox(
+            // Inline widgets sit inside a text span, so they need an explicit width.
+            width: theme.contentWidth - theme.gutter * 2,
+            child:
+                builders.genUi?.call(context, payload) ??
+                scope.genUi.build(context, payload),
+          ),
     );
   }
 }

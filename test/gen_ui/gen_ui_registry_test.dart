@@ -42,26 +42,29 @@ void main() {
     test('defaults register the built-in widget set', () {
       final registry = GenUiRegistry.defaults();
 
-      expect(registry.types, containsAll(<String>[
-        'text',
-        'image',
-        'button',
-        'line_chart',
-        'area_chart',
-        'bar_chart',
-        'pie_chart',
-        'comparison_chart',
-        'progress_list',
-        'metric_grid',
-        'unit_converter',
-        'timeline_flow',
-        'plot_latex',
-        'video',
-        'surface_3d',
-        'polar_surface_3d',
-        'spherical_surface_3d',
-        'cylindrical_surface_3d',
-      ]));
+      expect(
+        registry.types,
+        containsAll(<String>[
+          'text',
+          'image',
+          'button',
+          'line_chart',
+          'area_chart',
+          'bar_chart',
+          'pie_chart',
+          'comparison_chart',
+          'progress_list',
+          'metric_grid',
+          'unit_converter',
+          'timeline_flow',
+          'plot_latex',
+          'video',
+          'surface_3d',
+          'polar_surface_3d',
+          'spherical_surface_3d',
+          'cylindrical_surface_3d',
+        ]),
+      );
     });
 
     test('val_scene is the only type left to the host', () {
@@ -76,8 +79,11 @@ void main() {
 
     test('clone does not share registrations with its source', () {
       final base = GenUiRegistry.defaults();
-      final extended = base.clone()
-        ..register('val_scene', (context, model) => const SizedBox.shrink());
+      final extended =
+          base.clone()..register(
+            'val_scene',
+            (context, model) => const SizedBox.shrink(),
+          );
 
       expect(extended.contains('val_scene'), isTrue);
       expect(base.contains('val_scene'), isFalse);
@@ -90,8 +96,9 @@ void main() {
         MaterialApp(
           home: Scaffold(
             body: Builder(
-              builder: (context) =>
-                  registry.build(context, '{"val_scene": {"id": "x"}}'),
+              builder:
+                  (context) =>
+                      registry.build(context, '{"val_scene": {"id": "x"}}'),
             ),
           ),
         ),
@@ -120,15 +127,19 @@ void main() {
     });
 
     testWidgets('register overrides a built-in', (tester) async {
-      final registry = GenUiRegistry.defaults()
-        ..register('bar_chart', (context, model) => const Text('custom bars'));
+      final registry =
+          GenUiRegistry.defaults()..register(
+            'bar_chart',
+            (context, model) => const Text('custom bars'),
+          );
 
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
             body: Builder(
-              builder: (context) =>
-                  registry.build(context, '{"bar_chart": {"values": [1]}}'),
+              builder:
+                  (context) =>
+                      registry.build(context, '{"bar_chart": {"values": [1]}}'),
             ),
           ),
         ),
@@ -145,11 +156,12 @@ void main() {
         MaterialApp(
           home: Scaffold(
             body: Builder(
-              builder: (context) => registry.build(
-                context,
-                '{"text": {"text": "top"}, "progress_list": '
+              builder:
+                  (context) => registry.build(
+                    context,
+                    '{"text": {"text": "top"}, "progress_list": '
                     '{"values": [{"label": "a", "value": 50}]}}',
-              ),
+                  ),
             ),
           ),
         ),
@@ -187,10 +199,11 @@ void main() {
         MaterialApp(
           home: Scaffold(
             body: Builder(
-              builder: (context) => registry.build(
-                context,
-                '{"button": {"text": "Go", "action": "open_practice"}}',
-              ),
+              builder:
+                  (context) => registry.build(
+                    context,
+                    '{"button": {"text": "Go", "action": "open_practice"}}',
+                  ),
             ),
           ),
         ),
@@ -207,15 +220,18 @@ void main() {
         MaterialApp(
           home: Scaffold(
             body: Builder(
-              builder: (context) =>
-                  registry.build(context, '{"button": {"text": "Go"}}'),
+              builder:
+                  (context) =>
+                      registry.build(context, '{"button": {"text": "Go"}}'),
             ),
           ),
         ),
       );
 
-      expect(tester.widget<TextButton>(find.byType(TextButton)).onPressed,
-          isNull);
+      expect(
+        tester.widget<TextButton>(find.byType(TextButton)).onPressed,
+        isNull,
+      );
     });
   });
 
@@ -228,10 +244,14 @@ void main() {
     });
 
     test('genUiColor parses hex forms', () {
-      expect(genUiColor('#766CE3', fallback: Colors.black),
-          const Color(0xFF766CE3));
-      expect(genUiColor('0x80766CE3', fallback: Colors.black),
-          const Color(0x80766CE3));
+      expect(
+        genUiColor('#766CE3', fallback: Colors.black),
+        const Color(0xFF766CE3),
+      );
+      expect(
+        genUiColor('0x80766CE3', fallback: Colors.black),
+        const Color(0x80766CE3),
+      );
       expect(genUiColor('nope', fallback: Colors.black), Colors.black);
     });
 

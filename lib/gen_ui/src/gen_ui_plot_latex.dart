@@ -132,14 +132,16 @@ class _PlotCard extends StatelessWidget {
       ),
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
-        onTap: () => showDialog<void>(
-          context: context,
-          builder: (context) => _PlotCard(
-            controller: controller,
-            title: title,
-            isDialog: true,
-          ),
-        ),
+        onTap:
+            () => showDialog<void>(
+              context: context,
+              builder:
+                  (context) => _PlotCard(
+                    controller: controller,
+                    title: title,
+                    isDialog: true,
+                  ),
+            ),
         // The preview must not swallow drags: the plot view would consume them
         // and the surrounding answer would stop scrolling.
         child: IgnorePointer(child: body),
@@ -240,10 +242,7 @@ class _PlotLegend extends StatelessWidget {
                       children: [
                         Text(
                           '~',
-                          style: TextStyle(
-                            color: equation.color,
-                            fontSize: 22,
-                          ),
+                          style: TextStyle(color: equation.color, fontSize: 22),
                         ),
                         const SizedBox(width: 5),
                         GenUiMath.tex(

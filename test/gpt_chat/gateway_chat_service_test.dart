@@ -7,16 +7,25 @@ import 'package:http/testing.dart';
 
 const _config = PlusfinityConfig(apiKey: 'plus_live_test', model: 'gpt-5.4');
 
-ChatMessage user(String content) =>
-    SimpleChatMessage(id: '1', role: ChatRole.user, content: content, createdAt: DateTime(2024));
+ChatMessage user(String content) => SimpleChatMessage(
+  id: '1',
+  role: ChatRole.user,
+  content: content,
+  createdAt: DateTime(2024),
+);
 
-GatewayChatService service(
-  PlusfinityConfig config,
-  http.Client client,
-) => GatewayChatService(config: config, client: GatewayClient(config: config, client: client));
+GatewayChatService service(PlusfinityConfig config, http.Client client) =>
+    GatewayChatService(
+      config: config,
+      client: GatewayClient(config: config, client: client),
+    );
 
 /// Replays canned SSE lines as a streamed response.
-MockClient sseClient(List<String> lines, {int status = 200, void Function(String)? onBody}) {
+MockClient sseClient(
+  List<String> lines, {
+  int status = 200,
+  void Function(String)? onBody,
+}) {
   return MockClient.streaming((request, bodyStream) async {
     if (onBody != null) onBody(await bodyStream.bytesToString());
     return http.StreamedResponse(
@@ -29,27 +38,31 @@ MockClient sseClient(List<String> lines, {int status = 200, void Function(String
 
 void main() {
   test('streams content deltas in order', () async {
-    final chunks = await service(
-      _config,
-      sseClient([
-        'data: {"choices":[{"delta":{"role":"assistant"}}]}',
-        'data: {"choices":[{"delta":{"content":"He"}}]}',
-        'data: {"choices":[{"delta":{"content":"llo"}}]}',
-        'data: [DONE]',
-      ]),
-    ).complete([user('hi')]).toList();
+    final chunks =
+        await service(
+          _config,
+          sseClient([
+            'data: {"type":"response.created","response":{"status":"in_progress"}}',
+            'data: {"type":"response.output_text.delta","delta":"He"}',
+            'data: {"type":"response.output_text.delta","delta":"llo"}',
+            'data: {"type":"response.completed","response":{"status":"completed"}}',
+          ]),
+        ).complete([user('hi')]).toList();
 
-    expect(chunks.map((c) => c.content), ['', 'He', 'llo']);
+    expect(chunks.map((c) => c.content), ['', 'He', 'llo', '']);
+    expect(chunks.last.finishReason, 'completed');
+    expect(chunks.last.isDone, isTrue);
   });
 
   test('surfaces artifacts announced on an extra chunk', () async {
-    final chunks = await service(
-      _config,
-      sseClient([
-        'data: {"choices":[{"delta":{"content":"look"}}]}',
-        'data: {"choices":[],"x_plusfinity":{"artifacts":[{"id":"a1","name":"Seed","status":"queued","token":"t"}]}}',
-      ]),
-    ).complete([user('hi')]).toList();
+    final chunks =
+        await service(
+          _config,
+          sseClient([
+            'data: {"type":"response.output_text.delta","delta":"look"}',
+            'data: {"type":"response.output_item.added","x_plusfinity":{"artifacts":[{"id":"a1","name":"Seed","status":"queued","token":"t"}]}}',
+          ]),
+        ).complete([user('hi')]).toList();
 
     expect(chunks.last.artifacts.single.id, 'a1');
   });
@@ -58,13 +71,15 @@ void main() {
     String? body;
     await service(
       _config,
-      sseClient(['data: [DONE]'], onBody: (b) => body = b),
+      sseClient([
+        'data: {"type":"response.completed","response":{"status":"completed"}}',
+      ], onBody: (b) => body = b),
     ).complete([user('hi')]).toList();
 
     expect(jsonDecode(body!), {
       'model': 'gpt-5.4',
       'stream': true,
-      'messages': [
+      'input': [
         {'role': 'user', 'content': 'hi'},
       ],
       'x_plusfinity': {'widgets': 'all'},
@@ -74,8 +89,14 @@ void main() {
   test('adds the x_plusfinity fields that differ from the default', () async {
     String? body;
     await service(
-      const PlusfinityConfig(apiKey: 'k', frame: ArtifactFrame.reels, languageCode: 'bn'),
-      sseClient(['data: [DONE]'], onBody: (b) => body = b),
+      const PlusfinityConfig(
+        apiKey: 'k',
+        frame: ArtifactFrame.reels,
+        languageCode: 'bn',
+      ),
+      sseClient([
+        'data: {"type":"response.completed","response":{"status":"completed"}}',
+      ], onBody: (b) => body = b),
     ).complete([user('hi')]).toList();
 
     expect(jsonDecode(body!)['x_plusfinity'], {
@@ -93,11 +114,14 @@ void main() {
         reasoningEffort: ReasoningEffort.high,
         widgets: WidgetSelection.only(const ['bar_chart']),
       ),
-      sseClient(['data: [DONE]'], onBody: (b) => body = b),
+      sseClient([
+        'data: {"type":"response.completed","response":{"status":"completed"}}',
+      ], onBody: (b) => body = b),
     ).complete([user('hi')]).toList();
 
     final decoded = jsonDecode(body!) as Map<String, dynamic>;
-    expect(decoded['reasoning_effort'], 'high');
+    // Responses nests reasoning effort rather than sending it flat.
+    expect(decoded['reasoning'], {'effort': 'high'});
     expect(decoded['x_plusfinity'], {
       'widgets': ['bar_chart'],
     });
@@ -107,7 +131,9 @@ void main() {
     String? body;
     await service(
       _config,
-      sseClient(['data: [DONE]'], onBody: (b) => body = b),
+      sseClient([
+        'data: {"type":"response.completed","response":{"status":"completed"}}',
+      ], onBody: (b) => body = b),
     ).complete([user('hi')], model: 'gemini-3-flash-preview').toList();
 
     expect(jsonDecode(body!)['model'], 'gemini-3-flash-preview');
@@ -121,7 +147,13 @@ void main() {
 
     expect(
       stream.toList(),
-      throwsA(isA<ChatException>().having((e) => e.message, 'message', 'Invalid API key')),
+      throwsA(
+        isA<ChatException>().having(
+          (e) => e.message,
+          'message',
+          'Invalid API key',
+        ),
+      ),
     );
   });
 
@@ -129,18 +161,25 @@ void main() {
     final client = MockClient(
       (request) async => http.Response(
         jsonEncode({
-          'choices': [
-            {'message': {'content': 'full reply'}, 'finish_reason': 'stop'},
+          'status': 'completed',
+          'output': [
+            {
+              'type': 'message',
+              'content': [
+                {'type': 'output_text', 'text': 'full reply'},
+              ],
+            },
           ],
         }),
         200,
       ),
     );
 
-    final chunks = await service(
-      const PlusfinityConfig(apiKey: 'k', stream: false),
-      client,
-    ).complete([user('hi')]).toList();
+    final chunks =
+        await service(
+          const PlusfinityConfig(apiKey: 'k', stream: false),
+          client,
+        ).complete([user('hi')]).toList();
 
     expect(chunks.single.content, 'full reply');
     expect(chunks.single.isDone, isTrue);

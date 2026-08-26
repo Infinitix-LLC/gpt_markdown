@@ -114,8 +114,12 @@ void main() {
       tester,
       theme: const ChatTheme(contentMaxWidth: 400),
       builders: ChatBuilders(
-        listHeader: (s) =>
-            const SizedBox(key: Key('header'), width: double.infinity, height: 10),
+        listHeader:
+            (s) => const SizedBox(
+              key: Key('header'),
+              width: double.infinity,
+              height: 10,
+            ),
       ),
     );
     await controller.onSend('q');

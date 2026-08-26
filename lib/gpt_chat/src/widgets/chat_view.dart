@@ -64,25 +64,27 @@ class ChatView extends StatelessWidget {
         );
 
         final error = controller.error;
-        final errorBar = error == null
-            ? const SizedBox.shrink()
-            : ChatColumn(
-                maxWidth: theme.composerWidth,
-                child: scope.build(
-                  builders.errorBar,
-                  ChatErrorSlot(
-                    context: context,
-                    controller: controller,
-                    theme: theme,
-                    message: error,
-                    child: ChatErrorBar(message: error),
+        final errorBar =
+            error == null
+                ? const SizedBox.shrink()
+                : ChatColumn(
+                  maxWidth: theme.composerWidth,
+                  child: scope.build(
+                    builders.errorBar,
+                    ChatErrorSlot(
+                      context: context,
+                      controller: controller,
+                      theme: theme,
+                      message: error,
+                      child: ChatErrorBar(message: error),
+                    ),
                   ),
-                ),
-              );
+                );
 
-        final drawer = controller.capabilities.sessions
-            ? ChatDrawer(controller: controller)
-            : null;
+        final drawer =
+            controller.capabilities.sessions
+                ? ChatDrawer(controller: controller)
+                : null;
 
         final scaffold = Scaffold(
           drawer: drawer,

@@ -17,7 +17,9 @@ ValArtifact? parseGenUiArtifact(String payload) {
   if (json == null) return null;
 
   final scene = json['val_scene'];
-  if (scene is Map) return ValArtifact.fromJson(Map<String, dynamic>.from(scene));
+  if (scene is Map) {
+    return ValArtifact.fromJson(Map<String, dynamic>.from(scene));
+  }
 
   return _legacy(json);
 }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gpt_markdown/gpt_chat_gateway.dart';
 
@@ -67,6 +68,47 @@ void main() {
 
     expect(find.text('no credit'), findsWidgets);
     expect(find.text('Retry'), findsOneWidget);
+  });
+
+  testWidgets('the error bar copies the failure to the clipboard', (
+    tester,
+  ) async {
+    // The bar truncates to three lines, so the copy is how a full gateway
+    // failure — status and body — leaves the screen intact.
+    String? copied;
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+      SystemChannels.platform,
+      (call) async {
+        if (call.method == 'Clipboard.setData') {
+          copied = (call.arguments as Map)['text'] as String?;
+        }
+        return null;
+      },
+    );
+    addTearDown(
+      () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        null,
+      ),
+    );
+
+    await pumpChat(
+      tester,
+      FakeAdapter(error: const ChatException('no credit', statusCode: 402)),
+    );
+
+    await tester.enterText(find.byType(TextField), 'hello');
+    await tester.pump();
+    await tester.tap(find.byTooltip('Send'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('Copy error'));
+    await tester.pumpAndSettle();
+
+    // The status is the half that separates auth from quota from a server
+    // fault, so it has to survive into the clipboard.
+    expect(copied, 'HTTP 402: no credit');
+    expect(find.text('Error copied'), findsOneWidget);
   });
 
   testWidgets('the drawer lists sessions', (tester) async {

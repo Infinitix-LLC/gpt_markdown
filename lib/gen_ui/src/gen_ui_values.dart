@@ -142,17 +142,14 @@ const List<Color> genUiPalette = [
 ];
 
 /// Palette entry for series index [index], wrapping around.
-Color genUiPaletteColor(int index) =>
-    genUiPalette[index % genUiPalette.length];
+Color genUiPaletteColor(int index) => genUiPalette[index % genUiPalette.length];
 
 /// Builds `{index: label}` from a JSON list of labels.
 Map<int, String> genUiLabelsByIndex(dynamic value) {
   if (value is! List) {
     return const {};
   }
-  return {
-    for (var i = 0; i < value.length; i++) i: value[i].toString(),
-  };
+  return {for (var i = 0; i < value.length; i++) i: value[i].toString()};
 }
 
 /// A single `(x, y)` sample.
@@ -326,8 +323,8 @@ List<double> genUiNiceTicks(double min, double max, {int desired = 5}) {
   }
 
   final rawStep = (max - min) / (desired - 1);
-  final magnitude = math.pow(10, (math.log(rawStep) / math.ln10).floor())
-      .toDouble();
+  final magnitude =
+      math.pow(10, (math.log(rawStep) / math.ln10).floor()).toDouble();
   final normalized = rawStep / magnitude;
   final double niceNormalized;
   if (normalized <= 1) {

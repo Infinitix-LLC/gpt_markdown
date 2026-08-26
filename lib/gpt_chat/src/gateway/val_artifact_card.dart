@@ -62,45 +62,52 @@ class _Card extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.all(12),
           child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(Icons.movie_outlined, size: 18, color: theme.colorScheme.primary),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  artifact.name,
-                  style: theme.textTheme.titleSmall,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
+              Row(
+                children: [
+                  Icon(
+                    Icons.movie_outlined,
+                    size: 18,
+                    color: theme.colorScheme.primary,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      artifact.name,
+                      style: theme.textTheme.titleSmall,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          if (artifact.isReady)
-            builder?.call(context, artifact) ?? _ReadyPreview(artifact: artifact)
-          else ...[
-            AspectRatio(
-              aspectRatio: artifact.frame.aspectRatio,
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.surfaceContainerHighest,
-                  borderRadius: BorderRadius.circular(8),
+              const SizedBox(height: 10),
+              if (artifact.isReady)
+                builder?.call(context, artifact) ??
+                    _ReadyPreview(artifact: artifact)
+              else ...[
+                AspectRatio(
+                  aspectRatio: artifact.frame.aspectRatio,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surfaceContainerHighest,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
                 ),
-              ),
-            ),
-            const SizedBox(height: 10),
-            ArtifactStatusLine(status: artifact.status),
-            if (artifact.error != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 4),
-                child: Text(
-                  artifact.error!,
-                  style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.error),
-                ),
-              ),
+                const SizedBox(height: 10),
+                ArtifactStatusLine(status: artifact.status),
+                if (artifact.error != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(
+                      artifact.error!,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.error,
+                      ),
+                    ),
+                  ),
               ],
             ],
           ),
@@ -145,7 +152,10 @@ class _ReadyPreview extends StatelessWidget {
             child: SingleChildScrollView(
               child: Text(
                 artifact.script!,
-                style: const TextStyle(fontFamily: 'JetBrainsMono', fontSize: 12),
+                style: const TextStyle(
+                  fontFamily: 'JetBrainsMono',
+                  fontSize: 12,
+                ),
               ),
             ),
           ),

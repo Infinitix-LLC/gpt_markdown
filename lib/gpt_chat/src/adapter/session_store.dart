@@ -16,8 +16,9 @@ class InMemorySessionStore implements ChatSessionStore {
 
   @override
   Future<List<ChatSession>> loadAll() async {
-    final all = _sessions.values.toList()
-      ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+    final all =
+        _sessions.values.toList()
+          ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
     return all;
   }
 

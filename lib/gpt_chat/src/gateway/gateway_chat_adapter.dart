@@ -56,9 +56,10 @@ class GatewayChatAdapter extends StreamingChatAdapter {
 
   List<ChatMessage> _context(List<ChatMessage> history) {
     final usable = history.where((m) => m.content.trim().isNotEmpty).toList();
-    final windowed = usable.length > config.historyLimit
-        ? usable.sublist(usable.length - config.historyLimit)
-        : usable;
+    final windowed =
+        usable.length > config.historyLimit
+            ? usable.sublist(usable.length - config.historyLimit)
+            : usable;
 
     final prompt = config.systemPrompt;
     if (prompt == null || prompt.isEmpty) return windowed;

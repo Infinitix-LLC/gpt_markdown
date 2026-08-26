@@ -114,9 +114,10 @@ class ChatAttachmentStrip extends StatelessWidget {
 
     final scope = ChatScope.of(context);
     final controller = scope.controller;
-    final builder = isStaged
-        ? scope.builders.composerAttachmentTile
-        : scope.builders.questionAttachmentTile;
+    final builder =
+        isStaged
+            ? scope.builders.composerAttachmentTile
+            : scope.builders.questionAttachmentTile;
 
     return SizedBox(
       height: 68,
@@ -138,9 +139,10 @@ class ChatAttachmentStrip extends StatelessWidget {
               child: ChatAttachmentTile(
                 attachment: attachment,
                 isStaged: isStaged,
-                onRemove: isStaged
-                    ? () => controller.removeAttachment(attachment.id)
-                    : null,
+                onRemove:
+                    isStaged
+                        ? () => controller.removeAttachment(attachment.id)
+                        : null,
               ),
             ),
           );

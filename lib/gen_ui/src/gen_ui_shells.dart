@@ -135,11 +135,7 @@ class GenUiLearningCard extends StatelessWidget {
 
 /// Colored dot plus label, used under pie and comparison charts.
 class GenUiLegendItem extends StatelessWidget {
-  const GenUiLegendItem({
-    super.key,
-    required this.color,
-    required this.label,
-  });
+  const GenUiLegendItem({super.key, required this.color, required this.label});
 
   final Color color;
   final String label;
@@ -163,11 +159,7 @@ class GenUiLegendItem extends StatelessWidget {
 
 /// A boxed, monospaced-feeling list of derivation lines.
 class GenUiFormulaBox extends StatelessWidget {
-  const GenUiFormulaBox({
-    super.key,
-    required this.title,
-    required this.lines,
-  });
+  const GenUiFormulaBox({super.key, required this.title, required this.lines});
 
   final String title;
   final List<String> lines;
@@ -202,9 +194,10 @@ class GenUiFormulaBox extends StatelessWidget {
             Text(
               lines[i],
               style: theme.textTheme.bodySmall?.copyWith(
-                color: i == lines.length - 1
-                    ? theme.colorScheme.onSurface
-                    : theme.colorScheme.onSurfaceVariant,
+                color:
+                    i == lines.length - 1
+                        ? theme.colorScheme.onSurface
+                        : theme.colorScheme.onSurfaceVariant,
                 fontSize: 12,
                 fontWeight:
                     i == lines.length - 1 ? FontWeight.w700 : FontWeight.w500,
@@ -381,8 +374,5 @@ TextStyle genUiMutedStyle(ThemeData theme, {double fontSize = 12}) {
         color: theme.colorScheme.onSurfaceVariant,
         fontSize: fontSize,
       ) ??
-      TextStyle(
-        color: theme.colorScheme.onSurfaceVariant,
-        fontSize: fontSize,
-      );
+      TextStyle(color: theme.colorScheme.onSurfaceVariant, fontSize: fontSize);
 }

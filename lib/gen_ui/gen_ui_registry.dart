@@ -50,7 +50,10 @@ GenUiPayload parseGenUiPayload(String payload) {
   try {
     decoded = jsonDecode(trimmed);
   } on FormatException catch (error) {
-    return GenUiPayload(models: const [], error: 'Invalid JSON: ${error.message}');
+    return GenUiPayload(
+      models: const [],
+      error: 'Invalid JSON: ${error.message}',
+    );
   }
 
   if (decoded is! Map) {
@@ -65,19 +68,18 @@ GenUiPayload parseGenUiPayload(String payload) {
       for (final entry in decoded.entries)
         GenUiModel(
           type: entry.key.toString(),
-          attributes: entry.value is Map
-              ? Map<String, dynamic>.from(entry.value as Map)
-              : <String, dynamic>{'value': entry.value},
+          attributes:
+              entry.value is Map
+                  ? Map<String, dynamic>.from(entry.value as Map)
+                  : <String, dynamic>{'value': entry.value},
         ),
     ],
   );
 }
 
 /// Builds the widget for one decoded [GenUiModel].
-typedef GenUiWidgetBuilder = Widget Function(
-  BuildContext context,
-  GenUiModel model,
-);
+typedef GenUiWidgetBuilder =
+    Widget Function(BuildContext context, GenUiModel model);
 
 /// Maps gen-UI widget types to builders.
 ///
@@ -111,44 +113,50 @@ class GenUiRegistry {
       unknownBuilder: unknownBuilder,
       errorBuilder: errorBuilder,
     )..registerAll({
-        // Always registered, regardless of which widgets a host wires up: the
-        // gateway sends this precisely when something else could not be
-        // rendered, so leaving it out would reinstate the gap it exists to fill.
-        'genui_error': (context, model) => GenUiError(attributes: model.attributes),
-        'text': (context, model) => GenText(attributes: model.attributes),
-        'image': (context, model) => GenImage(attributes: model.attributes),
-        'button': (context, model) =>
-            GenButton(attributes: model.attributes, onAction: onAction),
-        'line_chart': (context, model) =>
-            GenLineChart(attributes: model.attributes),
-        'area_chart': (context, model) =>
-            GenLineChart(attributes: model.attributes, showArea: true),
-        'bar_chart': (context, model) =>
-            GenBarChart(attributes: model.attributes),
-        'pie_chart': (context, model) =>
-            GenPieChart(attributes: model.attributes),
-        'comparison_chart': (context, model) =>
-            GenComparisonChart(attributes: model.attributes),
-        'progress_list': (context, model) =>
-            GenProgressList(attributes: model.attributes),
-        'metric_grid': (context, model) =>
-            GenMetricGrid(attributes: model.attributes),
-        'unit_converter': (context, model) =>
-            GenUnitConverter(attributes: model.attributes),
-        'timeline_flow': (context, model) =>
-            GenTimelineFlow(attributes: model.attributes),
-        'plot_latex': (context, model) =>
-            GenPlotLatex(attributes: model.attributes),
-        'video': (context, model) => GenVideo(attributes: model.attributes),
-        'surface_3d': (context, model) =>
-            GenSurface3DGraph(attributes: model.attributes),
-        'polar_surface_3d': (context, model) =>
-            GenPolarSurface3DGraph(attributes: model.attributes),
-        'spherical_surface_3d': (context, model) =>
-            GenSphericalSurface3DGraph(attributes: model.attributes),
-        'cylindrical_surface_3d': (context, model) =>
-            GenCylindricalSurface3DGraph(attributes: model.attributes),
-      });
+      // Always registered, regardless of which widgets a host wires up: the
+      // gateway sends this precisely when something else could not be
+      // rendered, so leaving it out would reinstate the gap it exists to fill.
+      'genui_error':
+          (context, model) => GenUiError(attributes: model.attributes),
+      'text': (context, model) => GenText(attributes: model.attributes),
+      'image': (context, model) => GenImage(attributes: model.attributes),
+      'button':
+          (context, model) =>
+              GenButton(attributes: model.attributes, onAction: onAction),
+      'line_chart':
+          (context, model) => GenLineChart(attributes: model.attributes),
+      'area_chart':
+          (context, model) =>
+              GenLineChart(attributes: model.attributes, showArea: true),
+      'bar_chart':
+          (context, model) => GenBarChart(attributes: model.attributes),
+      'pie_chart':
+          (context, model) => GenPieChart(attributes: model.attributes),
+      'comparison_chart':
+          (context, model) => GenComparisonChart(attributes: model.attributes),
+      'progress_list':
+          (context, model) => GenProgressList(attributes: model.attributes),
+      'metric_grid':
+          (context, model) => GenMetricGrid(attributes: model.attributes),
+      'unit_converter':
+          (context, model) => GenUnitConverter(attributes: model.attributes),
+      'timeline_flow':
+          (context, model) => GenTimelineFlow(attributes: model.attributes),
+      'plot_latex':
+          (context, model) => GenPlotLatex(attributes: model.attributes),
+      'video': (context, model) => GenVideo(attributes: model.attributes),
+      'surface_3d':
+          (context, model) => GenSurface3DGraph(attributes: model.attributes),
+      'polar_surface_3d':
+          (context, model) =>
+              GenPolarSurface3DGraph(attributes: model.attributes),
+      'spherical_surface_3d':
+          (context, model) =>
+              GenSphericalSurface3DGraph(attributes: model.attributes),
+      'cylindrical_surface_3d':
+          (context, model) =>
+              GenCylindricalSurface3DGraph(attributes: model.attributes),
+    });
   }
 
   final Map<String, GenUiWidgetBuilder> _builders = {};
@@ -216,9 +224,7 @@ class GenUiRegistry {
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        for (final model in parsed.models) buildModel(context, model),
-      ],
+      children: [for (final model in parsed.models) buildModel(context, model)],
     );
   }
 

@@ -27,11 +27,11 @@ import 'dart:ui' as ui;
 import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
 
+import 'inline_code.dart';
+
 /// Strong right-to-left scripts: Hebrew, Arabic, Syriac, Thaana, NKo, Samaritan
 /// and the Arabic presentation forms.
-final RegExp _rtlPattern = RegExp(
-  r'[֐-׿؀-޿ࡠ-ࣿיִ-﷿ﹰ-﻿]',
-);
+final RegExp _rtlPattern = RegExp(r'[֐-׿؀-޿ࡠ-ࣿיִ-﷿ﹰ-﻿]');
 
 /// Whether [span] can be hit by the placeholder-ordering bug.
 ///
@@ -111,6 +111,8 @@ class BidiRichText extends RichText {
   BidiRichText({
     super.key,
     required super.text,
+    this.bidiEnabled = true,
+    this.inlineCodeRuns = const <InlineCodeRun>[],
     super.textAlign,
     super.textDirection,
     super.softWrap,
@@ -125,10 +127,22 @@ class BidiRichText extends RichText {
     super.selectionColor,
   });
 
+  /// Whether to reorder inline placeholders for bidirectional text.
+  ///
+  /// The reordering costs a probe layout, so callers that already know the
+  /// paragraph cannot be affected — see [needsBidiPlaceholderFix] — pass false
+  /// and this behaves exactly like a [RichText].
+  final bool bidiEnabled;
+
+  /// Inline-code runs to paint chips behind. See [InlineCodeDecoration].
+  final List<InlineCodeRun> inlineCodeRuns;
+
   @override
   RenderParagraph createRenderObject(BuildContext context) {
     return RenderBidiParagraph(
       text,
+      bidiEnabled: bidiEnabled,
+      inlineCodeRuns: inlineCodeRuns,
       textAlign: textAlign,
       textDirection: textDirection ?? Directionality.of(context),
       softWrap: softWrap,
@@ -143,12 +157,25 @@ class BidiRichText extends RichText {
       selectionColor: selectionColor,
     );
   }
+
+  @override
+  void updateRenderObject(
+    BuildContext context,
+    covariant RenderParagraph renderObject,
+  ) {
+    super.updateRenderObject(context, renderObject);
+    (renderObject as RenderBidiParagraph)
+      ..bidiEnabled = bidiEnabled
+      ..inlineCodeRuns = inlineCodeRuns;
+  }
 }
 
 /// The render object behind [BidiRichText].
-class RenderBidiParagraph extends RenderParagraph {
+class RenderBidiParagraph extends RenderParagraph with InlineCodeDecoration {
   RenderBidiParagraph(
     super.text, {
+    bool bidiEnabled = true,
+    List<InlineCodeRun> inlineCodeRuns = const <InlineCodeRun>[],
     super.textAlign,
     required super.textDirection,
     super.softWrap,
@@ -162,7 +189,23 @@ class RenderBidiParagraph extends RenderParagraph {
     super.children,
     super.registrar,
     super.selectionColor,
-  });
+  }) : _bidiEnabled = bidiEnabled {
+    this.inlineCodeRuns = inlineCodeRuns;
+  }
+
+  bool _bidiEnabled;
+
+  /// Whether placeholder reordering runs at all.
+  bool get bidiEnabled => _bidiEnabled;
+
+  set bidiEnabled(bool value) {
+    if (_bidiEnabled == value) {
+      return;
+    }
+    _bidiEnabled = value;
+    _inverse = null;
+    markNeedsLayout();
+  }
 
   /// `_inverse[childIndex]` is the index of the engine box that child belongs
   /// in. `null` means "no reordering needed", in which case this render object
@@ -197,6 +240,9 @@ class RenderBidiParagraph extends RenderParagraph {
       return dimensions;
     }
     _inverse = null;
+    if (!_bidiEnabled) {
+      return dimensions;
+    }
     if (dimensions.length < 2) {
       return dimensions;
     }
@@ -361,7 +407,10 @@ class RenderBidiParagraph extends RenderParagraph {
       }
     }
 
-    return <int>[for (final item in items) if (item >= 0) item];
+    return <int>[
+      for (final item in items)
+        if (item >= 0) item,
+    ];
   }
 
   /// The resolved direction of the text in `[start, end)`, or `null` when that
@@ -395,6 +444,8 @@ class BidiText extends StatelessWidget {
   const BidiText(
     this.textSpan, {
     super.key,
+    this.bidiEnabled = true,
+    this.inlineCodeRuns = const <InlineCodeRun>[],
     this.style,
     this.textAlign,
     this.textDirection,
@@ -410,6 +461,13 @@ class BidiText extends StatelessWidget {
   });
 
   final InlineSpan textSpan;
+
+  /// Whether to reorder inline placeholders for bidirectional text.
+  final bool bidiEnabled;
+
+  /// Inline-code runs to paint chips behind, in [textSpan]'s own offsets.
+  final List<InlineCodeRun> inlineCodeRuns;
+
   final TextStyle? style;
   final TextAlign? textAlign;
   final TextDirection? textDirection;
@@ -437,6 +495,8 @@ class BidiText extends StatelessWidget {
     }
     final registrar = SelectionContainer.maybeOf(context);
     return BidiRichText(
+      bidiEnabled: bidiEnabled,
+      inlineCodeRuns: inlineCodeRuns,
       text: TextSpan(
         style: effectiveTextStyle,
         locale: locale,

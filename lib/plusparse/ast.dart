@@ -113,7 +113,11 @@ class MdRadio extends MdNode {
 }
 
 class MdTable extends MdNode {
-  const MdTable({required this.aligns, required this.header, required this.rows});
+  const MdTable({
+    required this.aligns,
+    required this.header,
+    required this.rows,
+  });
 
   final List<MdAlign> aligns;
   final MdTableRow header;

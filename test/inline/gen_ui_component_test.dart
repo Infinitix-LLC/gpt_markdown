@@ -36,7 +36,10 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(captured, '{"type":"button","label":"Tap"}');
-      expect(find.text('GEN_UI:{"type":"button","label":"Tap"}'), findsOneWidget);
+      expect(
+        find.text('GEN_UI:{"type":"button","label":"Tap"}'),
+        findsOneWidget,
+      );
     });
 
     testWidgets('the leading star is not read as italic', (tester) async {
@@ -87,11 +90,16 @@ void main() {
       expect(captured, '{"label":"**bold** and [link](http://x.dev)"}');
     });
 
-    testWidgets('renders the payload as text without a builder', (tester) async {
+    testWidgets('renders the payload as text without a builder', (
+      tester,
+    ) async {
       await tester.pumpWidget(componentPipeline('genui{"type":"button"}'));
       await tester.pumpAndSettle();
 
-      expect(find.textContaining('{"type":"button"}', findRichText: true), findsOneWidget);
+      expect(
+        find.textContaining('{"type":"button"}', findRichText: true),
+        findsOneWidget,
+      );
     });
 
     testWidgets('a missing close marker stays literal', (tester) async {
@@ -110,7 +118,9 @@ void main() {
       expect(called, isFalse);
     });
 
-    testWidgets('is registered in the default inline components', (tester) async {
+    testWidgets('is registered in the default inline components', (
+      tester,
+    ) async {
       expect(
         MarkdownComponent.inlineComponents.whereType<GenUiMd>(),
         isNotEmpty,

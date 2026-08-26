@@ -40,7 +40,9 @@ Future<void> pumpMarkdown(
 /// (from MdWidget instances inside list items, checkboxes, etc.)
 String getSerializedOutput(WidgetTester tester) {
   // Find ALL RichText widgets (including nested ones from MdWidget)
-  final richTextFinder = find.byType(RichText);
+  // `byType` matches the exact runtime type, and paragraphs carrying inline
+  // code or reordered placeholders are `RichText` *subclasses*.
+  final richTextFinder = find.byWidgetPredicate((widget) => widget is RichText);
 
   if (richTextFinder.evaluate().isEmpty) {
     return '';

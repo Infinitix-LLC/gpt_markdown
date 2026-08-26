@@ -50,11 +50,7 @@ abstract final class GenUi3D {
 
 /// `surface_3d`: explicit Cartesian surface, `z = f(x, y)`.
 class GenSurface3DGraph extends StatelessWidget {
-  const GenSurface3DGraph({
-    super.key,
-    required this.attributes,
-    this.renderer,
-  });
+  const GenSurface3DGraph({super.key, required this.attributes, this.renderer});
 
   final Map<String, dynamic> attributes;
 

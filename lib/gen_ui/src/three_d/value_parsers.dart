@@ -112,10 +112,11 @@ List<Color> _colorsFromValue(dynamic value, {required List<Color> fallback}) {
     return fallback;
   }
 
-  final colors = [
-    for (final item in value)
-      _colorFromValue(item, fallback: Colors.transparent),
-  ].where((color) => color != Colors.transparent).toList();
+  final colors =
+      [
+        for (final item in value)
+          _colorFromValue(item, fallback: Colors.transparent),
+      ].where((color) => color != Colors.transparent).toList();
 
   return colors.isEmpty ? fallback : colors.take(4).toList();
 }

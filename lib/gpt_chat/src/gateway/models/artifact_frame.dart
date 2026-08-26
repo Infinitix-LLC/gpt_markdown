@@ -9,8 +9,9 @@ enum ArtifactFrame {
   final String wireName;
   final double aspectRatio;
 
-  static ArtifactFrame fromWire(String? value) => ArtifactFrame.values.firstWhere(
-    (f) => f.wireName == value,
-    orElse: () => ArtifactFrame.square,
-  );
+  static ArtifactFrame fromWire(String? value) =>
+      ArtifactFrame.values.firstWhere(
+        (f) => f.wireName == value,
+        orElse: () => ArtifactFrame.square,
+      );
 }

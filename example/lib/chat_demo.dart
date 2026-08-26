@@ -71,7 +71,8 @@ class _ChatDemoPageState extends State<ChatDemoPage> {
 
     Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (context) => GatewayChat(config: config, showGenUiPreview: true),
+        builder: (context) =>
+            GatewayChat(config: config, showGenUiPreview: true),
       ),
     );
   }
@@ -167,7 +168,8 @@ class _ChatDemoPageState extends State<ChatDemoPage> {
             contentPadding: EdgeInsets.zero,
             value: _artifacts,
             title: const Text('Generate animations'),
-            subtitle: const Text('Off turns the gateway into a plain model proxy'),
+            subtitle:
+                const Text('Off turns the gateway into a plain model proxy'),
             onChanged: (value) => setState(() => _artifacts = value),
           ),
           const SizedBox(height: 12),
@@ -224,7 +226,8 @@ class _Hints extends StatelessWidget {
           Text(
             'On web the gateway blocks /chat/completions by design — point the '
             'base URL at your own server-side proxy.',
-            style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.error),
+            style: theme.textTheme.bodySmall
+                ?.copyWith(color: theme.colorScheme.error),
           ),
         ],
       ],

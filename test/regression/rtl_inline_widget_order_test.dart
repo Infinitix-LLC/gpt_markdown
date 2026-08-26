@@ -221,10 +221,7 @@ void main() {
     // resolves to the paragraph level and belongs on the right — the engine
     // already gets this right and the workaround must not "fix" it.
     await tester.pumpWidget(
-      _app(
-        r'واحد $two^2$ ثلاثة أربعة $eight^8$',
-        direction: TextDirection.ltr,
-      ),
+      _app(r'واحد $two^2$ ثلاثة أربعة $eight^8$', direction: TextDirection.ltr),
     );
     _expectLtrOrder(tester, ['two^2', 'eight^8']);
   });

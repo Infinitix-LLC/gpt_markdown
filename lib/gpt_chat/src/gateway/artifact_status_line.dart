@@ -26,9 +26,14 @@ class ArtifactStatusLine extends StatelessWidget {
         SizedBox(
           width: 14,
           height: 14,
-          child: isFailed
-              ? Icon(Icons.error_outline, size: 14, color: theme.colorScheme.error)
-              : const CircularProgressIndicator(strokeWidth: 2),
+          child:
+              isFailed
+                  ? Icon(
+                    Icons.error_outline,
+                    size: 14,
+                    color: theme.colorScheme.error,
+                  )
+                  : const CircularProgressIndicator(strokeWidth: 2),
         ),
         const SizedBox(width: 8),
         Text(_labels[status]!, style: theme.textTheme.bodySmall),

@@ -23,5 +23,4 @@ const String genUiCloseMarker = '\u{E201}';
 const int genUiOpenMarkerRune = 0xE200;
 
 /// Wraps a raw JSON [payload] in the gen-UI delimiters.
-String wrapGenUi(String payload) =>
-    '$genUiOpenMarker$payload$genUiCloseMarker';
+String wrapGenUi(String payload) => '$genUiOpenMarker$payload$genUiCloseMarker';

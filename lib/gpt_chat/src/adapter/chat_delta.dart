@@ -28,7 +28,8 @@ class ChatDelta {
   bool get isEmpty => text.isEmpty && payload == null;
 
   @override
-  String toString() => replaces
-      ? 'ChatDelta.replace(${text.length})'
-      : 'ChatDelta(${text.length})';
+  String toString() =>
+      replaces
+          ? 'ChatDelta.replace(${text.length})'
+          : 'ChatDelta(${text.length})';
 }

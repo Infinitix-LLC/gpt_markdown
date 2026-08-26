@@ -47,12 +47,13 @@ class ChatAppBar extends StatelessWidget {
       plain(
         capabilities.sessions
             ? Builder(
-                builder: (context) => IconButton(
-                  icon: const Icon(Icons.menu_rounded),
-                  tooltip: 'Conversations',
-                  onPressed: Scaffold.of(context).openDrawer,
-                ),
-              )
+              builder:
+                  (context) => IconButton(
+                    icon: const Icon(Icons.menu_rounded),
+                    tooltip: 'Conversations',
+                    onPressed: Scaffold.of(context).openDrawer,
+                  ),
+            )
             : const SizedBox(width: 12),
       ),
     );
@@ -72,11 +73,11 @@ class ChatAppBar extends StatelessWidget {
         capabilities.models
             ? Align(alignment: Alignment.centerLeft, child: modelSelector)
             : Text(
-                controller.activeSession?.title ?? 'Chat',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
+              controller.activeSession?.title ?? 'Chat',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
       ),
     );
 
@@ -108,13 +109,7 @@ class ChatAppBar extends StatelessWidget {
         ),
         child: ChatColumn(
           maxWidth: theme.composerWidth,
-          child: Row(
-            children: [
-              leading,
-              Expanded(child: title),
-              ...actions,
-            ],
-          ),
+          child: Row(children: [leading, Expanded(child: title), ...actions]),
         ),
       ),
     );

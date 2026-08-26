@@ -1,0 +1,46 @@
+# A `.pubignore` REPLACES `.gitignore` for publishing — pub does not read
+# `.gitignore` when this file exists. Everything that must stay out of the
+# published archive has to be listed here, including build output.
+
+# Build output and tool caches.
+build/
+.dart_tool/
+.idea/
+.vscode/
+*.iml
+
+# Development surfaces. Useful in the repository, not to consumers.
+widgetbook/
+scripts/
+tool/
+.github/
+
+# Website and local workspace surfaces are published independently.
+# The package README links to the source documentation on GitHub.
+website/
+docs/
+
+# The built Flutter playground and local Replit metadata do not belong in the
+# package archive.
+doc/
+.agents/
+.cache/
+.config/
+.local/
+artifacts/
+attached_assets/
+.replit
+replit.nix
+replit.md
+screenshots/
+seo_strategy.md
+push.sh
+start.sh
+
+# The example's own build output and lockfile.
+example/build/
+example/.dart_tool/
+example/pubspec.lock
+
+# Libraries should not publish a lockfile.
+pubspec.lock

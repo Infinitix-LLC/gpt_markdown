@@ -114,9 +114,7 @@ class _GenVideoState extends State<GenVideo> {
           children: [
             VideoPlayer(controller),
             VideoProgressIndicator(controller, allowScrubbing: true),
-            Center(
-              child: _PlayPauseButton(controller: controller),
-            ),
+            Center(child: _PlayPauseButton(controller: controller)),
           ],
         );
 
@@ -143,8 +141,8 @@ class _PlayPauseButton extends StatelessWidget {
       valueListenable: controller,
       builder: (context, value, _) {
         return IconButton.filledTonal(
-          onPressed: () =>
-              value.isPlaying ? controller.pause() : controller.play(),
+          onPressed:
+              () => value.isPlaying ? controller.pause() : controller.play(),
           icon: Icon(
             value.isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
           ),
@@ -182,10 +180,7 @@ class _VideoFrame extends StatelessWidget {
                 Text(title!, style: theme.textTheme.titleMedium),
                 const SizedBox(height: 16),
               ],
-              ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: child,
-              ),
+              ClipRRect(borderRadius: BorderRadius.circular(12), child: child),
             ],
           ),
         ),
@@ -216,7 +211,8 @@ class _VideoNotice extends StatelessWidget {
             color: theme.colorScheme.surfaceContainerLowest,
             borderRadius: BorderRadius.circular(12),
           ),
-          child: child ??
+          child:
+              child ??
               Center(
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -227,10 +223,7 @@ class _VideoNotice extends StatelessWidget {
                       color: theme.colorScheme.onSurfaceVariant,
                     ),
                     const SizedBox(width: 8),
-                    Text(
-                      message ?? '',
-                      style: genUiMutedStyle(theme),
-                    ),
+                    Text(message ?? '', style: genUiMutedStyle(theme)),
                   ],
                 ),
               ),

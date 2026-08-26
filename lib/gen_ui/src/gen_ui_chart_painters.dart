@@ -85,9 +85,10 @@ class _AxisFrame {
   }
 
   void paintHorizontalGrid(Canvas canvas, {bool withLabels = true}) {
-    final paint = Paint()
-      ..color = style.grid
-      ..strokeWidth = 1;
+    final paint =
+        Paint()
+          ..color = style.grid
+          ..strokeWidth = 1;
 
     for (final tick in genUiNiceTicks(minY, maxY)) {
       final y = yToPixels(tick);
@@ -107,9 +108,10 @@ class _AxisFrame {
   }
 
   void paintVerticalGridAt(Canvas canvas, Iterable<double> xs) {
-    final paint = Paint()
-      ..color = style.grid
-      ..strokeWidth = 1;
+    final paint =
+        Paint()
+          ..color = style.grid
+          ..strokeWidth = 1;
     for (final x in xs) {
       if (x < plot.left - 0.5 || x > plot.right + 0.5) continue;
       canvas.drawLine(Offset(x, plot.top), Offset(x, plot.bottom), paint);
@@ -128,7 +130,10 @@ class _AxisFrame {
 
   /// Paints bottom labels, skipping any that would collide with the previous
   /// one.
-  void paintBottomLabels(Canvas canvas, List<({double x, String label})> ticks) {
+  void paintBottomLabels(
+    Canvas canvas,
+    List<({double x, String label})> ticks,
+  ) {
     var occupiedUntil = double.negativeInfinity;
     for (final tick in ticks) {
       if (tick.label.isEmpty) continue;
@@ -240,16 +245,18 @@ class GenUiLineChartPainter extends CustomPainter {
     frame.paintVerticalGridAt(canvas, offsets.map((o) => o.dx));
     frame.paintBorder(canvas);
 
-    final path = curved && offsets.length > 2
-        ? _catmullRomPath(offsets)
-        : (Path()..addPolygon(offsets, false));
+    final path =
+        curved && offsets.length > 2
+            ? _catmullRomPath(offsets)
+            : (Path()..addPolygon(offsets, false));
 
     if (showArea) {
       final baseline = frame.yToPixels(minY.clamp(minY, maxY));
-      final area = Path.from(path)
-        ..lineTo(offsets.last.dx, baseline)
-        ..lineTo(offsets.first.dx, baseline)
-        ..close();
+      final area =
+          Path.from(path)
+            ..lineTo(offsets.last.dx, baseline)
+            ..lineTo(offsets.first.dx, baseline)
+            ..close();
       canvas.drawPath(area, Paint()..color = color.withAlpha(50));
     }
 
@@ -279,8 +286,8 @@ class GenUiLineChartPainter extends CustomPainter {
       for (var i = 0; i < points.length; i++)
         (
           x: offsets[i].dx,
-          label: bottomLabels[points[i].x.round()] ??
-              genUiFormatAxis(points[i].x),
+          label:
+              bottomLabels[points[i].x.round()] ?? genUiFormatAxis(points[i].x),
         ),
     ]);
   }

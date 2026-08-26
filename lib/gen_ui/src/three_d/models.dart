@@ -37,10 +37,7 @@ class _GraphConstant {
 }
 
 class _GraphFormula {
-  const _GraphFormula({
-    required this.latex,
-    required this.expression,
-  });
+  const _GraphFormula({required this.latex, required this.expression});
 
   final String latex;
   final String expression;

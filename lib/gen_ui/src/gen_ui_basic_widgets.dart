@@ -39,7 +39,8 @@ class GenUiError extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final message =
-        genUiString(attributes['message']) ?? 'This content could not be displayed.';
+        genUiString(attributes['message']) ??
+        'This content could not be displayed.';
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
@@ -105,20 +106,21 @@ class GenImage extends StatelessWidget {
             ),
           );
         },
-        errorBuilder: (context, error, stackTrace) => Container(
-          width: width,
-          height: height ?? 96,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: theme.colorScheme.surfaceContainer,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: theme.colorScheme.outlineVariant),
-          ),
-          child: Icon(
-            Icons.broken_image_outlined,
-            color: theme.colorScheme.onSurfaceVariant,
-          ),
-        ),
+        errorBuilder:
+            (context, error, stackTrace) => Container(
+              width: width,
+              height: height ?? 96,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surfaceContainer,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: theme.colorScheme.outlineVariant),
+              ),
+              child: Icon(
+                Icons.broken_image_outlined,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
       ),
     );
   }
@@ -143,9 +145,10 @@ class GenButton extends StatelessWidget {
     final action = genUiString(attributes['action']) ?? label;
 
     return TextButton(
-      onPressed: callback == null
-          ? null
-          : () => callback(action, Map<String, dynamic>.from(attributes)),
+      onPressed:
+          callback == null
+              ? null
+              : () => callback(action, Map<String, dynamic>.from(attributes)),
       child: Text(label),
     );
   }

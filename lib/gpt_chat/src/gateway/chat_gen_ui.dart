@@ -18,9 +18,9 @@ GenUiRegistry chatGenUiRegistry([GenUiRegistry? base]) {
   final registry = base?.clone() ?? GenUiRegistry.defaults();
   if (registry.contains('val_scene')) return registry;
 
-  return registry
-    ..register(
-      'val_scene',
-      (context, model) => ValArtifactCard(initial: ValArtifact.fromJson(model.attributes)),
-    );
+  return registry..register(
+    'val_scene',
+    (context, model) =>
+        ValArtifactCard(initial: ValArtifact.fromJson(model.attributes)),
+  );
 }

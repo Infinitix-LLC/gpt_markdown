@@ -36,7 +36,9 @@ class GenUiMath extends StatelessWidget {
   }
 
   MathOptions _optionsFromTextStyle(BuildContext context) {
-    var effectiveTextStyle = DefaultTextStyle.of(context).style.merge(textStyle);
+    var effectiveTextStyle = DefaultTextStyle.of(
+      context,
+    ).style.merge(textStyle);
     if (MediaQuery.boldTextOf(context)) {
       effectiveTextStyle = effectiveTextStyle.merge(
         const TextStyle(fontWeight: FontWeight.bold),
@@ -48,11 +50,15 @@ class GenUiMath extends StatelessWidget {
 
     return MathOptions(
       style: mathStyle,
-      fontSize: (textScaler ?? MediaQuery.textScalerOf(context)).scale(fontSize),
-      mathFontOptions: fontWeight != null && fontWeight != FontWeight.normal
-          ? FontOptions(fontWeight: fontWeight)
-          : null,
-      color: effectiveTextStyle.color ??
+      fontSize: (textScaler ?? MediaQuery.textScalerOf(context)).scale(
+        fontSize,
+      ),
+      mathFontOptions:
+          fontWeight != null && fontWeight != FontWeight.normal
+              ? FontOptions(fontWeight: fontWeight)
+              : null,
+      color:
+          effectiveTextStyle.color ??
           DefaultTextStyle.of(context).style.color ??
           Theme.of(context).colorScheme.onSurface,
     );

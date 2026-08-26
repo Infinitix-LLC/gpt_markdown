@@ -39,13 +39,14 @@ class _ChatModelPickerState extends State<ChatModelPicker> {
       context: context,
       showDragHandle: true,
       isScrollControlled: true,
-      builder: (sheetContext) => ChatScope(
-        controller: scope.controller,
-        theme: scope.theme,
-        builders: scope.builders,
-        genUi: scope.genUi,
-        child: ChatModelSheet(controller: widget.controller),
-      ),
+      builder:
+          (sheetContext) => ChatScope(
+            controller: scope.controller,
+            theme: scope.theme,
+            builders: scope.builders,
+            genUi: scope.genUi,
+            child: ChatModelSheet(controller: widget.controller),
+          ),
     );
   }
 
@@ -54,10 +55,11 @@ class _ChatModelPickerState extends State<ChatModelPicker> {
     final theme = Theme.of(context);
     final foreground = theme.colorScheme.onSurface;
     final selected = widget.controller.selectedModel;
-    final label = widget.controller.availableModels
-        .where((m) => m.id == selected)
-        .map((m) => m.name)
-        .firstOrNull;
+    final label =
+        widget.controller.availableModels
+            .where((m) => m.id == selected)
+            .map((m) => m.name)
+            .firstOrNull;
 
     return InkWell(
       borderRadius: BorderRadius.circular(12),
@@ -155,12 +157,14 @@ class ChatModelSheet extends StatelessWidget {
                         child: ListTile(
                           selected: isSelected,
                           title: Text(option.name),
-                          subtitle: option.description == null
-                              ? null
-                              : Text(option.description!),
-                          trailing: isSelected
-                              ? const Icon(Icons.check_rounded, size: 20)
-                              : null,
+                          subtitle:
+                              option.description == null
+                                  ? null
+                                  : Text(option.description!),
+                          trailing:
+                              isSelected
+                                  ? const Icon(Icons.check_rounded, size: 20)
+                                  : null,
                           onTap: () {
                             controller.onModelChoose(option.id);
                             Navigator.of(context).maybePop();

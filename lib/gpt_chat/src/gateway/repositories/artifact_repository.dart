@@ -25,17 +25,21 @@ class ArtifactRepository {
     if (artifact.id.isEmpty) return;
 
     _put(artifact);
-    if (artifact.status.isTerminal || _watchers.containsKey(artifact.id)) return;
+    if (artifact.status.isTerminal || _watchers.containsKey(artifact.id)) {
+      return;
+    }
     _watch(artifact.id);
   }
 
   void _watch(String id) {
-    _watchers[id] = _service.watch(id, _artifacts[id]?.token).listen(
-      _put,
-      onError: (Object error) => _fail(id, error),
-      onDone: () => _watchers.remove(id),
-      cancelOnError: true,
-    );
+    _watchers[id] = _service
+        .watch(id, _artifacts[id]?.token)
+        .listen(
+          _put,
+          onError: (Object error) => _fail(id, error),
+          onDone: () => _watchers.remove(id),
+          cancelOnError: true,
+        );
   }
 
   void _put(ValArtifact artifact) {

@@ -34,21 +34,35 @@ void main() {
     repository.updates.listen((a) => seen.add(a.status));
     repository.track(_queued);
 
-    service.emit('a1', const ValArtifact(id: 'a1', name: '', status: ArtifactStatus.generating));
     service.emit(
       'a1',
-      const ValArtifact(id: 'a1', name: '', status: ArtifactStatus.ready, script: 'scene {}'),
+      const ValArtifact(id: 'a1', name: '', status: ArtifactStatus.generating),
+    );
+    service.emit(
+      'a1',
+      const ValArtifact(
+        id: 'a1',
+        name: '',
+        status: ArtifactStatus.ready,
+        script: 'scene {}',
+      ),
     );
     await pumpEventQueue();
 
-    expect(seen, [ArtifactStatus.queued, ArtifactStatus.generating, ArtifactStatus.ready]);
+    expect(seen, [
+      ArtifactStatus.queued,
+      ArtifactStatus.generating,
+      ArtifactStatus.ready,
+    ]);
     expect(repository['a1']!.script, 'scene {}');
     expect(repository['a1']!.name, 'Seed Germination');
     expect(repository['a1']!.token, 'tok');
   });
 
   test('a terminal artifact is never watched', () {
-    repository.track(const ValArtifact(id: 'a2', name: 'Done', status: ArtifactStatus.ready));
+    repository.track(
+      const ValArtifact(id: 'a2', name: 'Done', status: ArtifactStatus.ready),
+    );
 
     expect(service.watched, isEmpty);
   });

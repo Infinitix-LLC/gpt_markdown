@@ -5,19 +5,24 @@ import 'package:gpt_markdown/gpt_chat_gateway.dart';
 
 import 'fakes.dart';
 
-String get _long => List.generate(60, (i) => 'Line $i of the reply.').join('\n\n');
+String get _long =>
+    List.generate(60, (i) => 'Line $i of the reply.').join('\n\n');
 
 void main() {
   group('host-driven scrolling', _hostDrivenScrollTests);
 
-  testWidgets('a wheel scroll away from the bottom stops following', (tester) async {
+  testWidgets('a wheel scroll away from the bottom stops following', (
+    tester,
+  ) async {
     late ChatController controller;
-    await tester.pumpWidget(MaterialApp(
-      home: GptChat(
-        adapter: FakeAdapter(deltas: [_long]),
-        onControllerReady: (c) => controller = c,
+    await tester.pumpWidget(
+      MaterialApp(
+        home: GptChat(
+          adapter: FakeAdapter(deltas: [_long]),
+          onControllerReady: (c) => controller = c,
+        ),
       ),
-    ));
+    );
     await tester.pumpAndSettle();
     await controller.onSend('q');
     await tester.pumpAndSettle();
@@ -36,16 +41,26 @@ void main() {
     await tester.pumpAndSettle();
 
     final afterScroll = controller.scrollController.position.pixels;
-    expect(afterScroll, lessThan(before), reason: 'the wheel moved the viewport');
-    expect(controller.isFollowingLatest, isFalse,
-        reason: 'a wheel scroll is a user scroll');
+    expect(
+      afterScroll,
+      lessThan(before),
+      reason: 'the wheel moved the viewport',
+    );
+    expect(
+      controller.isFollowingLatest,
+      isFalse,
+      reason: 'a wheel scroll is a user scroll',
+    );
 
     // Anything that makes the adapter notify must not drag the view back.
     controller.adapter.notifyListeners();
     await tester.pumpAndSettle();
 
-    expect(controller.scrollController.position.pixels, afterScroll,
-        reason: 'the view must stay where the user put it');
+    expect(
+      controller.scrollController.position.pixels,
+      afterScroll,
+      reason: 'the view must stay where the user put it',
+    );
   });
 }
 

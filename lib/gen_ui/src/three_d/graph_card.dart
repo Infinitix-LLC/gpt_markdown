@@ -71,11 +71,7 @@ class _Gen3DGraphCardState extends State<_Gen3DGraphCard> {
     final wireframe = _wireframeFromValue(attributes['wireframe']);
     final graphColors = _colorsFromValue(
       attributes['colors'],
-      fallback: const [
-        Color(0xFF2255FF),
-        Color(0xFF22DDAA),
-        Color(0xFFFFFF66),
-      ],
+      fallback: const [Color(0xFF2255FF), Color(0xFF22DDAA), Color(0xFFFFFF66)],
     );
 
     scene.add(
@@ -86,8 +82,10 @@ class _Gen3DGraphCardState extends State<_Gen3DGraphCard> {
           material: LinearGradientMaterial(
             axis: _gradientAxisFromValue(attributes['axis']),
             colors: graphColors,
-            opacity: (_doubleFromValue(attributes['opacity']) ?? 0.96)
-                .clamp(0.0, 1.0),
+            opacity: (_doubleFromValue(attributes['opacity']) ?? 0.96).clamp(
+              0.0,
+              1.0,
+            ),
           ),
           strokeColor: _colorFromValue(
             attributes['strokeColor'],
@@ -114,65 +112,65 @@ class _Gen3DGraphCardState extends State<_Gen3DGraphCard> {
   Mesh? _meshForKind(_Gen3DGraphKind kind, Map<String, dynamic> attributes) {
     return switch (kind) {
       _Gen3DGraphKind.surface => buildSurface(
-          fn: _surfaceFnFromValue(
-            _formulaValue(attributes),
-            _constants,
-            _constantValues,
-          ),
-          xMin: _doubleAttribute(attributes['xMin']) ?? -1.6,
-          xMax: _doubleAttribute(attributes['xMax']) ?? 1.6,
-          yMin: _doubleAttribute(attributes['yMin']) ?? -1.6,
-          yMax: _doubleAttribute(attributes['yMax']) ?? 1.6,
-          zMin: _doubleAttribute(attributes['zMin']),
-          zMax: _doubleAttribute(attributes['zMax']),
-          uSteps: _stepsFromValue(attributes['uSteps']) ?? 32,
-          vSteps: _stepsFromValue(attributes['vSteps']) ?? 32,
+        fn: _surfaceFnFromValue(
+          _formulaValue(attributes),
+          _constants,
+          _constantValues,
         ),
+        xMin: _doubleAttribute(attributes['xMin']) ?? -1.6,
+        xMax: _doubleAttribute(attributes['xMax']) ?? 1.6,
+        yMin: _doubleAttribute(attributes['yMin']) ?? -1.6,
+        yMax: _doubleAttribute(attributes['yMax']) ?? 1.6,
+        zMin: _doubleAttribute(attributes['zMin']),
+        zMax: _doubleAttribute(attributes['zMax']),
+        uSteps: _stepsFromValue(attributes['uSteps']) ?? 32,
+        vSteps: _stepsFromValue(attributes['vSteps']) ?? 32,
+      ),
       _Gen3DGraphKind.polar => buildPolarSurface(
-          fn: _polarSurfaceFnFromValue(
-            _formulaValue(attributes),
-            _constants,
-            _constantValues,
-          ),
-          radiusMin: _doubleAttribute(attributes['radiusMin']) ?? 0,
-          radiusMax: _doubleAttribute(attributes['radiusMax']) ?? 1.5,
-          thetaMin: _angleFromValue(attributes['thetaMin']) ?? 0,
-          thetaMax: _angleFromValue(attributes['thetaMax']) ?? math.pi * 2,
-          zMin: _doubleAttribute(attributes['zMin']),
-          zMax: _doubleAttribute(attributes['zMax']),
-          radiusSteps: _stepsFromValue(attributes['radiusSteps']) ?? 28,
-          thetaSteps: _stepsFromValue(attributes['thetaSteps']) ?? 64,
+        fn: _polarSurfaceFnFromValue(
+          _formulaValue(attributes),
+          _constants,
+          _constantValues,
         ),
+        radiusMin: _doubleAttribute(attributes['radiusMin']) ?? 0,
+        radiusMax: _doubleAttribute(attributes['radiusMax']) ?? 1.5,
+        thetaMin: _angleFromValue(attributes['thetaMin']) ?? 0,
+        thetaMax: _angleFromValue(attributes['thetaMax']) ?? math.pi * 2,
+        zMin: _doubleAttribute(attributes['zMin']),
+        zMax: _doubleAttribute(attributes['zMax']),
+        radiusSteps: _stepsFromValue(attributes['radiusSteps']) ?? 28,
+        thetaSteps: _stepsFromValue(attributes['thetaSteps']) ?? 64,
+      ),
       _Gen3DGraphKind.spherical => buildSphericalSurface(
-          radiusFn: _sphericalSurfaceFnFromValue(
-            _formulaValue(attributes),
-            _constants,
-            _constantValues,
-          ),
-          thetaMin: _angleFromValue(attributes['thetaMin']) ?? 0,
-          thetaMax: _angleFromValue(attributes['thetaMax']) ?? math.pi * 2,
-          phiMin: _angleFromValue(attributes['phiMin']) ?? 0,
-          phiMax: _angleFromValue(attributes['phiMax']) ?? math.pi,
-          radiusMin: _doubleAttribute(attributes['radiusMin']),
-          radiusMax: _doubleAttribute(attributes['radiusMax']),
-          thetaSteps: _stepsFromValue(attributes['thetaSteps']) ?? 56,
-          phiSteps: _stepsFromValue(attributes['phiSteps']) ?? 28,
+        radiusFn: _sphericalSurfaceFnFromValue(
+          _formulaValue(attributes),
+          _constants,
+          _constantValues,
         ),
+        thetaMin: _angleFromValue(attributes['thetaMin']) ?? 0,
+        thetaMax: _angleFromValue(attributes['thetaMax']) ?? math.pi * 2,
+        phiMin: _angleFromValue(attributes['phiMin']) ?? 0,
+        phiMax: _angleFromValue(attributes['phiMax']) ?? math.pi,
+        radiusMin: _doubleAttribute(attributes['radiusMin']),
+        radiusMax: _doubleAttribute(attributes['radiusMax']),
+        thetaSteps: _stepsFromValue(attributes['thetaSteps']) ?? 56,
+        phiSteps: _stepsFromValue(attributes['phiSteps']) ?? 28,
+      ),
       _Gen3DGraphKind.cylindrical => buildCylindricalSurface(
-          radiusFn: _cylindricalSurfaceFnFromValue(
-            _formulaValue(attributes),
-            _constants,
-            _constantValues,
-          ),
-          thetaMin: _angleFromValue(attributes['thetaMin']) ?? 0,
-          thetaMax: _angleFromValue(attributes['thetaMax']) ?? math.pi * 2,
-          zMin: _doubleAttribute(attributes['zMin']) ?? -1.2,
-          zMax: _doubleAttribute(attributes['zMax']) ?? 1.2,
-          radiusMin: _doubleAttribute(attributes['radiusMin']),
-          radiusMax: _doubleAttribute(attributes['radiusMax']),
-          thetaSteps: _stepsFromValue(attributes['thetaSteps']) ?? 56,
-          zSteps: _stepsFromValue(attributes['zSteps']) ?? 32,
+        radiusFn: _cylindricalSurfaceFnFromValue(
+          _formulaValue(attributes),
+          _constants,
+          _constantValues,
         ),
+        thetaMin: _angleFromValue(attributes['thetaMin']) ?? 0,
+        thetaMax: _angleFromValue(attributes['thetaMax']) ?? math.pi * 2,
+        zMin: _doubleAttribute(attributes['zMin']) ?? -1.2,
+        zMax: _doubleAttribute(attributes['zMax']) ?? 1.2,
+        radiusMin: _doubleAttribute(attributes['radiusMin']),
+        radiusMax: _doubleAttribute(attributes['radiusMax']),
+        thetaSteps: _stepsFromValue(attributes['thetaSteps']) ?? 56,
+        zSteps: _stepsFromValue(attributes['zSteps']) ?? 32,
+      ),
     };
   }
 
@@ -317,9 +315,10 @@ class _Gen3DGraphCardState extends State<_Gen3DGraphCard> {
           width: 36,
           child: Icon(
             icon,
-            color: isActive
-                ? theme.colorScheme.onSurface
-                : theme.colorScheme.onSurface.withValues(alpha: 0.42),
+            color:
+                isActive
+                    ? theme.colorScheme.onSurface
+                    : theme.colorScheme.onSurface.withValues(alpha: 0.42),
             size: 18,
           ),
         ),
@@ -334,7 +333,9 @@ class _Gen3DGraphCardState extends State<_Gen3DGraphCard> {
       decoration: BoxDecoration(
         color: theme.colorScheme.surfaceContainer.withValues(alpha: 0.58),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: theme.colorScheme.outlineVariant.withValues(alpha: 0.42)),
+        border: Border.all(
+          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.42),
+        ),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -388,7 +389,9 @@ class _Gen3DGraphCardState extends State<_Gen3DGraphCard> {
       decoration: BoxDecoration(
         color: theme.colorScheme.surfaceContainerLowest.withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: theme.colorScheme.outlineVariant.withValues(alpha: 0.45)),
+        border: Border.all(
+          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.45),
+        ),
       ),
       child: Row(
         children: [
@@ -408,7 +411,9 @@ class _Gen3DGraphCardState extends State<_Gen3DGraphCard> {
             decoration: BoxDecoration(
               color: theme.colorScheme.outline.withValues(alpha: 0.14),
               borderRadius: BorderRadius.circular(999),
-              border: Border.all(color: theme.colorScheme.outline.withValues(alpha: 0.35)),
+              border: Border.all(
+                color: theme.colorScheme.outline.withValues(alpha: 0.35),
+              ),
             ),
             child: Text(
               value == null ? 'N/A' : _formatSliderValue(value),
@@ -449,10 +454,7 @@ class _Gen3DGraphCardState extends State<_Gen3DGraphCard> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               if (title != null && title.isNotEmpty) ...[
-                Text(
-                  title,
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
+                Text(title, style: Theme.of(context).textTheme.titleMedium),
                 const SizedBox(height: 16),
               ],
               ClipRRect(
@@ -461,10 +463,11 @@ class _Gen3DGraphCardState extends State<_Gen3DGraphCard> {
                   height: height,
                   width: double.infinity,
                   child: GestureDetector(
-                    onPanUpdate: (details) => _orbit(
-                      details.delta.dx * 0.01,
-                      details.delta.dy * 0.01,
-                    ),
+                    onPanUpdate:
+                        (details) => _orbit(
+                          details.delta.dx * 0.01,
+                          details.delta.dy * 0.01,
+                        ),
                     onDoubleTap: _resetCamera,
                     child: Stack(
                       children: [
