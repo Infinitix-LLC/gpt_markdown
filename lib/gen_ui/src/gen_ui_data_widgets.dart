@@ -263,10 +263,14 @@ class GenMetricGrid extends StatelessWidget {
       return const SizedBox.shrink();
     }
 
+    // Sized to its tiles rather than to a fixed height: tile height varies with
+    // how far a label wraps, so any constant clips the last row for some set of
+    // metrics. Callers can still pin it explicitly.
     return GenUiChartCard(
       title: genUiString(attributes['title']),
-      height: genUiDouble(attributes['height']) ?? 180,
-      child: SingleChildScrollView(
+      height: genUiDouble(attributes['height']),
+      child: Padding(
+        padding: EdgeInsets.zero,
         child: Wrap(
           spacing: 12,
           runSpacing: 12,

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'models/val_artifact.dart';
 import 'artifact_status_line.dart';
 import 'artifact_scope.dart';
+import 'val_scene_player.dart';
 
 /// Inline card for a `genui{...}` animation tag. Registers the artifact on
 /// first build, then follows it to ready.
@@ -85,7 +86,7 @@ class _Card extends StatelessWidget {
               const SizedBox(height: 10),
               if (artifact.isReady)
                 builder?.call(context, artifact) ??
-                    _ReadyPreview(artifact: artifact)
+                    _ReadyPoster(artifact: artifact)
               else ...[
                 AspectRatio(
                   aspectRatio: artifact.frame.aspectRatio,
@@ -117,7 +118,71 @@ class _Card extends StatelessWidget {
   }
 }
 
-/// Fallback when the host app supplies no VAL renderer: narration plus source.
+/// The default ready state: a poster that plays the scene when tapped.
+///
+/// A host can still replace this entirely with `ArtifactScope.builder` — to
+/// present the scene its own way, or to keep it out of a build that should not
+/// carry a player.
+class _ReadyPoster extends StatelessWidget {
+  const _ReadyPoster({required this.artifact});
+
+  final ValArtifact artifact;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        AspectRatio(
+          aspectRatio: artifact.frame.aspectRatio,
+          child: Material(
+            color: theme.colorScheme.surfaceContainerHighest,
+            borderRadius: BorderRadius.circular(8),
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
+              onTap: () => showValScene(context, artifact),
+              child: Center(
+                child: Container(
+                  width: 52,
+                  height: 52,
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.primary,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.play_arrow_rounded,
+                    size: 30,
+                    color: theme.colorScheme.onPrimary,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          // The narration is what the scene is about, so the first line of it
+          // makes a better caption than the word "Animation".
+          artifact.narrations.isEmpty
+              ? 'Tap to play'
+              : artifact.narrations.first.text,
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+        ),
+      ],
+    );
+  }
+}
+
+/// Narration plus source, for a host that wants the scene's content without a
+/// player. Not used by default; kept because it is the only way to see what a
+/// scene says without playing it.
+// ignore: unused_element
 class _ReadyPreview extends StatelessWidget {
   const _ReadyPreview({required this.artifact});
 

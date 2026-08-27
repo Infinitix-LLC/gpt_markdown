@@ -10,6 +10,7 @@ class ArtifactStatusLine extends StatelessWidget {
 
   static const _labels = {
     ArtifactStatus.queued: 'Queued',
+    ArtifactStatus.running: 'Generating animation',
     ArtifactStatus.generating: 'Generating animation',
     ArtifactStatus.narrating: 'Recording narration',
     ArtifactStatus.ready: 'Ready',

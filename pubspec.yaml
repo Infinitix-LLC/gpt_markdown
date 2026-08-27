@@ -31,6 +31,19 @@ dependencies:
     git:
       url: git@github.com:Infinitix-LLC/plusfinity_calculator.git
       ref: main
+  # Plays a generated VAL animation. The card in `gpt_chat` tracks an
+  # artifact's status over the gateway; this is what turns a ready one into
+  # pixels.
+  val_player:
+    git:
+      url: git@github.com:Infinitix-LLC/val_player.git
+      ref: main
+  # Narration voice-over for a VAL scene.
+  audioplayers: ^6.0.0
+  # Web only: `package:http`'s browser client buffers a whole response before
+  # delivering it, which defeats a streamed render. FetchClient exposes the
+  # streaming body so frames arrive as they are produced.
+  fetch_client: ^1.1.2
   vector_math: ^2.1.4
   video_player: ^2.10.1
 

@@ -3,6 +3,10 @@ import 'artifact_frame.dart';
 /// Lifecycle reported by `/artifacts/{id}`.
 enum ArtifactStatus {
   queued('queued'),
+  // Observed live from the gateway and previously absent, so it fell through
+  // `fromWire`'s orElse and reported as "Queued" for the whole of generation —
+  // the card looked stuck at the exact moment it was doing the work.
+  running('running'),
   generating('generating'),
   narrating('narrating'),
   ready('ready'),

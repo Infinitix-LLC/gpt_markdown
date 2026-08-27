@@ -17,7 +17,13 @@ class GenUiChartCard extends StatelessWidget {
 
   final Widget child;
   final String? title;
-  final double height;
+
+  /// Fixed height for the content, or null to size to it.
+  ///
+  /// A chart has to be told how tall to be — it has no intrinsic height. A
+  /// grid of tiles does, and forcing one on it clips the last row as soon as a
+  /// label wraps to two lines, which looks deliberate enough to miss.
+  final double? height;
 
   @override
   Widget build(BuildContext context) {
@@ -41,7 +47,10 @@ class GenUiChartCard extends StatelessWidget {
                 Text(title!, style: theme.textTheme.titleMedium),
                 const SizedBox(height: 16),
               ],
-              SizedBox(height: height, width: double.infinity, child: child),
+              if (height == null)
+                SizedBox(width: double.infinity, child: child)
+              else
+                SizedBox(height: height, width: double.infinity, child: child),
             ],
           ),
         ),

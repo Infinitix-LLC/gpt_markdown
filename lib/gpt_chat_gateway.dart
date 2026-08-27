@@ -32,6 +32,9 @@ export 'gpt_chat/src/gateway/repositories/artifact_repository.dart';
 export 'gpt_chat/src/gateway/services/artifact_service.dart';
 export 'gpt_chat/src/gateway/services/gateway_chat_service.dart';
 export 'gpt_chat/src/gateway/services/gateway_client.dart';
+export 'gpt_chat/src/gateway/val_scene_player.dart';
+export 'gpt_chat/src/gateway/val_stream_client.dart'
+    show kValStreamEndpoint, streamValArtifact;
 export 'gpt_chat/src/gateway/services/genui_parser.dart';
 export 'gpt_chat/src/gateway/services/sse_decoder.dart';
 export 'gpt_chat/src/gateway/val_artifact_card.dart';

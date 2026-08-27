@@ -55,7 +55,7 @@ void main() {
     expect(find.text('Recording narration'), findsOneWidget);
   });
 
-  testWidgets('a ready artifact shows the narration and the VAL source', (
+  testWidgets('a ready artifact offers to play, captioned by its narration', (
     tester,
   ) async {
     final service = await pumpCard(tester);
@@ -72,8 +72,52 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    expect(find.byIcon(Icons.play_arrow_rounded), findsOneWidget);
+    // The narration says what the scene is about, which is a better caption
+    // than the word "Animation".
     expect(find.text('A seed sprouts.'), findsOneWidget);
-    expect(find.text('VAL script'), findsOneWidget);
+  });
+
+  testWidgets('a ready artifact with no narration still invites a play', (
+    tester,
+  ) async {
+    final service = await pumpCard(tester);
+
+    service.emit(
+      'a1',
+      const ValArtifact(id: 'a1', name: '', status: ArtifactStatus.ready),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Tap to play'), findsOneWidget);
+  });
+
+  testWidgets('tapping the poster opens the player', (tester) async {
+    final service = await pumpCard(tester);
+
+    service.emit(
+      'a1',
+      const ValArtifact(
+        id: 'a1',
+        name: 'Bouncing ball',
+        status: ArtifactStatus.ready,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(Icons.play_arrow_rounded));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+
+    // The sheet is up and titled by the artifact. Playback itself needs the
+    // render endpoint, so this stops at the seam rather than reaching for it.
+    expect(find.byType(ValSceneSheet), findsOneWidget);
+    expect(find.text('Bouncing ball'), findsWidgets);
+
+    // Leaves nothing running behind it.
+    await tester.tap(find.byIcon(Icons.close_rounded));
+    await tester.pumpAndSettle();
+    expect(find.byType(ValSceneSheet), findsNothing);
   });
 
   testWidgets('a custom builder replaces the default ready view', (
