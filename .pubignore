@@ -42,5 +42,10 @@ example/build/
 example/.dart_tool/
 example/pubspec.lock
 
+# `example/` is the example pub.dev shows. `example_ai_chat/` is a second,
+# heavier harness (a live OpenAI-protocol connector plus four platform
+# folders) that belongs in the repository, not in the published archive.
+example_ai_chat/
+
 # Libraries should not publish a lockfile.
 pubspec.lock
