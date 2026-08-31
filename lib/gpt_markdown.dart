@@ -11,6 +11,9 @@ export 'package:gpt_markdown/custom_widgets/inline_code.dart';
 // Reveal animation for streamed replies.
 export 'package:gpt_markdown/streaming/streaming_markdown.dart';
 export 'package:gpt_markdown/streaming/reveal_engine.dart';
+export 'package:gpt_markdown/streaming/reveal_effect.dart';
+export 'package:gpt_markdown/streaming/reveal_spans.dart';
+export 'package:gpt_markdown/streaming/block_entrance.dart';
 export 'package:gpt_markdown/streaming/stream_split.dart';
 
 // Per-component appearance.
@@ -38,6 +41,12 @@ import 'dart:math';
 
 import 'custom_widgets/code_field.dart';
 import 'custom_widgets/inline_code.dart';
+import 'package:flutter/scheduler.dart';
+
+import 'streaming/block_entrance.dart';
+import 'streaming/reveal_effect.dart';
+import 'streaming/reveal_engine.dart';
+import 'streaming/reveal_spans.dart';
 import 'streaming/streaming_markdown.dart';
 import 'styles/block_quote_style.dart';
 import 'styles/heading_style.dart';
@@ -110,8 +119,12 @@ class GptMarkdown extends StatelessWidget {
     this.autolink = true,
     this.autolinkSchemes = const <String>{},
     this.animation = GptMarkdownAnimation.none,
+    this.blockAnimation = GptMarkdownBlockAnimation.none,
     this.isStreaming = true,
     this.charactersPerSecond = 300,
+    this.revealFadeSeconds = 0.25,
+    this.blockAnimationDuration = const Duration(milliseconds: 200),
+    this.blockAnimationCurve = Curves.easeOut,
     this.useDollarSignsForLatex = false,
     this.incremental = false,
   });
@@ -360,25 +373,42 @@ class GptMarkdown extends StatelessWidget {
   /// CommonMark specifies — the author wrote the brackets deliberately.
   final Set<String> autolinkSchemes;
 
-  /// How newly arrived text appears.
+  /// How each character arrives.
   ///
   /// Defaults to [GptMarkdownAnimation.none], which builds exactly the tree
   /// this widget built before the feature existed — no ticker, no wrapper, no
-  /// cost. Set it to [GptMarkdownAnimation.fade] for a reply that is still
-  /// being generated:
+  /// cost. Pick anything else for a reply that is still being generated:
   ///
   /// ```dart
   /// GptMarkdown(
   ///   reply,
-  ///   animation: GptMarkdownAnimation.fade,
+  ///   animation: GptMarkdownAnimation.blurIn,
+  ///   blockAnimation: GptMarkdownBlockAnimation.growIn,
   ///   isStreaming: stillGenerating,
   /// )
   /// ```
+  ///
+  /// This and [blockAnimation] are separate on purpose: how a letter appears
+  /// and how a table appears are different questions, and combining them into
+  /// one preset means a new preset for every pairing.
   ///
   /// Streaming is data, not a `Stream`: rebuild with a longer [data] as
   /// tokens arrive. Only the part of the reply that can still change is
   /// rebuilt, so the cost per token does not grow with the reply.
   final GptMarkdownAnimation animation;
+
+  /// How a block that contains a laid-out widget — a table, a fence, block
+  /// maths, a rule — plays its entrance.
+  ///
+  /// Prose reveals a character at a time, but these have no half-state: the
+  /// delimiter row lands and a full-height table exists in the next frame.
+  /// Without an entrance that is a step change in layout and everything below
+  /// it moves at once.
+  ///
+  /// Only [GptMarkdownBlockAnimation.growIn] changes the space a block takes
+  /// while it plays; the rest animate paint alone, so content below them holds
+  /// still. Ignored when [animation] is [GptMarkdownAnimation.none].
+  final GptMarkdownBlockAnimation blockAnimation;
 
   /// Whether more text may still arrive. Only consulted when [animation] is
   /// not [GptMarkdownAnimation.none].
@@ -394,6 +424,20 @@ class GptMarkdown extends StatelessWidget {
   /// lagging.
   final double charactersPerSecond;
 
+  /// How long one character takes to finish arriving.
+  ///
+  /// Independent of [charactersPerSecond]: that sets how fast the head moves,
+  /// this sets how long a character keeps animating after the head has passed
+  /// it. Larger values give a longer, softer trail. Ignored by
+  /// [GptMarkdownAnimation.typewriter], whose characters are final on arrival.
+  final double revealFadeSeconds;
+
+  /// How long [blockAnimation] takes.
+  final Duration blockAnimationDuration;
+
+  /// The easing [blockAnimation] plays on.
+  final Curve blockAnimationCurve;
+
   /// A method to remove extra lines inside block LaTeX.
   // String _removeExtraLinesInsideBlockLatex(String text) {
   //   return text.replaceAllMapped(
@@ -405,13 +449,28 @@ class GptMarkdown extends StatelessWidget {
   //   );
   // }
 
+  /// Whether the span-level reveal is available for this call.
+  ///
+  /// It lives inside the incremental view, which custom components opt out of,
+  /// and it needs an animating effect to have anything to do.
+  bool get _usesSpanReveal =>
+      animation.reveals && components == null && inlineComponents == null;
+
   @override
   Widget build(BuildContext context) {
     if (animation == GptMarkdownAnimation.none) {
       return _buildDocument(context, data);
     }
-    // Only the part of the reply that can still change is rebuilt; the
-    // settled prefix is cached inside `StreamingMarkdown`.
+    if (_usesSpanReveal) {
+      // The reveal is applied to spans that are already built, inside the
+      // incremental view — so the document is rendered once per *text* change
+      // rather than once per frame, and there is no settled/tail seam to keep
+      // aligned.
+      return _buildDocument(context, data);
+    }
+    // Custom components force the legacy single-text pipeline, which has no
+    // spans to restyle: fall back to re-slicing the source and softening the
+    // tail's edge.
     return StreamingMarkdown(
       text: data,
       isStreaming: isStreaming,
@@ -504,9 +563,26 @@ class GptMarkdown extends StatelessWidget {
       );
     }
 
-    if (incremental && components == null && inlineComponents == null) {
+    // The reveal forces the incremental path even when the caller did not ask
+    // for it: it is the only pipeline that keeps spans around to restyle.
+    if ((incremental || _usesSpanReveal) &&
+        components == null &&
+        inlineComponents == null) {
       return wrap(
-        ClipRRect(child: _IncrementalMdView(text: tex, config: config)),
+        ClipRRect(
+          child: _IncrementalMdView(
+            text: tex,
+            config: config,
+            effect: animation,
+            blockAnimation: blockAnimation,
+            isStreaming: isStreaming,
+            revealing: _usesSpanReveal,
+            charactersPerSecond: charactersPerSecond,
+            revealFadeSeconds: revealFadeSeconds,
+            blockAnimationDuration: blockAnimationDuration,
+            blockAnimationCurve: blockAnimationCurve,
+          ),
+        ),
       );
     }
     return wrap(

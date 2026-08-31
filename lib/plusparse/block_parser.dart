@@ -10,7 +10,12 @@ import 'inline_parser.dart';
 import 'scanner.dart';
 
 MdDocument parseDocument(String src, bool useDollar) {
-  final normalized = src.replaceAll('\r\n', '\n').replaceAll('\r', '\n');
+  // Two full rewrites of the source, for a character most sources do not
+  // contain. Checking first is one scan that usually ends in none.
+  final normalized =
+      src.contains('\r')
+          ? src.replaceAll('\r\n', '\n').replaceAll('\r', '\n')
+          : src;
   final lines = normalized.split('\n');
   return MdDocument(children: parseBlocks(lines, useDollar));
 }
@@ -483,7 +488,8 @@ List<String> _splitPipesScanning(String t, bool useDollar) {
 }
 
 List<MdTableCell> _splitTableRow(String line, bool useDollar) {
-  return _splitPipes(line, useDollar)
-      .map((c) => MdTableCell(content: parseInline(c.trim(), useDollar)))
-      .toList();
+  return _splitPipes(
+    line,
+    useDollar,
+  ).map((c) => MdTableCell(content: parseInline(c.trim(), useDollar))).toList();
 }

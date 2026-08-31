@@ -201,7 +201,8 @@ void main() {
   });
 
   group('layout stability', () {
-    const doc = '# Title\n\n'
+    const doc =
+        '# Title\n\n'
         'First paragraph here.\n\n'
         'Second paragraph here.\n\n'
         'Third paragraph here.\n\n'
@@ -232,10 +233,10 @@ void main() {
     Map<String, double> positions(WidgetTester tester) {
       final out = <String, double>{};
       for (final element in find.byType(RichText).evaluate()) {
-        final text = (element.widget as RichText)
-            .text
-            .toPlainText(includePlaceholders: false)
-            .trim();
+        final text =
+            (element.widget as RichText).text
+                .toPlainText(includePlaceholders: false)
+                .trim();
         // Short prefixes collide between blocks while a word is still being
         // revealed ("T" is both "# T" and "Third..."), so only settled text
         // is tracked.

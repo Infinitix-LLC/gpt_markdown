@@ -363,7 +363,8 @@ void main() {
 
       test('dollar latex keeps its pipes when enabled', () {
         final doc = Plusparse.parse(
-          r'| N | $|z|$ |' '\n|---|---|\n| a | 5 |',
+          r'| N | $|z|$ |'
+          '\n|---|---|\n| a | 5 |',
           useDollarSignsForLatex: true,
         );
         final table = doc.children[0] as MdTable;
@@ -375,7 +376,10 @@ void main() {
       });
 
       test('dollar latex does not hide pipes when disabled', () {
-        final doc = p(r'| N | $|z|$ |' '\n|---|---|\n| a | 5 |');
+        final doc = p(
+          r'| N | $|z|$ |'
+          '\n|---|---|\n| a | 5 |',
+        );
         final table = doc.children[0] as MdTable;
         expect(table.header.cells, hasLength(4));
       });
@@ -391,7 +395,10 @@ void main() {
       });
 
       test(r'\| is one cell and renders as a bare pipe', () {
-        final doc = p(r'| A | x \| y |' '\n|---|---|\n| 1 | 2 |');
+        final doc = p(
+          r'| A | x \| y |'
+          '\n|---|---|\n| 1 | 2 |',
+        );
         final table = doc.children[0] as MdTable;
         expect(table.header.cells, hasLength(2));
         expect(inlineText(table.header.cells[1].content), 'x | y');

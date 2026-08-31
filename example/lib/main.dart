@@ -129,60 +129,61 @@ class _ExamplePageState extends State<ExamplePage> {
   }
 
   Widget _editor() => TextField(
-    controller: _controller,
-    maxLines: null,
-    expands: true,
-    textAlignVertical: TextAlignVertical.top,
-    style: const TextStyle(fontFamily: 'monospace', fontSize: 13, height: 1.4),
-    decoration: const InputDecoration(
-      border: OutlineInputBorder(),
-      hintText: 'Type Markdown here…',
-      contentPadding: EdgeInsets.all(12),
-    ),
-  );
+        controller: _controller,
+        maxLines: null,
+        expands: true,
+        textAlignVertical: TextAlignVertical.top,
+        style:
+            const TextStyle(fontFamily: 'monospace', fontSize: 13, height: 1.4),
+        decoration: const InputDecoration(
+          border: OutlineInputBorder(),
+          hintText: 'Type Markdown here…',
+          contentPadding: EdgeInsets.all(12),
+        ),
+      );
 
   Widget _preview() => SingleChildScrollView(
-    padding: const EdgeInsets.all(20),
-    child: GptMarkdown(
-      _controller.text,
-      // Both parsers are reachable so the two can be compared on the same
-      // input; see the "Parser" switch in the toolbar.
-      incremental: _incremental,
-      useDollarSignsForLatex: _useDollar,
-      onLinkTap: (url, title) => debugPrint('Link tapped: $url'),
-    ),
-  );
+        padding: const EdgeInsets.all(20),
+        child: GptMarkdown(
+          _controller.text,
+          // Both parsers are reachable so the two can be compared on the same
+          // input; see the "Parser" switch in the toolbar.
+          incremental: _incremental,
+          useDollarSignsForLatex: _useDollar,
+          onLinkTap: (url, title) => debugPrint('Link tapped: $url'),
+        ),
+      );
 
   Widget _toolbar() => Material(
-    color: Theme.of(context).colorScheme.surfaceContainerHighest,
-    child: Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-      child: Wrap(
-        crossAxisAlignment: WrapCrossAlignment.center,
-        spacing: 4,
-        children: [
-          const Text('Parser:'),
-          Switch(
-            value: _incremental,
-            onChanged: (v) => setState(() => _incremental = v),
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          child: Wrap(
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 4,
+            children: [
+              const Text('Parser:'),
+              Switch(
+                value: _incremental,
+                onChanged: (v) => setState(() => _incremental = v),
+              ),
+              Text(_incremental ? 'plusparse' : 'legacy regex'),
+              const SizedBox(width: 16),
+              const Text(r'$…$ math:'),
+              Switch(
+                value: _useDollar,
+                onChanged: (v) => setState(() => _useDollar = v),
+              ),
+              const SizedBox(width: 16),
+              TextButton.icon(
+                icon: const Icon(Icons.restart_alt_rounded, size: 18),
+                label: const Text('Reset'),
+                onPressed: () => setState(() => _controller.text = _markdown),
+              ),
+            ],
           ),
-          Text(_incremental ? 'plusparse' : 'legacy regex'),
-          const SizedBox(width: 16),
-          const Text(r'$…$ math:'),
-          Switch(
-            value: _useDollar,
-            onChanged: (v) => setState(() => _useDollar = v),
-          ),
-          const SizedBox(width: 16),
-          TextButton.icon(
-            icon: const Icon(Icons.restart_alt_rounded, size: 18),
-            label: const Text('Reset'),
-            onPressed: () => setState(() => _controller.text = _markdown),
-          ),
-        ],
-      ),
-    ),
-  );
+        ),
+      );
 
   @override
   Widget build(BuildContext context) {

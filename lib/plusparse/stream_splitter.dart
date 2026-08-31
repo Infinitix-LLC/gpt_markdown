@@ -15,7 +15,10 @@
 library;
 
 List<String> splitStreamSegments(String src) {
-  final normalized = src.replaceAll('\r\n', '\n').replaceAll('\r', '\n');
+  final normalized =
+      src.contains('\r')
+          ? src.replaceAll('\r\n', '\n').replaceAll('\r', '\n')
+          : src;
   final lines = normalized.split('\n');
   final segments = <String>[];
   final current = <String>[];

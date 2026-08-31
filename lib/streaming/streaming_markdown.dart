@@ -7,17 +7,6 @@ import 'package:flutter/scheduler.dart';
 import 'reveal_engine.dart';
 import 'stream_split.dart';
 
-/// How newly arrived Markdown appears.
-enum GptMarkdownAnimation {
-  /// No animation. The default: no ticker is created, no wrapper is built,
-  /// and the widget tree is exactly what it would be without this feature.
-  none,
-
-  /// Text reveals a character at a time, with a soft gradient at the leading
-  /// edge so the newest characters fade in rather than snapping.
-  fade,
-}
-
 /// Builds the Markdown for a slice of the source.
 typedef StreamingMarkdownBuilder =
     Widget Function(BuildContext context, String text);
