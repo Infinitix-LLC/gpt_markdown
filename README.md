@@ -12,7 +12,6 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/Infinitix-LLC/gpt_markdown/actions/workflows/ci.yml"><img src="https://github.com/Infinitix-LLC/gpt_markdown/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="https://pub.dev/packages/gpt_markdown"><img src="https://img.shields.io/pub/v/gpt_markdown" alt="Pub Version"></a>
   <a href="https://img.shields.io/pub/likes/gpt_markdown"><img src="https://img.shields.io/pub/likes/gpt_markdown" alt="Pub Likes"></a>
   <a href="https://img.shields.io/pub/points/gpt_markdown"><img src="https://img.shields.io/pub/points/gpt_markdown" alt="Pub Points"></a>
