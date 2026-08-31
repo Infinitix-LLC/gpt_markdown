@@ -17,6 +17,50 @@ import 'package:flutter/material.dart';
 
 import 'reveal_effect.dart';
 
+/// Transforms a run of spans — the reveal, handed to a [RevealableSpan] so it
+/// can be applied to content the span builds for itself.
+typedef SpanTransform = List<InlineSpan> Function(List<InlineSpan> spans);
+
+/// A widget span that lets the reveal reach the text inside it.
+///
+/// Block constructs — headings, list items, quotes, checkboxes — are text with
+/// a marker, an indent or a rule around it, so the renderer builds them as
+/// widgets. To the reveal a widget is one opaque character, which is why those
+/// constructs used to arrive whole however the reveal was configured, while a
+/// bare paragraph revealed letter by letter.
+///
+/// This keeps the widget but publishes two things alongside it: [content], the
+/// text within, so the reveal can count and style it; and [rebuild], which
+/// reconstructs the span with a transform applied to that text. The widget is
+/// still built by the same code with the same styling — it just builds over
+/// revealed spans instead of finished ones.
+class RevealableSpan extends TextSpan {
+  /// Creates a span whose inner text the reveal can reach.
+  ///
+  /// [children] is what actually renders — normally the single widget span the
+  /// block was already built as. Wrapping a span rather than a widget keeps
+  /// this usable for constructs that build their own span (a block quote
+  /// carries its bar and inset in one) without a paragraph nested inside a
+  /// paragraph to hold it.
+  const RevealableSpan({
+    required this.content,
+    required this.rebuild,
+    required super.children,
+    super.style,
+  });
+
+  /// The text inside the widget, in document order.
+  ///
+  /// Used for counting and for resolving offsets. Built with the enclosing
+  /// config; the widget may rebuild it under a modified one (a heading's
+  /// larger type, a quote's dimmer ink), which changes the styling but not the
+  /// characters.
+  final List<InlineSpan> content;
+
+  /// Rebuilds this span with [transform] applied to its content.
+  final InlineSpan Function(SpanTransform transform) rebuild;
+}
+
 /// Total characters in [spans], counting a placeholder as one.
 ///
 /// This is the unit the reveal counts in, so it has to agree exactly with what
@@ -30,6 +74,11 @@ int countRevealCharacters(List<InlineSpan> spans) {
 }
 
 int _count(InlineSpan span) {
+  // Counted by what is inside it, not as the single placeholder it is to
+  // Flutter — that is the whole point of the span.
+  if (span is RevealableSpan) {
+    return countRevealCharacters(span.content);
+  }
   if (span is! TextSpan) {
     // A placeholder occupies one character in Flutter's own accounting
     // (`￼`); matching that keeps offsets aligned with the paragraph.
@@ -102,6 +151,31 @@ void _walk({
   for (final span in spans) {
     if (cursor.value >= revealed) {
       return;
+    }
+    if (span is RevealableSpan) {
+      final base = cursor.value;
+      // The widget rebuilds its own content, so the reveal is handed in as a
+      // transform rather than applied to a span list this loop owns. Offsets
+      // continue from here, so a heading's third character is the document's
+      // third character and fades on the same clock as everything else.
+      out.add(
+        span.rebuild((inner) {
+          final revealedInner = <InlineSpan>[];
+          _walk(
+            spans: inner,
+            out: revealedInner,
+            cursor: _Cursor()..value = base,
+            revealed: revealed,
+            settledBelow: settledBelow,
+            effect: effect,
+            progressFor: progressFor,
+            inheritedColor: inheritedColor,
+          );
+          return revealedInner;
+        }),
+      );
+      cursor.value = base + countRevealCharacters(span.content);
+      continue;
     }
     if (span is! TextSpan) {
       // Placeholders are atomic: shown whole or not at all, and never

@@ -215,20 +215,44 @@ class _IncrementalMdViewState extends State<_IncrementalMdView>
     isRoot: true,
   );
 
-  /// Whether a segment carries a laid-out widget — a table, a fence, block
-  /// maths, a rule.
+  /// Whether the character reveal cannot animate this segment's content, so a
+  /// block entrance has to stand in for it.
   ///
-  /// Those have no half-state to reveal: the delimiter row lands and a
-  /// full-height widget exists in the next frame. They get the block
-  /// entrance; prose does not, because the character reveal is already its
-  /// entrance and playing both reads as a double fade.
+  /// The renderer wraps block-level constructs — headings, lists, quotes,
+  /// tables, fences, block maths, rules, images — in widget spans, and a
+  /// widget span is one opaque character to the reveal. Those arrive whole
+  /// however the reveal is configured, which is a step change in layout unless
+  /// something eases them in.
+  ///
+  /// The test is whether any *text* survives to be revealed, not whether a
+  /// widget is present anywhere. A paragraph holding a link or inline maths
+  /// contains a widget span too, but its prose still reveals character by
+  /// character — giving it an entrance as well would play two animations over
+  /// the same content. Measured across every construct the renderer emits,
+  /// content the reveal can reach carries an order of magnitude more text than
+  /// placeholders, and content it cannot carries essentially none.
   static bool _isAtomic(List<InlineSpan> spans) {
-    for (final span in spans) {
-      if (span is! TextSpan) {
-        return true;
+    var text = 0;
+    var placeholders = 0;
+    void walk(InlineSpan span) {
+      // A revealable block publishes the text inside its widget; that text is
+      // what the reveal will animate, so it is what decides this. Walking its
+      // rendered children instead would find only the opaque widget and
+      // conclude — wrongly — that a heading or a list item cannot be revealed.
+      if (span is RevealableSpan) {
+        span.content.forEach(walk);
+        return;
       }
+      if (span is! TextSpan) {
+        placeholders += 1;
+        return;
+      }
+      text += span.text?.length ?? 0;
+      span.children?.forEach(walk);
     }
-    return false;
+
+    spans.forEach(walk);
+    return placeholders > 0 && text <= placeholders;
   }
 
   /// Wraps [child] in its one-shot entrance, when the segment has one.

@@ -33,6 +33,15 @@
   source-slicing path, which has no spans to restyle.
 * Content beyond the reveal head is no longer built, so nothing appears below
   the reading position before it is meant to be seen.
+* The character reveal now reaches inside block constructs. Headings, ordered
+  and unordered lists, task lists, checkboxes, radios and block quotes are
+  rendered as widgets — text with a marker, an indent or a rule around it — and
+  a widget is one opaque character to a span-level reveal, so they used to
+  arrive whole however `animation:` was set. `RevealableSpan` publishes the text
+  inside the widget and rebuilds it around revealed spans, so those constructs
+  reveal character by character like a paragraph does. Tables, fenced code,
+  block maths and rules stay atomic — they have no meaningful half-state — and
+  are what `blockAnimation:` is for.
 * `RevealEngine.tick` now keeps returning true until the last character has
   finished its entrance, not merely until the reveal has caught up. Stopping at
   the former froze the final characters part-way through.

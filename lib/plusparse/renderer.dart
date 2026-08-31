@@ -56,6 +56,27 @@ class PlusparseRenderer {
     baseline: TextBaseline.alphabetic,
   );
 
+  /// A block widget whose inner text the streaming reveal can still reach.
+  ///
+  /// [content] is the text the block wraps, built once for counting.
+  /// [wrap] builds the widget from a transform to apply to that text — the
+  /// identity transform for a static render, the reveal while streaming. The
+  /// widget is built by the same code either way, so nothing about its
+  /// appearance depends on whether a reveal is running.
+  static InlineSpan _revealableBlock({
+    required List<InlineSpan> content,
+    required Widget Function(SpanTransform transform) wrap,
+  }) {
+    InlineSpan build(SpanTransform transform) => RevealableSpan(
+      content: content,
+      rebuild: build,
+      children: [_blockSpan(wrap(transform))],
+    );
+    return build(_identity);
+  }
+
+  static List<InlineSpan> _identity(List<InlineSpan> spans) => spans;
+
   static List<InlineSpan> _blockSpans(
     BuildContext context,
     List<MdNode> blocks,
@@ -86,13 +107,17 @@ class PlusparseRenderer {
         return _inlineSpans(context, children, config);
       case MdHeading(:final level, :final children):
         return [
-          _blockSpan(
-            headingWidget(
-              context,
-              config,
-              level: level,
-              buildChildren: (conf) => _inlineSpans(context, children, conf),
-            ),
+          _revealableBlock(
+            content: _inlineSpans(context, children, config),
+            wrap:
+                (transform) => headingWidget(
+                  context,
+                  config,
+                  level: level,
+                  buildChildren:
+                      (conf) =>
+                          transform(_inlineSpans(context, children, conf)),
+                ),
           ),
         ];
       case MdHorizontalRule():
@@ -114,40 +139,62 @@ class PlusparseRenderer {
           _blockSpan(latexWidget(context, config, tex: tex, inline: false)),
         ];
       case MdBlockQuote(:final children):
-        return [
-          blockQuoteSpan(
-            context,
-            config,
-            buildContent:
-                (conf) => conf.getRich(
-                  TextSpan(children: _blockSpans(context, children, conf)),
-                ),
-          ),
-        ];
-      case MdCheckbox(:final checked, :final children):
-        return [
-          _blockSpan(
-            checkboxWidget(
+        // The quote owns its own span wrapper (the bar and the inset are part
+        // of it), so the revealable span is built around that rather than
+        // through `_revealableBlock`.
+        InlineSpan quote(SpanTransform transform) => RevealableSpan(
+          content: _blockSpans(context, children, config),
+          rebuild: quote,
+          children: [
+            blockQuoteSpan(
               context,
               config,
-              checked: checked,
-              label: config.getRich(
-                TextSpan(children: _inlineSpans(context, children, config)),
-              ),
+              buildContent:
+                  (conf) => conf.getRich(
+                    TextSpan(
+                      children: transform(_blockSpans(context, children, conf)),
+                    ),
+                  ),
             ),
+          ],
+        );
+        return [quote(_identity)];
+      case MdCheckbox(:final checked, :final children):
+        return [
+          _revealableBlock(
+            content: _inlineSpans(context, children, config),
+            wrap:
+                (transform) => checkboxWidget(
+                  context,
+                  config,
+                  checked: checked,
+                  label: config.getRich(
+                    TextSpan(
+                      children: transform(
+                        _inlineSpans(context, children, config),
+                      ),
+                    ),
+                  ),
+                ),
           ),
         ];
       case MdRadio(:final selected, :final children):
         return [
-          _blockSpan(
-            radioWidget(
-              context,
-              config,
-              selected: selected,
-              label: config.getRich(
-                TextSpan(children: _inlineSpans(context, children, config)),
-              ),
-            ),
+          _revealableBlock(
+            content: _inlineSpans(context, children, config),
+            wrap:
+                (transform) => radioWidget(
+                  context,
+                  config,
+                  selected: selected,
+                  label: config.getRich(
+                    TextSpan(
+                      children: transform(
+                        _inlineSpans(context, children, config),
+                      ),
+                    ),
+                  ),
+                ),
           ),
         ];
       case MdUnorderedList(:final items):
@@ -183,27 +230,31 @@ class PlusparseRenderer {
       for (final n in item.children) {
         (_isInline(n) && nested.isEmpty ? inline : nested).add(n);
       }
-      final itemChild = config.getRich(
-        TextSpan(
-          children: [
-            ..._inlineSpans(context, inline, config),
-            if (nested.isNotEmpty) ...[
-              // Only when there is something to separate. A task list item is
-              // a block node (the checkbox) with no inline content at all, and
-              // an unconditional break put it on the line below its own
-              // bullet.
-              if (inline.isNotEmpty) TextSpan(text: "\n", style: config.style),
-              ..._blockSpans(context, nested, config, separator: "\n"),
-            ],
-          ],
+      List<InlineSpan> body(GptMarkdownConfig conf) => [
+        ..._inlineSpans(context, inline, conf),
+        if (nested.isNotEmpty) ...[
+          // Only when there is something to separate. A task list item is a
+          // block node (the checkbox) with no inline content at all, and an
+          // unconditional break put it on the line below its own bullet.
+          if (inline.isNotEmpty) TextSpan(text: "\n", style: conf.style),
+          ..._blockSpans(context, nested, conf, separator: "\n"),
+        ],
+      ];
+
+      final number = ordered ? "${item.number ?? (start + i)}" : null;
+      spans.add(
+        _revealableBlock(
+          content: body(config),
+          wrap: (transform) {
+            final itemChild = config.getRich(
+              TextSpan(children: transform(body(config))),
+            );
+            return number == null
+                ? unorderedListItem(context, config, itemChild)
+                : orderedListItem(context, config, number, itemChild);
+          },
         ),
       );
-      if (ordered) {
-        final no = "${item.number ?? (start + i)}";
-        spans.add(_blockSpan(orderedListItem(context, config, no, itemChild)));
-      } else {
-        spans.add(_blockSpan(unorderedListItem(context, config, itemChild)));
-      }
     }
     return spans;
   }

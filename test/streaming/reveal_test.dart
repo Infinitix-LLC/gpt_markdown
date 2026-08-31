@@ -257,6 +257,49 @@ void main() {
     });
   });
 
+  // The renderer builds block constructs as widgets — a heading is text with
+  // larger type, a list item is text with a marker, a quote is text behind a
+  // bar — and a widget is one opaque character to a span-level reveal. They
+  // used to arrive whole however the reveal was configured. `RevealableSpan`
+  // publishes the text inside so the reveal reaches it.
+  group('reveal reaches inside block constructs', () {
+    const constructs = <String, String>{
+      'heading': '# A heading long enough to reveal gradually here',
+      'unordered list': '- first item long enough\n- second item long enough',
+      'ordered list': '1. first item long enough\n2. second item long enough',
+      'task list': '- [x] first item long enough\n- [ ] second one long enough',
+      'checkbox': '[x] a checkbox label long enough to ramp',
+      'radio': '(x) a radio label long enough to ramp',
+      'blockquote': '> a quoted line long enough to reveal gradually',
+      'paragraph': 'An ordinary paragraph long enough to reveal gradually.',
+    };
+
+    for (final entry in constructs.entries) {
+      testWidgets(entry.key, (tester) async {
+        tester.view.physicalSize = const Size(900, 2000);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.reset);
+
+        await _pump(
+          tester,
+          entry.value,
+          animation: GptMarkdownAnimation.fade,
+          charactersPerSecond: 90,
+        );
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 200));
+        while (tester.takeException() != null) {}
+
+        // Several characters part-way through their entrance at once. One
+        // value would mean the construct arrived whole.
+        expect(
+          _alphas(tester).where((a) => a > 0 && a < 1).length,
+          greaterThan(2),
+        );
+      });
+    }
+  });
+
   group('block entrance', () {
     testWidgets('wraps blocks that carry a laid-out widget', (tester) async {
       tester.view.physicalSize = const Size(900, 3000);
@@ -274,6 +317,66 @@ void main() {
       while (tester.takeException() != null) {}
 
       expect(find.byType(GptMarkdownBlockEntrance), findsWidgets);
+    });
+
+    // The entrance is for content the character reveal cannot reach. Headings,
+    // lists, quotes and checkboxes are text with a marker or a rule around it,
+    // and they reveal per character through `RevealableSpan` — an entrance on
+    // top would be a second animation over the same content. What is left is
+    // genuinely opaque: a table, a fence, block maths, a rule.
+    testWidgets('goes only to constructs the reveal cannot animate', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(900, 2000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      const revealed = <String, String>{
+        'paragraph': 'Just some ordinary prose text here.',
+        'paragraph with a link': 'A [link](https://example.com) in a sentence.',
+        'heading': '# A heading of some length',
+        'unordered list': '- item one here\n- item two here',
+        'ordered list': '1. item one here\n2. item two here',
+        'task list': '- [x] item one here\n- [ ] item two here',
+        'blockquote': '> a quoted line of text here',
+      };
+      const entered = <String, String>{
+        'table': '| A | B |\n|---|---|\n| 1 | 2 |',
+        'fence': '```dart\nvar x = 1;\n```',
+        'block maths': r'\[ E = mc^2 \]',
+        'rule': '---',
+      };
+
+      Future<int> entrances(String source) async {
+        await _pump(
+          tester,
+          source,
+          animation: GptMarkdownAnimation.fade,
+          block: GptMarkdownBlockAnimation.growIn,
+        );
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 40));
+        while (tester.takeException() != null) {}
+        return find.byType(GptMarkdownBlockEntrance).evaluate().length;
+      }
+
+      for (final entry in revealed.entries) {
+        expect(entry.key, isNotEmpty);
+        expect(
+          await entrances(entry.value),
+          0,
+          reason:
+              '${entry.key} reveals per character; an entrance would be a '
+              'second animation over the same content',
+        );
+      }
+      for (final entry in entered.entries) {
+        expect(
+          await entrances(entry.value),
+          greaterThan(0),
+          reason: '${entry.key} arrives whole and needs an entrance',
+        );
+      }
     });
 
     testWidgets('none adds nothing to the tree', (tester) async {
