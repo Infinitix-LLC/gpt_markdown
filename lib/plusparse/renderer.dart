@@ -19,6 +19,12 @@ class PlusparseRenderer {
     GptMarkdownConfig config, {
     bool inlineOnly = false,
   }) {
+    // The incremental view masks earlier, before it segments; masking again is
+    // a no-op because a masked directive no longer holds its own delimiters.
+    final directives = config.inlineDirectives;
+    if (directives != null && directives.isNotEmpty) {
+      text = maskInlineDirectives(text, directives);
+    }
     final doc = Plusparse.parse(text);
     if (inlineOnly &&
         doc.children.length == 1 &&
@@ -56,6 +62,27 @@ class PlusparseRenderer {
     baseline: TextBaseline.alphabetic,
   );
 
+  /// A block widget whose inner text the streaming reveal can still reach.
+  ///
+  /// [content] is the text the block wraps, built once for counting.
+  /// [wrap] builds the widget from a transform to apply to that text — the
+  /// identity transform for a static render, the reveal while streaming. The
+  /// widget is built by the same code either way, so nothing about its
+  /// appearance depends on whether a reveal is running.
+  static InlineSpan _revealableBlock({
+    required List<InlineSpan> content,
+    required Widget Function(SpanTransform transform) wrap,
+  }) {
+    InlineSpan build(SpanTransform transform) => RevealableSpan(
+      content: content,
+      rebuild: build,
+      children: [_blockSpan(wrap(transform))],
+    );
+    return build(_identity);
+  }
+
+  static List<InlineSpan> _identity(List<InlineSpan> spans) => spans;
+
   static List<InlineSpan> _blockSpans(
     BuildContext context,
     List<MdNode> blocks,
@@ -86,13 +113,17 @@ class PlusparseRenderer {
         return _inlineSpans(context, children, config);
       case MdHeading(:final level, :final children):
         return [
-          _blockSpan(
-            headingWidget(
-              context,
-              config,
-              level: level,
-              buildChildren: (conf) => _inlineSpans(context, children, conf),
-            ),
+          _revealableBlock(
+            content: _inlineSpans(context, children, config),
+            wrap:
+                (transform) => headingWidget(
+                  context,
+                  config,
+                  level: level,
+                  buildChildren:
+                      (conf) =>
+                          transform(_inlineSpans(context, children, conf)),
+                ),
           ),
         ];
       case MdHorizontalRule():
@@ -114,40 +145,62 @@ class PlusparseRenderer {
           _blockSpan(latexWidget(context, config, tex: tex, inline: false)),
         ];
       case MdBlockQuote(:final children):
-        return [
-          blockQuoteSpan(
-            context,
-            config,
-            buildContent:
-                (conf) => conf.getRich(
-                  TextSpan(children: _blockSpans(context, children, conf)),
-                ),
-          ),
-        ];
-      case MdCheckbox(:final checked, :final children):
-        return [
-          _blockSpan(
-            checkboxWidget(
+        // The quote owns its own span wrapper (the bar and the inset are part
+        // of it), so the revealable span is built around that rather than
+        // through `_revealableBlock`.
+        InlineSpan quote(SpanTransform transform) => RevealableSpan(
+          content: _blockSpans(context, children, config),
+          rebuild: quote,
+          children: [
+            blockQuoteSpan(
               context,
               config,
-              checked: checked,
-              label: config.getRich(
-                TextSpan(children: _inlineSpans(context, children, config)),
-              ),
+              buildContent:
+                  (conf) => conf.getRich(
+                    TextSpan(
+                      children: transform(_blockSpans(context, children, conf)),
+                    ),
+                  ),
             ),
+          ],
+        );
+        return [quote(_identity)];
+      case MdCheckbox(:final checked, :final children):
+        return [
+          _revealableBlock(
+            content: _inlineSpans(context, children, config),
+            wrap:
+                (transform) => checkboxWidget(
+                  context,
+                  config,
+                  checked: checked,
+                  label: config.getRich(
+                    TextSpan(
+                      children: transform(
+                        _inlineSpans(context, children, config),
+                      ),
+                    ),
+                  ),
+                ),
           ),
         ];
       case MdRadio(:final selected, :final children):
         return [
-          _blockSpan(
-            radioWidget(
-              context,
-              config,
-              selected: selected,
-              label: config.getRich(
-                TextSpan(children: _inlineSpans(context, children, config)),
-              ),
-            ),
+          _revealableBlock(
+            content: _inlineSpans(context, children, config),
+            wrap:
+                (transform) => radioWidget(
+                  context,
+                  config,
+                  selected: selected,
+                  label: config.getRich(
+                    TextSpan(
+                      children: transform(
+                        _inlineSpans(context, children, config),
+                      ),
+                    ),
+                  ),
+                ),
           ),
         ];
       case MdUnorderedList(:final items):
@@ -183,23 +236,31 @@ class PlusparseRenderer {
       for (final n in item.children) {
         (_isInline(n) && nested.isEmpty ? inline : nested).add(n);
       }
-      final itemChild = config.getRich(
-        TextSpan(
-          children: [
-            ..._inlineSpans(context, inline, config),
-            if (nested.isNotEmpty) ...[
-              TextSpan(text: "\n", style: config.style),
-              ..._blockSpans(context, nested, config, separator: "\n"),
-            ],
-          ],
+      List<InlineSpan> body(GptMarkdownConfig conf) => [
+        ..._inlineSpans(context, inline, conf),
+        if (nested.isNotEmpty) ...[
+          // Only when there is something to separate. A task list item is a
+          // block node (the checkbox) with no inline content at all, and an
+          // unconditional break put it on the line below its own bullet.
+          if (inline.isNotEmpty) TextSpan(text: "\n", style: conf.style),
+          ..._blockSpans(context, nested, conf, separator: "\n"),
+        ],
+      ];
+
+      final number = ordered ? "${item.number ?? (start + i)}" : null;
+      spans.add(
+        _revealableBlock(
+          content: body(config),
+          wrap: (transform) {
+            final itemChild = config.getRich(
+              TextSpan(children: transform(body(config))),
+            );
+            return number == null
+                ? unorderedListItem(context, config, itemChild)
+                : orderedListItem(context, config, number, itemChild);
+          },
         ),
       );
-      if (ordered) {
-        final no = "${item.number ?? (start + i)}";
-        spans.add(_blockSpan(orderedListItem(context, config, no, itemChild)));
-      } else {
-        spans.add(_blockSpan(unorderedListItem(context, config, itemChild)));
-      }
     }
     return spans;
   }
@@ -375,6 +436,27 @@ class PlusparseRenderer {
     String text,
     GptMarkdownConfig config,
   ) {
+    // A masked directive is inert text to everything upstream; this is where
+    // it becomes a span again. Done first so the host's builder receives the
+    // payload before inline patterns or autolinking can touch it.
+    final directives = config.inlineDirectives;
+    if (directives != null && directives.isNotEmpty) {
+      return expandInlineDirectives(
+        context,
+        text,
+        directives,
+        config.style ?? const TextStyle(),
+        (rest) => _plainTextSpans(context, rest, config),
+      );
+    }
+    return _plainTextSpans(context, text, config);
+  }
+
+  static List<InlineSpan> _plainTextSpans(
+    BuildContext context,
+    String text,
+    GptMarkdownConfig config,
+  ) {
     final patterns = config.inlinePatterns;
     final hasPatterns = patterns != null && patterns.isNotEmpty;
     if (!hasPatterns && !config.autolink) {
@@ -484,15 +566,6 @@ class PlusparseRenderer {
         );
       case MdSourceTag(:final id):
         return sourceTagSpan(context, id, config);
-      case MdGenUi(:final payload):
-        final builder = config.genUiBuilder;
-        if (builder == null) {
-          return TextSpan(text: payload, style: config.style);
-        }
-        return WidgetSpan(
-          alignment: PlaceholderAlignment.middle,
-          child: builder(context, payload),
-        );
       // Block nodes in inline position (nested content) fall back to their
       // block rendering.
       default:

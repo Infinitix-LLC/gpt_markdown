@@ -12,7 +12,8 @@ Widget componentPipeline(
     home: Scaffold(
       body: GptMarkdown(
         data,
-        genUiBuilder: genUiBuilder,
+        inlineDirectives:
+            genUiBuilder == null ? null : [genUiDirective(genUiBuilder)],
         components: MarkdownComponent.globalComponents,
         inlineComponents: MarkdownComponent.inlineComponents,
       ),
@@ -118,11 +119,13 @@ void main() {
       expect(called, isFalse);
     });
 
-    testWidgets('is registered in the default inline components', (
+    testWidgets('rides the generic directive component, not one of its own', (
       tester,
     ) async {
+      // gen-UI is no longer a Markdown component. The parser carries any host
+      // directive through one component, and gen-UI is simply a caller of it.
       expect(
-        MarkdownComponent.inlineComponents.whereType<GenUiMd>(),
+        MarkdownComponent.inlineComponents.whereType<InlineDirectiveMd>(),
         isNotEmpty,
       );
     });

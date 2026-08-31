@@ -28,7 +28,49 @@ void main() {
     test('reports completion so the caller can stop ticking', () {
       final engine = RevealEngine();
       expect(engine.tick(0.1, 1000, 100), isTrue);
+      // Catching up is not the same as being finished: the characters that
+      // just landed are still playing their entrance, and stopping the ticker
+      // here would freeze them part-way through.
+      expect(engine.tick(100, 1000, 100), isTrue);
+      expect(engine.tailStillFading, isTrue);
+      // Once the last of them has finished, there is nothing left to draw.
+      expect(engine.tick(RevealEngine().fadeSeconds, 1000, 100), isFalse);
+      expect(engine.tailStillFading, isFalse);
+    });
+
+    test('a zero fade finishes the moment it catches up', () {
+      final engine = RevealEngine(fadeSeconds: 0);
+      expect(engine.tick(0.1, 1000, 100), isTrue);
       expect(engine.tick(100, 1000, 100), isFalse);
+    });
+
+    test('progress ramps from 0 to 1 over the fade', () {
+      final engine = RevealEngine(fadeSeconds: 0.2);
+      engine.tick(0.1, 10, 100);
+      expect(engine.revealedFloor, 10);
+      // The newest character has only just landed; the oldest is further on.
+      expect(engine.progressFor(9), lessThan(engine.progressFor(0)));
+      expect(engine.progressFor(9), inInclusiveRange(0, 1));
+      engine.tick(0.5, 10, 100);
+      expect(engine.progressFor(9), 1);
+    });
+
+    test('a character past the reveal head has not started', () {
+      final engine = RevealEngine();
+      engine.tick(0.01, 1000, 100);
+      expect(engine.progressFor(999), 0);
+    });
+
+    test('stamps stay bounded however much lands in one frame', () {
+      final engine = RevealEngine(fadeSeconds: 0.2);
+      // One frame revealing far more than the ring can hold.
+      engine.tick(1, 100000, 1000000);
+      expect(engine.revealedFloor, 100000);
+      // Everything older than the ring is finished by definition.
+      expect(engine.progressFor(0), 1);
+      expect(engine.progressFor(100000 - RevealEngine.fadeWindow - 1), 1);
+      // The newest ones are still arriving.
+      expect(engine.progressFor(99999), lessThan(1));
     });
   });
 

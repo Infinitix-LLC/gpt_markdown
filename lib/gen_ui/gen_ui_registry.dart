@@ -2,13 +2,9 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:gpt_markdown/gpt_markdown.dart';
 
 import 'src/gen_ui_basic_widgets.dart';
-import 'src/gen_ui_data_widgets.dart';
-import 'src/gen_ui_learning_widgets.dart';
-import 'src/gen_ui_plot_latex.dart';
-import 'src/gen_ui_video.dart';
-import 'src/three_d/gen_ui_3d_graphs.dart';
 
 /// One widget request from a gen-UI payload: the top-level key is [type], its
 /// value is [attributes].
@@ -93,7 +89,7 @@ typedef GenUiWidgetBuilder =
 ///   ..register('val_scene', (context, model) => MyValScene(model.attributes))
 ///   ..register('bar_chart', (context, model) => MyBranded(model.attributes));
 ///
-/// GptMarkdown(text, genUiBuilder: registry.build);
+/// GptMarkdown(text, inlineDirectives: [registry.directive]);
 /// ```
 class GenUiRegistry {
   /// A registry with no builders. Every type falls through to
@@ -205,10 +201,19 @@ class GenUiRegistry {
     return unknownBuilder?.call(context, model) ?? const SizedBox.shrink();
   }
 
-  /// Decodes [payload] and builds every widget in it, stacked in a column.
+  /// This registry as an [InlineDirective], ready to hand to `GptMarkdown`.
   ///
-  /// Matches `GenUiBuilder`, so it can be passed straight to
-  /// `GptMarkdown(genUiBuilder: registry.build)`.
+  /// ```dart
+  /// GptMarkdown(reply, inlineDirectives: [registry.directive]);
+  /// ```
+  ///
+  /// gen-UI is a host feature, not Markdown syntax. The parser knows nothing
+  /// about it: it keeps the region between the markers out of the parse and
+  /// hands the payload here verbatim, which is why a payload may hold `**`,
+  /// backticks, braces or pipes without the renderer having to care.
+  InlineDirective get directive => genUiDirective(build);
+
+  /// Decodes [payload] and builds every widget in it, stacked in a column.
   Widget build(BuildContext context, String payload) {
     final parsed = parseGenUiPayload(payload);
     if (parsed.hasError) {

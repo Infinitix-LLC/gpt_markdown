@@ -5,7 +5,7 @@
 /// ```dart
 /// final registry = GenUiRegistry.defaults();
 ///
-/// GptMarkdown(markdown, genUiBuilder: registry.build);
+/// GptMarkdown(markdown, inlineDirectives: [registry.directive]);
 /// ```
 ///
 /// Registered out of the box: `text`, `image`, `button`, `line_chart`,

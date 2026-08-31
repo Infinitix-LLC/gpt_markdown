@@ -1,3 +1,75 @@
+## Unreleased
+
+### Added
+
+* Per-character streaming reveal. `animation:` now takes
+  `GptMarkdownAnimation.typewriter`, `.fade`, `.blurIn` and `.wave` alongside
+  `.none`. Each character is stamped with the time it arrived and styled by how
+  far through its entrance it is, so the head of the stream is a soft ramp
+  rather than a hard cut with a gradient over the bottom of the box.
+* `blockAnimation:` — `GptMarkdownBlockAnimation.fadeIn`, `.growIn`, `.slideUp`,
+  `.scaleIn`, `.none`. How a table, fence, rule or block-maths enters once it is
+  complete. Separate from `animation:` on purpose: how a letter appears and how
+  a table appears are different questions, and one combined preset would need a
+  new value for every pairing. Only `.growIn` changes the space a block takes
+  while it plays; the rest animate paint alone, so content below them holds
+  still.
+* `revealFadeSeconds:`, `blockAnimationDuration:` and `blockAnimationCurve:` for
+  tuning both axes.
+* `RevealEngine.progressFor`, `.tailStillFading` and a `fadeSeconds` constructor
+  argument. Stamps live in a fixed ring, so memory does not grow with the reply
+  and a fast-forward that lands thousands of characters in one frame stamps only
+  the ones that can still be animating.
+* `applyReveal` / `countRevealCharacters` — the reveal applied to spans that are
+  already built, and `GptMarkdownBlockEntrance`.
+
+### Changed
+
+* The reveal is applied to spans instead of by re-slicing the Markdown source.
+  The document is now rendered once per *text* change rather than once per
+  frame, and a frame restyles at most 64 characters in the one segment holding
+  the head. This also removes the settled/tail seam entirely on the plusparse
+  path. Custom `components`/`inlineComponents` still take the older
+  source-slicing path, which has no spans to restyle.
+* Content beyond the reveal head is no longer built, so nothing appears below
+  the reading position before it is meant to be seen.
+* The character reveal now reaches inside block constructs. Headings, ordered
+  and unordered lists, task lists, checkboxes, radios and block quotes are
+  rendered as widgets — text with a marker, an indent or a rule around it — and
+  a widget is one opaque character to a span-level reveal, so they used to
+  arrive whole however `animation:` was set. `RevealableSpan` publishes the text
+  inside the widget and rebuilds it around revealed spans, so those constructs
+  reveal character by character like a paragraph does. Tables, fenced code,
+  block maths and rules stay atomic — they have no meaningful half-state — and
+  are what `blockAnimation:` is for.
+* `RevealEngine.tick` now keeps returning true until the last character has
+  finished its entrance, not merely until the reveal has caught up. Stopping at
+  the former froze the final characters part-way through.
+* Inline parsing is roughly 2–3x faster on documents and streaming: runs of text
+  that cannot begin a construct are found with a lookup table and copied in one
+  piece, a run with no markup at all skips the buffer and the delimiter tables
+  entirely, the bracket and parenthesis tables are built in one pass instead of
+  two, and CRLF normalization is skipped when the source has no `\r`.
+
+### Fixed
+
+* A `|` inside inline maths, a code span, or escaped as `\|` no longer ends a
+  table cell. `| Modulus (\(|z|\)) |` was three columns.
+* GFM task lists — `- [x] done` — render as checkboxes on the plusparse path.
+  A checkbox is a block-level node and a list item's content is parsed inline,
+  so the marker used to survive as the literal text `[x] done`. Applies to
+  `- ( ) choice` radios and to ordered items too. The bare `[x] done` form was
+  never affected. A list item's nested blocks were also always preceded
+  by a line break, which put a task list's checkbox on the line below its own
+  bullet — one blank line per item. The break is now emitted only when there is
+  inline content to separate it from, so list layout matches the regex pipeline
+  exactly.
+* The streaming reveal no longer shifted content down by one block gap when the
+  settled/tail seam advanced past it, and again when the reply completed.
+* `settledSplitOffset` no longer moves backward as text arrives. A source ending
+  in a newline counted its empty last line as a blank line, so the split ran one
+  construct ahead and fell back on the next character.
+
 ## 1.2.1
 
 ### `gpt_chat` — Responses API (breaking)

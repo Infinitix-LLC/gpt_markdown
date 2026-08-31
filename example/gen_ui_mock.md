@@ -6,7 +6,7 @@ Render it with a registry:
 ```dart
 final registry = GenUiRegistry.defaults();
 
-GptMarkdown(markdown, genUiBuilder: registry.build);
+GptMarkdown(markdown, inlineDirectives: [registry.directive]);
 ```
 
 > **Payload syntax:** the directive is delimited by private-use code points —

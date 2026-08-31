@@ -6,7 +6,8 @@
 /// fast on Dart's UTF-16 strings).
 library;
 
-import '../gen_ui/gen_ui_markers.dart';
+import 'dart:typed_data';
+
 import 'ast.dart';
 
 const int _bang = 0x21; // '!'
@@ -20,9 +21,56 @@ const int _dollar = 0x24; // '$'
 const int _openParen = 0x28; // '('
 const int _closeBracket = 0x5D; // ']'
 const int _closeParen = 0x29; // ')'
+const int _pipe = 0x7C; // '|'
+
+/// Code units that can begin an inline construct.
+///
+/// Everything else is ordinary text, and the parser's only job for it is to
+/// copy it through. Testing that with a table lets a run of plain prose be
+/// found with one comparison per character and copied with a single
+/// `substring`, instead of running the whole construct dispatch on every
+/// character and appending them one at a time — which is most of the work in
+/// the common case, because most of a reply is prose.
+///
+/// A table rather than a bitmask: Dart's web targets have no 64-bit integers,
+/// and a mask over the ASCII range would need them.
+final Uint8List _inlineTriggers = () {
+  final table = Uint8List(128);
+  for (final unit in <int>[
+    _bang,
+    _dollar,
+    _star,
+    _lt,
+    _openBracket,
+    _backslash,
+    _backtick,
+    _tilde,
+  ]) {
+    table[unit] = 1;
+  }
+  return table;
+}();
+
+/// Whether [unit] can begin an inline construct.
+///
+/// Non-ASCII never can — every delimiter in the dialect is ASCII — so the
+/// bounds check doubles as the answer for the whole of Unicode above 127.
+bool _canStartConstruct(int unit) => unit < 128 && _inlineTriggers[unit] == 1;
 
 List<MdNode> parseInline(String text, bool useDollar) {
   final n = text.length;
+
+  // Most runs of an assistant's prose contain no markup at all. Finding that
+  // out costs one scan, and skips the buffer, the delimiter tables and the
+  // dispatch loop entirely.
+  var plainUntil = 0;
+  while (plainUntil < n && !_canStartConstruct(text.codeUnitAt(plainUntil))) {
+    plainUntil += 1;
+  }
+  if (plainUntil == n) {
+    return n == 0 ? <MdNode>[] : <MdNode>[MdText(text: text)];
+  }
+
   final delims = _Delims(text);
   final nodes = <MdNode>[];
   final buf = StringBuffer();
@@ -37,6 +85,21 @@ List<MdNode> parseInline(String text, bool useDollar) {
 
   while (i < n) {
     final c = text.codeUnitAt(i);
+
+    // Fast path: a run of characters that cannot begin a construct is copied
+    // through in one piece. This is the bulk of ordinary prose, and skipping
+    // the dispatch chain for it is what keeps the parser's cost close to a
+    // scan.
+    if (!_canStartConstruct(c)) {
+      var j = i + 1;
+      while (j < n && !_canStartConstruct(text.codeUnitAt(j))) {
+        j += 1;
+      }
+      buf.write(text.substring(i, j));
+      i = j;
+      continue;
+    }
+
     var matched = false;
 
     // ![alt](url)
@@ -69,22 +132,6 @@ List<MdNode> parseInline(String text, bool useDollar) {
           i = tag.next;
           matched = true;
         }
-      }
-    }
-
-    // U+E200 genui U+E202 {...json...} U+E201. The markers are private-use
-    // code points, so a payload may contain any markdown punctuation. No
-    // closing marker yet (still streaming) leaves the text literal.
-    if (!matched &&
-        c == genUiOpenMarkerRune &&
-        text.startsWith(genUiOpenMarker, i)) {
-      final start = i + genUiOpenMarker.length;
-      final end = text.indexOf(genUiCloseMarker, start);
-      if (end != -1) {
-        flush();
-        nodes.add(MdGenUi(payload: text.substring(start, end)));
-        i = end + genUiCloseMarker.length;
-        matched = true;
       }
     }
 
@@ -200,6 +247,20 @@ List<MdNode> parseInline(String text, bool useDollar) {
       }
     }
 
+    // \| — the GFM escape for a literal pipe. Table cells are split before
+    // this runs (see _splitPipes in block_parser.dart), which is what lets a
+    // pipe reach a cell at all; here the backslash is dropped so the reader
+    // sees `|`. Only `|` is unescaped: a general \X rule would change how
+    // \*, \_ and friends render across every document.
+    if (!matched &&
+        c == _backslash &&
+        i + 1 < n &&
+        text.codeUnitAt(i + 1) == _pipe) {
+      buf.writeCharCode(_pipe);
+      i += 2;
+      matched = true;
+    }
+
     if (!matched) {
       buf.writeCharCode(c);
       i += 1;
@@ -230,40 +291,53 @@ class _Delims {
   ///
   /// Built on first use: most runs of text contain no brackets at all, and
   /// paying for the table there costs more than it saves.
-  Map<int, int> get bracket =>
-      _bracket ??= _pairs(text, _openBracket, _closeBracket);
+  Map<int, int> get bracket {
+    _ensurePairs();
+    return _bracket!;
+  }
 
   /// Index of `(` to index of its matching `)`.
-  Map<int, int> get paren => _paren ??= _pairs(text, _openParen, _closeParen);
+  Map<int, int> get paren {
+    _ensurePairs();
+    return _paren!;
+  }
 
-  final Map<int, int> _lastIndex = {};
-
-  /// Whether [char] occurs at or after [from]. Used for `genui{`, whose
-  /// closer cannot be paired up front because braces inside a JSON string do
-  /// not count.
+  /// Fills both tables in one pass.
   ///
-  /// The last index is cached: probing it per opener would be the very
-  /// quadratic scan this class exists to avoid.
-  bool hasAfter(int char, int from) =>
-      (_lastIndex[char] ??= text.lastIndexOf(String.fromCharCode(char))) >=
-      from;
-
-  static Map<int, int> _pairs(String text, int open, int close) {
-    final pairs = <int, int>{};
-    final stack = <int>[];
+  /// Separately they are two scans of the same string, and the constructs
+  /// that consult one — links, images — almost always go on to consult the
+  /// other, so the second scan was rarely avoided anyway.
+  void _ensurePairs() {
+    if (_bracket != null) {
+      return;
+    }
+    final brackets = <int, int>{};
+    final parens = <int, int>{};
+    final bracketStack = <int>[];
+    final parenStack = <int>[];
     for (var i = 0; i < text.length; i++) {
       final c = text.codeUnitAt(i);
-      if (c == 0x5C /* backslash */ ) {
+      if (c == _backslash) {
         i += 1;
         continue;
       }
-      if (c == open) {
-        stack.add(i);
-      } else if (c == close && stack.isNotEmpty) {
-        pairs[stack.removeLast()] = i;
+      switch (c) {
+        case _openBracket:
+          bracketStack.add(i);
+        case _closeBracket:
+          if (bracketStack.isNotEmpty) {
+            brackets[bracketStack.removeLast()] = i;
+          }
+        case _openParen:
+          parenStack.add(i);
+        case _closeParen:
+          if (parenStack.isNotEmpty) {
+            parens[parenStack.removeLast()] = i;
+          }
       }
     }
-    return pairs;
+    _bracket = brackets;
+    _paren = parens;
   }
 }
 

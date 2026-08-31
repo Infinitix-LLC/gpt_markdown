@@ -175,14 +175,24 @@ class ChatAnswerText extends StatelessWidget {
       imageBuilder: builders.image,
       highlightBuilder: builders.highlight,
       sourceTagBuilder: builders.sourceTag,
-      genUiBuilder:
-          (context, payload) => SizedBox(
-            // Inline widgets sit inside a text span, so they need an explicit width.
-            width: theme.contentWidth - theme.gutter * 2,
-            child:
-                builders.genUi?.call(context, payload) ??
-                scope.genUi.build(context, payload),
-          ),
+      inlineDirectives: [
+        InlineDirective(
+          open: genUiOpenMarker,
+          close: genUiCloseMarker,
+          builder:
+              (context, payload, style) => WidgetSpan(
+                alignment: PlaceholderAlignment.middle,
+                child: SizedBox(
+                  // Inline widgets sit inside a text span, so they need an
+                  // explicit width.
+                  width: theme.contentWidth - theme.gutter * 2,
+                  child:
+                      builders.genUi?.call(context, payload) ??
+                      scope.genUi.build(context, payload),
+                ),
+              ),
+        ),
+      ],
     );
   }
 }

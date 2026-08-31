@@ -6,7 +6,6 @@
 library;
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:gpt_markdown/gen_ui/gen_ui_markers.dart';
 import 'package:gpt_markdown/plusparse/plusparse.dart';
 
 import 'sample_documents.dart';
@@ -340,9 +339,164 @@ void main() {
       expect(table.rows, isEmpty);
     });
 
+    // `- [x] item` is the GFM task list, and the form models actually emit.
+    // A checkbox is a block-level node while a list item's content is parsed
+    // inline, so before this the marker survived as the literal text `[x]`.
+    group('task lists', () {
+      test('a checkbox inside a bullet is a checkbox', () {
+        final doc = p('- [x] done\n- [ ] todo');
+        final list = doc.children.single as MdUnorderedList;
+        expect(list.items, hasLength(2));
+
+        final first = list.items[0].children.single as MdCheckbox;
+        expect(first.checked, isTrue);
+        expect(inlineText(first.children), 'done');
+
+        final second = list.items[1].children.single as MdCheckbox;
+        expect(second.checked, isFalse);
+        expect(inlineText(second.children), 'todo');
+      });
+
+      test('an ordered item can hold one too', () {
+        final doc = p('1. [x] one\n2. [ ] two');
+        final list = doc.children.single as MdOrderedList;
+        expect(
+          list.items.map((i) => (i.children.single as MdCheckbox).checked),
+          [true, false],
+        );
+      });
+
+      test('a radio inside a bullet is a radio', () {
+        final doc = p('- (x) yes\n- ( ) no');
+        final list = doc.children.single as MdUnorderedList;
+        expect(list.items.map((i) => (i.children.single as MdRadio).selected), [
+          true,
+          false,
+        ]);
+      });
+
+      test('the label keeps its inline formatting', () {
+        final doc = p('- [x] **bold** and `code`');
+        final list = doc.children.single as MdUnorderedList;
+        final box = list.items.single.children.single as MdCheckbox;
+        expect(box.children.whereType<MdBold>(), hasLength(1));
+        expect(box.children.whereType<MdInlineCode>(), hasLength(1));
+      });
+
+      test('an ordinary bullet is untouched', () {
+        final doc = p('- just an item\n- another');
+        final list = doc.children.single as MdUnorderedList;
+        expect(list.items.first.children.whereType<MdCheckbox>(), isEmpty);
+        expect(inlineText(list.items.first.children), 'just an item');
+      });
+
+      test('a bracketed word is not a checkbox', () {
+        final doc = p('- [xyz] not a task\n- [x]nospace');
+        final list = doc.children.single as MdUnorderedList;
+        for (final item in list.items) {
+          expect(item.children.whereType<MdCheckbox>(), isEmpty);
+        }
+      });
+
+      test('the bare form still works', () {
+        final doc = p('[x] done\n[ ] todo');
+        expect(doc.children.whereType<MdCheckbox>(), hasLength(2));
+      });
+    });
+
     test('pipe line without separator is not a table', () {
       final doc = p('a | b\nplain');
       expect(doc.children.whereType<MdTable>(), isEmpty);
+    });
+
+    // A `|` inside a cell used to end the cell, so `\(|z|\)` produced three
+    // columns and widened every row of the table. Cells are now split on
+    // depth-zero pipes only.
+    group('pipes inside table cells', () {
+      test('inline latex \\(…\\) keeps its pipes', () {
+        final doc = p(
+          '| N | Modulus (\\(|z|\\)) |\n|---|---|\n| \\(3 + 4i\\) | 5 |',
+        );
+        final table = doc.children[0] as MdTable;
+        expect(table.header.cells, hasLength(2));
+        expect(table.rows.single.cells, hasLength(2));
+        expect(
+          table.header.cells[1].content.whereType<MdInlineLatex>().single.tex,
+          '|z|',
+        );
+      });
+
+      test('dollar latex keeps its pipes when enabled', () {
+        final doc = Plusparse.parse(
+          r'| N | $|z|$ |'
+          '\n|---|---|\n| a | 5 |',
+          useDollarSignsForLatex: true,
+        );
+        final table = doc.children[0] as MdTable;
+        expect(table.header.cells, hasLength(2));
+        expect(
+          table.header.cells[1].content.whereType<MdInlineLatex>().single.tex,
+          '|z|',
+        );
+      });
+
+      test('dollar latex does not hide pipes when disabled', () {
+        final doc = p(
+          r'| N | $|z|$ |'
+          '\n|---|---|\n| a | 5 |',
+        );
+        final table = doc.children[0] as MdTable;
+        expect(table.header.cells, hasLength(4));
+      });
+
+      test('code span keeps its pipes', () {
+        final doc = p('| A | `a|b` |\n|---|---|\n| 1 | 2 |');
+        final table = doc.children[0] as MdTable;
+        expect(table.header.cells, hasLength(2));
+        expect(
+          table.header.cells[1].content.whereType<MdInlineCode>().single.text,
+          'a|b',
+        );
+      });
+
+      test(r'\| is one cell and renders as a bare pipe', () {
+        final doc = p(
+          r'| A | x \| y |'
+          '\n|---|---|\n| 1 | 2 |',
+        );
+        final table = doc.children[0] as MdTable;
+        expect(table.header.cells, hasLength(2));
+        expect(inlineText(table.header.cells[1].content), 'x | y');
+      });
+
+      test('unterminated latex still splits on the pipe', () {
+        final doc = p('| A | \\(x |\n|---|---|\n| 1 | 2 |');
+        final table = doc.children[0] as MdTable;
+        expect(table.header.cells, hasLength(2));
+      });
+
+      test('empty cells are preserved', () {
+        final doc = p('| A |  | C |\n|---|---|---|\n| 1 |  | 3 |');
+        final table = doc.children[0] as MdTable;
+        expect(table.header.cells, hasLength(3));
+        expect(inlineText(table.header.cells[1].content), '');
+        expect(table.rows.single.cells, hasLength(3));
+      });
+
+      test('the reported ChatGPT modulus table has three columns', () {
+        final doc = p('''
+| Complex Number | Real Part (\\(a\\)) | Modulus (\\(|z|\\)) |
+|----------------|--------------------|-------------------|
+| \\(3 + 4i\\)     | 3                  | 5                 |
+| \\(1 - 2i\\)     | 1                  | \\(\\sqrt{5}\\)      |
+''');
+        final table = doc.children[0] as MdTable;
+        expect(table.aligns, hasLength(3));
+        expect(table.header.cells, hasLength(3));
+        for (final row in table.rows) {
+          expect(row.cells, hasLength(3));
+        }
+      });
     });
 
     test('every streaming prefix of the ChatGPT sample parses', () {
@@ -362,37 +516,6 @@ void main() {
       expect(doc.children.whereType<MdCodeBlock>().length, 5);
       expect(doc.children.whereType<MdHorizontalRule>().length, 5);
       expect(doc.children.whereType<MdHeading>().length, greaterThan(20));
-    });
-
-    test('genui directive captures the delimited payload', () {
-      final doc = p(
-        'Before ${wrapGenUi('{"type":"button","label":"Tap"}')} after',
-      );
-      final para = doc.children[0] as MdParagraph;
-      final genUi = para.children.whereType<MdGenUi>().single;
-      expect(genUi.payload, '{"type":"button","label":"Tap"}');
-      expect((para.children.first as MdText).text, 'Before ');
-      expect((para.children.last as MdText).text, ' after');
-    });
-
-    test('genui payload with nested braces and braces inside strings', () {
-      final doc = p(
-        '${wrapGenUi(r'{"val_scene": {"id": "a}b", "frame": "wide{x}"}}')} tail',
-      );
-      final para = doc.children[0] as MdParagraph;
-      final genUi = para.children.whereType<MdGenUi>().single;
-      expect(
-        genUi.payload,
-        r'{"val_scene": {"id": "a}b", "frame": "wide{x}"}}',
-      );
-    });
-
-    test('unterminated genui stays literal text (streaming)', () {
-      const partial = '$genUiOpenMarker{"val_scene": {"id": "x"';
-      final doc = p(partial);
-      final para = doc.children[0] as MdParagraph;
-      expect(para.children.whereType<MdGenUi>(), isEmpty);
-      expect(inlineText(para.children), partial);
     });
 
     test('unicode text passes through untouched', () {

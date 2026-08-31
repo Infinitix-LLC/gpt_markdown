@@ -1,0 +1,26 @@
+name: gpt_markdown_ai_chat
+description: >-
+  A streaming AI chat harness for gpt_markdown: an OpenAI-protocol connector
+  feeding a full-screen GptMarkdown widget, with live render metrics.
+
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.7.0 <4.0.0'
+  flutter: ">=3.32.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  gpt_markdown:
+    path: ..
+  http: ^1.2.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true

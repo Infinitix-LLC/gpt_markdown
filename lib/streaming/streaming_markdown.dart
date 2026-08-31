@@ -7,17 +7,6 @@ import 'package:flutter/scheduler.dart';
 import 'reveal_engine.dart';
 import 'stream_split.dart';
 
-/// How newly arrived Markdown appears.
-enum GptMarkdownAnimation {
-  /// No animation. The default: no ticker is created, no wrapper is built,
-  /// and the widget tree is exactly what it would be without this feature.
-  none,
-
-  /// Text reveals a character at a time, with a soft gradient at the leading
-  /// edge so the newest characters fade in rather than snapping.
-  fade,
-}
-
 /// Builds the Markdown for a slice of the source.
 typedef StreamingMarkdownBuilder =
     Widget Function(BuildContext context, String text);
@@ -45,7 +34,9 @@ class StreamingMarkdown extends StatefulWidget {
     required this.builder,
     this.isStreaming = true,
     this.charactersPerSecond = 300,
-  }) : assert(charactersPerSecond > 0, 'charactersPerSecond must be positive');
+    this.seamGap = 0,
+  }) : assert(charactersPerSecond > 0, 'charactersPerSecond must be positive'),
+       assert(seamGap >= 0, 'seamGap must not be negative');
 
   /// Everything received so far.
   final String text;
@@ -63,6 +54,19 @@ class StreamingMarkdown extends StatefulWidget {
   /// Baseline reveal speed. The reveal goes faster than this on its own
   /// whenever it would otherwise fall behind the incoming text.
   final double charactersPerSecond;
+
+  /// Space between the settled prefix and the live tail.
+  ///
+  /// The split always lands just after a blank line, so in the finished
+  /// document that boundary carries exactly one block gap. The two halves are
+  /// built as separate documents, though, and neither owns the space between
+  /// them — leave this at 0 and the gap is missing for as long as the seam is
+  /// there, then appears when the reply completes and the document is built
+  /// whole, shifting everything below it down.
+  ///
+  /// [GptMarkdown] passes its own block gap. Defaults to 0 so a caller
+  /// supplying its own builder keeps the previous layout.
+  final double seamGap;
 
   @override
   State<StreamingMarkdown> createState() => _StreamingMarkdownState();
@@ -236,7 +240,14 @@ class _StreamingMarkdownState extends State<StreamingMarkdown>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
-      children: [_settled(context, visible.substring(0, splitAt)), tail],
+      children: [
+        _settled(context, visible.substring(0, splitAt)),
+        // Stands in for the block gap the whole-document build puts here, so
+        // the seam is invisible and nothing moves when it advances or when
+        // the reply finishes.
+        if (widget.seamGap > 0) SizedBox(height: widget.seamGap),
+        tail,
+      ],
     );
   }
 }

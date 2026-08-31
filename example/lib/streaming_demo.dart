@@ -102,6 +102,13 @@ class _StreamingPageState extends State<StreamingPage> {
 
   GptMarkdownAnimation _animation = GptMarkdownAnimation.fade;
 
+  /// How a table, fence or rule enters once it is complete.
+  GptMarkdownBlockAnimation _blockAnimation = GptMarkdownBlockAnimation.growIn;
+
+  /// How long one character takes to finish arriving, independent of how fast
+  /// the head moves.
+  double _fadeSeconds = 0.25;
+
   /// How fast the model emits, in characters per second.
   double _tokensPerSecond = 120;
 
@@ -188,8 +195,10 @@ class _StreamingPageState extends State<StreamingPage> {
                   child: GptMarkdown(
                     received,
                     animation: _animation,
+                    blockAnimation: _blockAnimation,
                     isStreaming: _running,
                     charactersPerSecond: _charactersPerSecond,
+                    revealFadeSeconds: _fadeSeconds,
                     onLinkTap: (url, title) {},
                   ),
                 ),
@@ -217,12 +226,20 @@ class _StreamingPageState extends State<StreamingPage> {
           ),
           OutlinedButton(onPressed: _showAll, child: const Text('Show all')),
           const SizedBox(width: 8),
-          const Text('Animation'),
+          const Text('Characters'),
           for (final option in GptMarkdownAnimation.values)
             ChoiceChip(
               label: Text(option.name),
               selected: _animation == option,
               onSelected: (_) => setState(() => _animation = option),
+            ),
+          const SizedBox(width: 8),
+          const Text('Blocks'),
+          for (final option in GptMarkdownBlockAnimation.values)
+            ChoiceChip(
+              label: Text(option.name),
+              selected: _blockAnimation == option,
+              onSelected: (_) => setState(() => _blockAnimation = option),
             ),
           _slider(
             'model',
@@ -239,6 +256,14 @@ class _StreamingPageState extends State<StreamingPage> {
             1200,
             (v) => _charactersPerSecond = v,
             'chars/s drawn',
+          ),
+          _slider(
+            'fade',
+            _fadeSeconds,
+            0,
+            1.2,
+            (v) => _fadeSeconds = v,
+            'seconds per character',
           ),
         ],
       ),
@@ -271,7 +296,8 @@ class _StreamingPageState extends State<StreamingPage> {
             SizedBox(
               width: 40,
               child: Text(
-                value.round().toString(),
+                // Sub-second ranges need decimals; rates do not.
+                max <= 2 ? value.toStringAsFixed(2) : value.round().toString(),
                 style: const TextStyle(fontFamily: 'monospace', fontSize: 11),
               ),
             ),

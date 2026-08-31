@@ -175,7 +175,7 @@ class _GenUiPreviewPageState extends State<GenUiPreviewPage> {
                                 : GptMarkdown(
                                   document,
                                   incremental: _incremental,
-                                  genUiBuilder: _registry.build,
+                                  inlineDirectives: [_registry.directive],
                                   onLinkTap: (url, title) {
                                     ScaffoldMessenger.of(context)
                                       ..clearSnackBars()

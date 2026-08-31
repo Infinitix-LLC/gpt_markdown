@@ -27,7 +27,7 @@ void main() {
             child: GptMarkdown(
               mockDocument,
               incremental: incremental,
-              genUiBuilder: registry.build,
+              inlineDirectives: [registry.directive],
             ),
           ),
         ),

@@ -24,10 +24,6 @@ typedef UnOrderedListBuilder =
 typedef SourceTagBuilder =
     Widget Function(BuildContext context, String content, TextStyle textStyle);
 
-/// A builder function for Gen UI payloads (`genui{...}` directives). The
-/// payload is the JSON object text including braces.
-typedef GenUiBuilder = Widget Function(BuildContext context, String payload);
-
 /// A builder function for the code block.
 typedef CodeBlockBuilder =
     Widget Function(
@@ -193,7 +189,7 @@ class GptMarkdownConfig {
     this.followLinkColor = false,
     this.codeBuilder,
     this.sourceTagBuilder,
-    this.genUiBuilder,
+    this.inlineDirectives,
     this.inlineCodeBuilder,
     @Deprecated('Use inlineCodeBuilder. Will be removed in 2.0.0.')
     this.highlightBuilder,
@@ -247,8 +243,10 @@ class GptMarkdownConfig {
   /// The source tag builder.
   final SourceTagBuilder? sourceTagBuilder;
 
-  /// The Gen UI builder.
-  final GenUiBuilder? genUiBuilder;
+  /// Host-defined inline regions the parser must not look inside.
+  ///
+  /// See [InlineDirective].
+  final List<InlineDirective>? inlineDirectives;
 
   /// Whether to follow the link color.
   final bool followLinkColor;
@@ -358,7 +356,7 @@ class GptMarkdownConfig {
     final String Function(String tex)? latexWorkaround,
     final LatexBuilder? latexBuilder,
     final SourceTagBuilder? sourceTagBuilder,
-    final GenUiBuilder? genUiBuilder,
+    final List<InlineDirective>? inlineDirectives,
     final bool? followLinkColor,
     final CodeBlockBuilder? codeBuilder,
     final int? maxLines,
@@ -400,7 +398,7 @@ class GptMarkdownConfig {
       followLinkColor: followLinkColor ?? this.followLinkColor,
       codeBuilder: codeBuilder ?? this.codeBuilder,
       sourceTagBuilder: sourceTagBuilder ?? this.sourceTagBuilder,
-      genUiBuilder: genUiBuilder ?? this.genUiBuilder,
+      inlineDirectives: inlineDirectives ?? this.inlineDirectives,
       maxLines: maxLines ?? this.maxLines,
       overflow: overflow ?? this.overflow,
       inlineCodeBuilder: inlineCodeBuilder ?? this.inlineCodeBuilder,

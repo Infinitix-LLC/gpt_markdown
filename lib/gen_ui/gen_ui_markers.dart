@@ -13,6 +13,9 @@
 /// ```
 library;
 
+import 'package:flutter/widgets.dart';
+import 'package:gpt_markdown/gpt_markdown.dart';
+
 /// Opens a gen-UI directive: `U+E200` + `genui` + `U+E202`.
 const String genUiOpenMarker = '\u{E200}genui\u{E202}';
 
@@ -24,3 +27,25 @@ const int genUiOpenMarkerRune = 0xE200;
 
 /// Wraps a raw JSON [payload] in the gen-UI delimiters.
 String wrapGenUi(String payload) => '$genUiOpenMarker$payload$genUiCloseMarker';
+
+/// Wraps a payload builder as the [InlineDirective] `GptMarkdown` expects.
+///
+/// gen-UI is a host feature, not Markdown syntax. The parser knows nothing
+/// about it: it keeps the region between the markers out of the parse and
+/// hands the payload over verbatim, so braces, backticks and emphasis markers
+/// inside a payload reach the builder intact.
+///
+/// ```dart
+/// GptMarkdown(reply, inlineDirectives: [genUiDirective(registry.build)]);
+/// ```
+InlineDirective genUiDirective(
+  Widget Function(BuildContext context, String payload) build,
+) => InlineDirective(
+  open: genUiOpenMarker,
+  close: genUiCloseMarker,
+  builder:
+      (context, payload, style) => WidgetSpan(
+        alignment: PlaceholderAlignment.middle,
+        child: build(context, payload),
+      ),
+);

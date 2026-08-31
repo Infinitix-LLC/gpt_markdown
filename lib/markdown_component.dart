@@ -70,8 +70,7 @@ abstract class MarkdownComponent {
   ];
 
   static final List<MarkdownComponent> inlineComponents = [
-    // First: a payload may contain link or emphasis syntax of its own.
-    GenUiMd(),
+    InlineDirectiveMd(),
     ATagMd(),
     ImageMd(),
     AutolinkMd(),
@@ -230,6 +229,43 @@ abstract class InlineMd extends MarkdownComponent {
     String text,
     final GptMarkdownConfig config,
   );
+}
+
+/// A masked [InlineDirective], put back as the host's span.
+///
+/// The directive was lifted out of the source before parsing, leaving an inert
+/// sentinel; this is the regex pipeline's half of putting it back. Registered
+/// first so nothing else can claim the sentinel.
+class InlineDirectiveMd extends InlineMd {
+  @override
+  Set<MarkdownScope> get scopes => MarkdownComponent.allScopes;
+
+  @override
+  RegExp get exp => RegExp(inlineDirectiveMaskPattern);
+
+  @override
+  InlineSpan span(
+    BuildContext context,
+    String text,
+    final GptMarkdownConfig config,
+  ) {
+    final directives = config.inlineDirectives;
+    final match = exp.firstMatch(text.trim());
+    final decoded =
+        match == null || directives == null
+            ? null
+            : decodeInlineDirectiveMask(match[0]!, directives.length);
+    if (decoded == null || directives == null) {
+      // A sentinel that is not one of this document's directives renders as
+      // the text it is, rather than being mistaken for a widget.
+      return TextSpan(text: text, style: config.style);
+    }
+    return directives[decoded.index].builder(
+      context,
+      decoded.payload,
+      config.style ?? const TextStyle(),
+    );
+  }
 }
 
 /// Block component
@@ -548,41 +584,6 @@ class HighlightedText extends InlineMd {
   ) {
     var match = exp.firstMatch(text.trim());
     return inlineCodeSpan(context, match?[1] ?? "", config);
-  }
-}
-
-final RegExp _genUiExp = RegExp(
-  '${RegExp.escape(genUiOpenMarker)}(.*?)${RegExp.escape(genUiCloseMarker)}',
-  dotAll: true,
-);
-
-/// Gen UI component, delimited by [genUiOpenMarker] and [genUiCloseMarker].
-///
-/// The payload is everything between the markers — the JSON object with its
-/// braces — handed to [GptMarkdownConfig.genUiBuilder]. The markers are
-/// private-use code points, so the JSON may contain any markdown punctuation.
-class GenUiMd extends InlineMd {
-  @override
-  RegExp get exp => _genUiExp;
-
-  @override
-  InlineSpan span(
-    BuildContext context,
-    String text,
-    final GptMarkdownConfig config,
-  ) {
-    final match = exp.firstMatch(text.trim());
-    final payload = match?[1] ?? "";
-    final builder = config.genUiBuilder;
-
-    if (builder == null) {
-      return TextSpan(text: payload, style: config.style);
-    }
-
-    return WidgetSpan(
-      alignment: PlaceholderAlignment.middle,
-      child: builder(context, payload),
-    );
   }
 }
 

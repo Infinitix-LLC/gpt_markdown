@@ -75,6 +75,15 @@ GptMarkdown(
 | Custom builders | ✅        |
 | WASM            | ✅        |
 
+### Pipes inside cells
+
+A `|` inside math or a code span belongs to the cell, not to the table.
+
+| Complex Number | Real Part (\(a\)) | Modulus (\(|z|\)) | Code     |
+|----------------|--------------------|--------------------|----------|
+| \(3 + 4i\)     | 3                  | 5                  | `a|b`    |
+| \(1 - 2i\)     | 1                  | \(\sqrt{5}\)       | x \| y   |
+
 ## Lists
 
 1. Install: `flutter pub add gpt_markdown`
@@ -102,11 +111,90 @@ for epoch in range(100):
 > Visit [gptmarkdown.com](https://gptmarkdown.com) for the interactive playground.
 ''';
 
-class ExamplePage extends StatelessWidget {
+class ExamplePage extends StatefulWidget {
   const ExamplePage({super.key, this.onToggleTheme});
 
   /// Flips the app between light and dark.
   final VoidCallback? onToggleTheme;
+
+  @override
+  State<ExamplePage> createState() => _ExamplePageState();
+}
+
+class _ExamplePageState extends State<ExamplePage> {
+  late final TextEditingController _controller = TextEditingController(
+    text: _markdown,
+  )..addListener(() => setState(() {}));
+
+  /// True renders with plusparse (the single-pass character scanner), false
+  /// with the legacy regex pipeline. Defaults to plusparse.
+  bool _incremental = true;
+
+  /// Lets `$…$` open math, so `$|z|$` can be tried alongside `\(|z|\)`.
+  bool _useDollar = false;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Widget _editor() => TextField(
+        controller: _controller,
+        maxLines: null,
+        expands: true,
+        textAlignVertical: TextAlignVertical.top,
+        style:
+            const TextStyle(fontFamily: 'monospace', fontSize: 13, height: 1.4),
+        decoration: const InputDecoration(
+          border: OutlineInputBorder(),
+          hintText: 'Type Markdown here…',
+          contentPadding: EdgeInsets.all(12),
+        ),
+      );
+
+  Widget _preview() => SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
+        child: GptMarkdown(
+          _controller.text,
+          // Both parsers are reachable so the two can be compared on the same
+          // input; see the "Parser" switch in the toolbar.
+          incremental: _incremental,
+          useDollarSignsForLatex: _useDollar,
+          onLinkTap: (url, title) => debugPrint('Link tapped: $url'),
+        ),
+      );
+
+  Widget _toolbar() => Material(
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          child: Wrap(
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 4,
+            children: [
+              const Text('Parser:'),
+              Switch(
+                value: _incremental,
+                onChanged: (v) => setState(() => _incremental = v),
+              ),
+              Text(_incremental ? 'plusparse' : 'legacy regex'),
+              const SizedBox(width: 16),
+              const Text(r'$…$ math:'),
+              Switch(
+                value: _useDollar,
+                onChanged: (v) => setState(() => _useDollar = v),
+              ),
+              const SizedBox(width: 16),
+              TextButton.icon(
+                icon: const Icon(Icons.restart_alt_rounded, size: 18),
+                label: const Text('Reset'),
+                onPressed: () => setState(() => _controller.text = _markdown),
+              ),
+            ],
+          ),
+        ),
+      );
 
   @override
   Widget build(BuildContext context) {
@@ -128,11 +216,10 @@ class ExamplePage extends StatelessWidget {
             tooltip: 'Chat demo',
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute<void>(
-                builder: (context) => const ChatDemoPage(),
-              ),
+                  builder: (context) => const ChatDemoPage()),
             ),
           ),
-          DemoThemeButton(onToggle: onToggleTheme),
+          DemoThemeButton(onToggle: widget.onToggleTheme),
           IconButton(
             tooltip: 'Streaming demo',
             icon: const Icon(Icons.auto_awesome_rounded),
@@ -179,12 +266,46 @@ class ExamplePage extends StatelessWidget {
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-        child: GptMarkdown(
-          _markdown,
-          onLinkTap: (url, title) => debugPrint('Link tapped: $url'),
-        ),
+      body: Column(
+        children: [
+          _toolbar(),
+          const Divider(height: 1),
+          Expanded(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                // Side by side when there is room, stacked when there is not.
+                if (constraints.maxWidth >= 900) {
+                  return Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: _editor(),
+                        ),
+                      ),
+                      const VerticalDivider(width: 1),
+                      Expanded(child: _preview()),
+                    ],
+                  );
+                }
+                return Column(
+                  children: [
+                    SizedBox(
+                      height: 220,
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: _editor(),
+                      ),
+                    ),
+                    const Divider(height: 1),
+                    Expanded(child: _preview()),
+                  ],
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 
 import '../../../custom_widgets/markdown_config.dart';
 import 'chat_slots.dart';
@@ -234,10 +234,13 @@ class ChatBuilders {
   final HighlightBuilder? highlight;
   final SourceTagBuilder? sourceTag;
 
-  /// Renders one `genui{...}` payload. Defaults to the registry on the
-  /// enclosing [ChatScope]; override to handle payload shapes of your own
-  /// before falling back to it.
-  final GenUiBuilder? genUi;
+  /// Renders one gen-UI payload. Defaults to the registry on the enclosing
+  /// [ChatScope]; override to handle payload shapes of your own before
+  /// falling back to it.
+  ///
+  /// The payload arrives verbatim: the Markdown parser never looks inside a
+  /// directive, so braces, backticks and emphasis markers reach here intact.
+  final Widget Function(BuildContext context, String payload)? genUi;
 
   /// A copy with the non-null builders of [other] layered on top.
   ChatBuilders merge(ChatBuilders? other) {

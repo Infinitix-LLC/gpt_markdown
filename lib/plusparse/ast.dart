@@ -209,15 +209,6 @@ class MdSourceTag extends MdNode {
   final String id;
 }
 
-/// A gen-UI directive `genui{...}`. [payload] is the JSON object text
-/// including its braces (e.g. `{"val_scene": {"id": "x"}}`), handed to the
-/// host app's genUiBuilder to render an inline widget.
-class MdGenUi extends MdNode {
-  const MdGenUi({required this.payload});
-
-  final String payload;
-}
-
 class MdLineBreak extends MdNode {
   const MdLineBreak();
 }

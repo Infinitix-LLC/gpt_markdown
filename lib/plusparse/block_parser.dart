@@ -10,7 +10,12 @@ import 'inline_parser.dart';
 import 'scanner.dart';
 
 MdDocument parseDocument(String src, bool useDollar) {
-  final normalized = src.replaceAll('\r\n', '\n').replaceAll('\r', '\n');
+  // Two full rewrites of the source, for a character most sources do not
+  // contain. Checking first is one scan that usually ends in none.
+  final normalized =
+      src.contains('\r')
+          ? src.replaceAll('\r\n', '\n').replaceAll('\r', '\n')
+          : src;
   final lines = normalized.split('\n');
   return MdDocument(children: parseBlocks(lines, useDollar));
 }
@@ -272,7 +277,31 @@ bool _startsBlock(String t) {
       nested.removeLast();
     }
 
-    final children = parseInline(split.content, useDollar);
+    // A task list — `- [x] item` — is a checkbox wearing a list marker. The
+    // checkbox is a block-level node, and an item's content is parsed inline,
+    // so without this the marker survives as the literal text `[x] item`.
+    // Checked before the inline parse for the same reason: `[x]` inline is
+    // just a bracketed letter.
+    final children = <MdNode>[];
+    final task = checkboxMarker(split.content);
+    final choice = task == null ? radioMarker(split.content) : null;
+    if (task != null) {
+      children.add(
+        MdCheckbox(
+          checked: task.checked,
+          children: parseInline(task.content, useDollar),
+        ),
+      );
+    } else if (choice != null) {
+      children.add(
+        MdRadio(
+          selected: choice.selected,
+          children: parseInline(choice.content, useDollar),
+        ),
+      );
+    } else {
+      children.addAll(parseInline(split.content, useDollar));
+    }
     if (nested.isNotEmpty) {
       children.addAll(parseBlocks(nested, useDollar));
     }
@@ -339,7 +368,9 @@ bool _isTableSeparator(String line) {
   if (!t.contains('-') || !t.contains('|')) {
     return false;
   }
-  final cells = _splitPipes(t);
+  // A separator cell is only `-` and `:`, so the escape/math rules cannot
+  // change the outcome here; useDollar is false to keep the fast path.
+  final cells = _splitPipes(t, false);
   if (cells.isEmpty) {
     return false;
   }
@@ -359,7 +390,7 @@ bool _isTableSeparator(String line) {
 }
 
 List<MdAlign> _parseAligns(String line) {
-  return _splitPipes(line).map((cell) {
+  return _splitPipes(line, false).map((cell) {
     final c = cell.trim();
     final left = c.startsWith(':');
     final right = c.endsWith(':');
@@ -376,7 +407,7 @@ List<MdAlign> _parseAligns(String line) {
   }).toList();
 }
 
-List<String> _splitPipes(String line) {
+List<String> _splitPipes(String line, bool useDollar) {
   var t = line.trim();
   if (t.startsWith('|')) {
     t = t.substring(1);
@@ -384,11 +415,105 @@ List<String> _splitPipes(String line) {
   if (t.endsWith('|')) {
     t = t.substring(0, t.length - 1);
   }
-  return t.split('|');
+  // Fast path: no construct can hide a pipe, so the native split is correct.
+  if (!t.contains('\\') &&
+      !t.contains('`') &&
+      !(useDollar && t.contains(r'$'))) {
+    return t.split('|');
+  }
+  return _splitPipesScanning(t, useDollar);
+}
+
+/// Splits on `|` at depth zero only. Pipes inside code spans, `\(…\)` and
+/// (when enabled) `$…$` math, or escaped as `\|`, stay inside their cell.
+///
+/// The skip rules mirror [parseInline] exactly — same terminators, same
+/// fallbacks — so a span that survives the split is the same span the inline
+/// parser will later recognise.
+List<String> _splitPipesScanning(String t, bool useDollar) {
+  const backslash = 0x5C;
+  const backtick = 0x60;
+  const dollar = 0x24;
+  const pipe = 0x7C;
+  const openParen = 0x28;
+
+  final cells = <String>[];
+  final buf = StringBuffer();
+  final n = t.length;
+  var i = 0;
+
+  while (i < n) {
+    final c = t.codeUnitAt(i);
+
+    // `code span` — single tick, matching parseInline's indexOf('`').
+    if (c == backtick) {
+      final end = t.indexOf('`', i + 1);
+      if (end != -1) {
+        buf.write(t.substring(i, end + 1));
+        i = end + 1;
+        continue;
+      }
+    }
+
+    if (c == backslash && i + 1 < n) {
+      // \( inline latex \)
+      if (t.codeUnitAt(i + 1) == openParen) {
+        final end = t.indexOf('\\)', i + 2);
+        if (end != -1) {
+          buf.write(t.substring(i, end + 2));
+          i = end + 2;
+          continue;
+        }
+      }
+      // Any other \X escapes X — including \| — and is kept verbatim for the
+      // inline parser to unescape.
+      buf.write(t.substring(i, i + 2));
+      i += 2;
+      continue;
+    }
+
+    if (useDollar && c == dollar) {
+      var matched = false;
+      if (i + 1 < n && t.codeUnitAt(i + 1) == dollar) {
+        final end = t.indexOf(r'$$', i + 2);
+        if (end != -1) {
+          buf.write(t.substring(i, end + 2));
+          i = end + 2;
+          matched = true;
+        }
+      }
+      if (!matched) {
+        final end = t.indexOf(r'$', i + 1);
+        // parseInline requires non-blank content for a single-$ span.
+        if (end != -1 && t.substring(i + 1, end).trim().isNotEmpty) {
+          buf.write(t.substring(i, end + 1));
+          i = end + 1;
+          matched = true;
+        }
+      }
+      if (matched) {
+        continue;
+      }
+    }
+
+    if (c == pipe) {
+      cells.add(buf.toString());
+      buf.clear();
+      i += 1;
+      continue;
+    }
+
+    buf.writeCharCode(c);
+    i += 1;
+  }
+
+  cells.add(buf.toString());
+  return cells;
 }
 
 List<MdTableCell> _splitTableRow(String line, bool useDollar) {
   return _splitPipes(
     line,
+    useDollar,
   ).map((c) => MdTableCell(content: parseInline(c.trim(), useDollar))).toList();
 }
