@@ -19,6 +19,12 @@ class PlusparseRenderer {
     GptMarkdownConfig config, {
     bool inlineOnly = false,
   }) {
+    // The incremental view masks earlier, before it segments; masking again is
+    // a no-op because a masked directive no longer holds its own delimiters.
+    final directives = config.inlineDirectives;
+    if (directives != null && directives.isNotEmpty) {
+      text = maskInlineDirectives(text, directives);
+    }
     final doc = Plusparse.parse(text);
     if (inlineOnly &&
         doc.children.length == 1 &&
@@ -430,6 +436,27 @@ class PlusparseRenderer {
     String text,
     GptMarkdownConfig config,
   ) {
+    // A masked directive is inert text to everything upstream; this is where
+    // it becomes a span again. Done first so the host's builder receives the
+    // payload before inline patterns or autolinking can touch it.
+    final directives = config.inlineDirectives;
+    if (directives != null && directives.isNotEmpty) {
+      return expandInlineDirectives(
+        context,
+        text,
+        directives,
+        config.style ?? const TextStyle(),
+        (rest) => _plainTextSpans(context, rest, config),
+      );
+    }
+    return _plainTextSpans(context, text, config);
+  }
+
+  static List<InlineSpan> _plainTextSpans(
+    BuildContext context,
+    String text,
+    GptMarkdownConfig config,
+  ) {
     final patterns = config.inlinePatterns;
     final hasPatterns = patterns != null && patterns.isNotEmpty;
     if (!hasPatterns && !config.autolink) {
@@ -539,15 +566,6 @@ class PlusparseRenderer {
         );
       case MdSourceTag(:final id):
         return sourceTagSpan(context, id, config);
-      case MdGenUi(:final payload):
-        final builder = config.genUiBuilder;
-        if (builder == null) {
-          return TextSpan(text: payload, style: config.style);
-        }
-        return WidgetSpan(
-          alignment: PlaceholderAlignment.middle,
-          child: builder(context, payload),
-        );
       // Block nodes in inline position (nested content) fall back to their
       // block rendering.
       default:

@@ -21,10 +21,6 @@ const int _dollar = 0x24; // '$'
 const int _openParen = 0x28; // '('
 const int _closeBracket = 0x5D; // ']'
 const int _closeParen = 0x29; // ')'
-const int _g = 0x67; // 'g'
-const int _quote = 0x22; // '"'
-const int _openBrace = 0x7B; // '{'
-const int _closeBrace = 0x7D; // '}'
 const int _pipe = 0x7C; // '|'
 
 /// Code units that can begin an inline construct.
@@ -48,7 +44,6 @@ final Uint8List _inlineTriggers = () {
     _openBracket,
     _backslash,
     _backtick,
-    _g,
     _tilde,
   ]) {
     table[unit] = 1;
@@ -194,20 +189,6 @@ List<MdNode> parseInline(String text, bool useDollar) {
         flush();
         nodes.add(MdInlineCode(text: text.substring(i + 1, end)));
         i = end + 1;
-        matched = true;
-      }
-    }
-
-    // genui{...json...}
-    if (!matched &&
-        c == _g &&
-        text.startsWith('genui{', i) &&
-        delims.hasAfter(_closeBrace, i)) {
-      final r = _tryGenUi(text, i);
-      if (r != null) {
-        flush();
-        nodes.add(r.node);
-        i = r.next;
         matched = true;
       }
     }
@@ -358,23 +339,6 @@ class _Delims {
     _bracket = brackets;
     _paren = parens;
   }
-
-  /// Built on first use, like the pair tables: only `genui{` consults it, and
-  /// allocating a map per run of text for a construct almost no run contains
-  /// costs more than it saves.
-  Map<int, int>? _lastIndex;
-
-  /// Whether [char] occurs at or after [from]. Used for `genui{`, whose
-  /// closer cannot be paired up front because braces inside a JSON string do
-  /// not count.
-  ///
-  /// The last index is cached: probing it per opener would be the very
-  /// quadratic scan this class exists to avoid.
-  bool hasAfter(int char, int from) =>
-      ((_lastIndex ??= <int, int>{})[char] ??= text.lastIndexOf(
-        String.fromCharCode(char),
-      )) >=
-      from;
 }
 
 _InlineMatch? _tryImage(String text, int i, _Delims delims) {
@@ -458,42 +422,6 @@ _InlineMatch? _tryLink(String text, int i, bool useDollar, _Delims delims) {
     node: MdLink(children: parseInline(linkText, useDollar), url: url.trim()),
     next: close + 1,
   );
-}
-
-/// `genui{...}` directive. Scans the balanced `{...}` JSON object (aware of
-/// strings and escapes, so `}` inside a string value doesn't close it) and
-/// returns it, braces included, as the payload. Unterminated → literal text.
-_InlineMatch? _tryGenUi(String text, int i) {
-  final n = text.length;
-  var depth = 0;
-  var inString = false;
-  var k = i + 5; // at '{'
-  while (k < n) {
-    final c = text.codeUnitAt(k);
-    if (inString) {
-      if (c == 0x5C /* backslash */ ) {
-        k += 2;
-        continue;
-      }
-      if (c == _quote) {
-        inString = false;
-      }
-    } else if (c == _quote) {
-      inString = true;
-    } else if (c == _openBrace) {
-      depth += 1;
-    } else if (c == _closeBrace) {
-      depth -= 1;
-      if (depth == 0) {
-        return (
-          node: MdGenUi(payload: text.substring(i + 5, k + 1)),
-          next: k + 1,
-        );
-      }
-    }
-    k += 1;
-  }
-  return null;
 }
 
 _InlineMatch? _trySourceTag(String text, int i) {

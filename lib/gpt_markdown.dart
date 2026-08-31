@@ -41,6 +41,8 @@ import 'dart:math';
 
 import 'custom_widgets/code_field.dart';
 import 'custom_widgets/inline_code.dart';
+import 'dart:convert';
+
 import 'package:flutter/scheduler.dart';
 
 import 'streaming/block_entrance.dart';
@@ -73,6 +75,7 @@ part 'autolink.dart';
 part 'markdown_component.dart';
 part 'shared_render.dart';
 part 'md_widget.dart';
+part 'inline_directive.dart';
 part 'plusparse/renderer.dart';
 part 'plusparse/incremental.dart';
 
@@ -92,7 +95,7 @@ class GptMarkdown extends StatelessWidget {
     this.latexBuilder,
     this.codeBuilder,
     this.sourceTagBuilder,
-    this.genUiBuilder,
+    this.inlineDirectives,
     this.inlineCodeBuilder,
     @Deprecated('Use inlineCodeBuilder. Will be removed in 2.0.0.')
     this.highlightBuilder,
@@ -166,8 +169,14 @@ class GptMarkdown extends StatelessWidget {
   /// The source tag builder.
   final SourceTagBuilder? sourceTagBuilder;
 
-  /// The Gen UI builder for `genui{...}` directives.
-  final GenUiBuilder? genUiBuilder;
+  /// Host-defined inline regions the parser must not look inside.
+  ///
+  /// Use these for content that is not Markdown and must survive the parse
+  /// intact — a JSON payload a server substituted into the reply, say. Unlike
+  /// [inlinePatterns], which matches over the text a parse produced, a
+  /// directive is lifted out *before* parsing, so nothing inside it can be
+  /// interpreted as Markdown. See [InlineDirective].
+  final List<InlineDirective>? inlineDirectives;
 
   /// Builds a widget for inline `` `code` ``.
   ///
@@ -489,6 +498,12 @@ class GptMarkdown extends StatelessWidget {
   /// Builds the document for [source], with no reveal involved.
   Widget _buildDocument(BuildContext context, String source) {
     String tex = source.replaceAll('\r\n', '\n').replaceAll('\r', '\n').trim();
+    // Before anything reads the text as Markdown, and before either pipeline
+    // sees it, so a payload cannot be parsed, split or truncated.
+    final directives = inlineDirectives;
+    if (directives != null && directives.isNotEmpty) {
+      tex = maskInlineDirectives(tex, directives);
+    }
     if (useDollarSignsForLatex) {
       tex = tex.replaceAllMapped(
         RegExp(r"(?<!\\)\$\$(.*?)(?<!\\)\$\$", dotAll: true),
@@ -521,7 +536,7 @@ class GptMarkdown extends StatelessWidget {
       maxLines: maxLines,
       overflow: overflow,
       sourceTagBuilder: sourceTagBuilder,
-      genUiBuilder: genUiBuilder,
+      inlineDirectives: inlineDirectives,
       inlineCodeBuilder: inlineCodeBuilder,
       // ignore: deprecated_member_use_from_same_package
       highlightBuilder: highlightBuilder,

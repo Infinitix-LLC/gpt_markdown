@@ -518,34 +518,6 @@ void main() {
       expect(doc.children.whereType<MdHeading>().length, greaterThan(20));
     });
 
-    test('genui directive captures balanced JSON payload', () {
-      final doc = p('Before genui{"type":"button","label":"Tap"} after');
-      final para = doc.children[0] as MdParagraph;
-      final genUi = para.children.whereType<MdGenUi>().single;
-      expect(genUi.payload, '{"type":"button","label":"Tap"}');
-      expect((para.children.first as MdText).text, 'Before ');
-      expect((para.children.last as MdText).text, ' after');
-    });
-
-    test('genui payload with nested braces and braces inside strings', () {
-      final doc = p(
-        r'genui{"val_scene": {"id": "a}b", "frame": "wide{x}"}} tail',
-      );
-      final para = doc.children[0] as MdParagraph;
-      final genUi = para.children.whereType<MdGenUi>().single;
-      expect(
-        genUi.payload,
-        r'{"val_scene": {"id": "a}b", "frame": "wide{x}"}}',
-      );
-    });
-
-    test('unterminated genui stays literal text (streaming)', () {
-      final doc = p('genui{"val_scene": {"id": "x"');
-      final para = doc.children[0] as MdParagraph;
-      expect(para.children.whereType<MdGenUi>(), isEmpty);
-      expect(inlineText(para.children), 'genui{"val_scene": {"id": "x"');
-    });
-
     test('unicode text passes through untouched', () {
       final doc = p('emoji 🎉 and **möre ünïcode** ⸺ done');
       final para = doc.children[0] as MdParagraph;

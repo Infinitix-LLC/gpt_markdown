@@ -277,6 +277,8 @@ class _IncrementalMdViewState extends State<_IncrementalMdView>
 
   @override
   Widget build(BuildContext context) {
+    // Already masked by `GptMarkdown`, so a directive is inert text here and
+    // cannot be split across segments.
     final segments = splitStreamSegments(widget.text);
     final gap = blockGap(context, widget.config);
 

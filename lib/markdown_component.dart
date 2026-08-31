@@ -70,7 +70,7 @@ abstract class MarkdownComponent {
   ];
 
   static final List<MarkdownComponent> inlineComponents = [
-    GenUiMd(),
+    InlineDirectiveMd(),
     ATagMd(),
     ImageMd(),
     AutolinkMd(),
@@ -229,6 +229,43 @@ abstract class InlineMd extends MarkdownComponent {
     String text,
     final GptMarkdownConfig config,
   );
+}
+
+/// A masked [InlineDirective], put back as the host's span.
+///
+/// The directive was lifted out of the source before parsing, leaving an inert
+/// sentinel; this is the regex pipeline's half of putting it back. Registered
+/// first so nothing else can claim the sentinel.
+class InlineDirectiveMd extends InlineMd {
+  @override
+  Set<MarkdownScope> get scopes => MarkdownComponent.allScopes;
+
+  @override
+  RegExp get exp => RegExp(inlineDirectiveMaskPattern);
+
+  @override
+  InlineSpan span(
+    BuildContext context,
+    String text,
+    final GptMarkdownConfig config,
+  ) {
+    final directives = config.inlineDirectives;
+    final match = exp.firstMatch(text.trim());
+    final decoded =
+        match == null || directives == null
+            ? null
+            : decodeInlineDirectiveMask(match[0]!, directives.length);
+    if (decoded == null || directives == null) {
+      // A sentinel that is not one of this document's directives renders as
+      // the text it is, rather than being mistaken for a widget.
+      return TextSpan(text: text, style: config.style);
+    }
+    return directives[decoded.index].builder(
+      context,
+      decoded.payload,
+      config.style ?? const TextStyle(),
+    );
+  }
 }
 
 /// Block component
@@ -1245,65 +1282,4 @@ class CustomTableRow {
   final List<CustomTableField> fields;
 
   CustomTableRow({this.isHeader = false, required this.fields});
-}
-
-/// A `genui{...}` directive, handed to [GptMarkdownConfig.genUiBuilder] as the
-/// raw JSON payload.
-///
-/// Braces inside a JSON string do not close the object, so the pattern below
-/// skips string literals — `genui{"label":"}"}` captures the whole object.
-///
-/// Nesting is matched to a fixed depth rather than by recursion, which Dart's
-/// regex engine does not support. [_maxDepth] levels covers the payloads this
-/// is used for; beyond that the directive renders as plain text rather than
-/// being silently truncated.
-class GenUiMd extends InlineMd {
-  /// How many levels of nested `{}` the pattern matches.
-  static const int _maxDepth = 5;
-
-  /// A JSON string literal, including escapes.
-  static const String _string = r'"(?:\\.|[^"\\])*"';
-
-  /// The body of an object at [depth] levels of remaining nesting.
-  static String _body(int depth) {
-    if (depth == 0) {
-      return '(?:$_string|[^{}"])*';
-    }
-    return '(?:$_string|[^{}"]|\\{${_body(depth - 1)}\\})*';
-  }
-
-  static final RegExp _exp = RegExp('genui\\{${_body(_maxDepth)}\\}');
-
-  @override
-  RegExp get exp => _exp;
-
-  /// A payload is not a link label, and the builder returns a widget — which
-  /// would nest a placeholder inside the link's own.
-  @override
-  Set<MarkdownScope> get scopes => MarkdownComponent.allScopesExceptLinkLabel;
-
-  @override
-  InlineSpan span(
-    BuildContext context,
-    String text,
-    final GptMarkdownConfig config,
-  ) {
-    final match = exp.firstMatch(text);
-    if (match == null) {
-      return TextSpan(text: text, style: config.style);
-    }
-    // `genui` is five characters; the payload is the object that follows,
-    // braces included.
-    final payload = match[0]?.substring(5);
-    final builder = config.genUiBuilder;
-    if (payload == null || builder == null) {
-      return TextSpan(text: payload ?? text, style: config.style);
-    }
-    return scaledWidgetSpan(
-      alignment: PlaceholderAlignment.middle,
-      baseline: null,
-      config: config,
-      child: builder(context, payload),
-    );
-  }
 }
