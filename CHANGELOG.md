@@ -46,6 +46,15 @@
 
 * A `|` inside inline maths, a code span, or escaped as `\|` no longer ends a
   table cell. `| Modulus (\(|z|\)) |` was three columns.
+* GFM task lists — `- [x] done` — render as checkboxes on the plusparse path.
+  A checkbox is a block-level node and a list item's content is parsed inline,
+  so the marker used to survive as the literal text `[x] done`. Applies to
+  `- ( ) choice` radios and to ordered items too. The bare `[x] done` form was
+  never affected. A list item's nested blocks were also always preceded
+  by a line break, which put a task list's checkbox on the line below its own
+  bullet — one blank line per item. The break is now emitted only when there is
+  inline content to separate it from, so list layout matches the regex pipeline
+  exactly.
 * The streaming reveal no longer shifted content down by one block gap when the
   settled/tail seam advanced past it, and again when the reply completed.
 * `settledSplitOffset` no longer moves backward as text arrives. A source ending

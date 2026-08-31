@@ -339,6 +339,71 @@ void main() {
       expect(table.rows, isEmpty);
     });
 
+    // `- [x] item` is the GFM task list, and the form models actually emit.
+    // A checkbox is a block-level node while a list item's content is parsed
+    // inline, so before this the marker survived as the literal text `[x]`.
+    group('task lists', () {
+      test('a checkbox inside a bullet is a checkbox', () {
+        final doc = p('- [x] done\n- [ ] todo');
+        final list = doc.children.single as MdUnorderedList;
+        expect(list.items, hasLength(2));
+
+        final first = list.items[0].children.single as MdCheckbox;
+        expect(first.checked, isTrue);
+        expect(inlineText(first.children), 'done');
+
+        final second = list.items[1].children.single as MdCheckbox;
+        expect(second.checked, isFalse);
+        expect(inlineText(second.children), 'todo');
+      });
+
+      test('an ordered item can hold one too', () {
+        final doc = p('1. [x] one\n2. [ ] two');
+        final list = doc.children.single as MdOrderedList;
+        expect(
+          list.items.map((i) => (i.children.single as MdCheckbox).checked),
+          [true, false],
+        );
+      });
+
+      test('a radio inside a bullet is a radio', () {
+        final doc = p('- (x) yes\n- ( ) no');
+        final list = doc.children.single as MdUnorderedList;
+        expect(list.items.map((i) => (i.children.single as MdRadio).selected), [
+          true,
+          false,
+        ]);
+      });
+
+      test('the label keeps its inline formatting', () {
+        final doc = p('- [x] **bold** and `code`');
+        final list = doc.children.single as MdUnorderedList;
+        final box = list.items.single.children.single as MdCheckbox;
+        expect(box.children.whereType<MdBold>(), hasLength(1));
+        expect(box.children.whereType<MdInlineCode>(), hasLength(1));
+      });
+
+      test('an ordinary bullet is untouched', () {
+        final doc = p('- just an item\n- another');
+        final list = doc.children.single as MdUnorderedList;
+        expect(list.items.first.children.whereType<MdCheckbox>(), isEmpty);
+        expect(inlineText(list.items.first.children), 'just an item');
+      });
+
+      test('a bracketed word is not a checkbox', () {
+        final doc = p('- [xyz] not a task\n- [x]nospace');
+        final list = doc.children.single as MdUnorderedList;
+        for (final item in list.items) {
+          expect(item.children.whereType<MdCheckbox>(), isEmpty);
+        }
+      });
+
+      test('the bare form still works', () {
+        final doc = p('[x] done\n[ ] todo');
+        expect(doc.children.whereType<MdCheckbox>(), hasLength(2));
+      });
+    });
+
     test('pipe line without separator is not a table', () {
       final doc = p('a | b\nplain');
       expect(doc.children.whereType<MdTable>(), isEmpty);

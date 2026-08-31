@@ -277,7 +277,31 @@ bool _startsBlock(String t) {
       nested.removeLast();
     }
 
-    final children = parseInline(split.content, useDollar);
+    // A task list — `- [x] item` — is a checkbox wearing a list marker. The
+    // checkbox is a block-level node, and an item's content is parsed inline,
+    // so without this the marker survives as the literal text `[x] item`.
+    // Checked before the inline parse for the same reason: `[x]` inline is
+    // just a bracketed letter.
+    final children = <MdNode>[];
+    final task = checkboxMarker(split.content);
+    final choice = task == null ? radioMarker(split.content) : null;
+    if (task != null) {
+      children.add(
+        MdCheckbox(
+          checked: task.checked,
+          children: parseInline(task.content, useDollar),
+        ),
+      );
+    } else if (choice != null) {
+      children.add(
+        MdRadio(
+          selected: choice.selected,
+          children: parseInline(choice.content, useDollar),
+        ),
+      );
+    } else {
+      children.addAll(parseInline(split.content, useDollar));
+    }
     if (nested.isNotEmpty) {
       children.addAll(parseBlocks(nested, useDollar));
     }

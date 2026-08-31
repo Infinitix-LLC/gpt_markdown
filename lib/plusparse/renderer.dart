@@ -188,7 +188,11 @@ class PlusparseRenderer {
           children: [
             ..._inlineSpans(context, inline, config),
             if (nested.isNotEmpty) ...[
-              TextSpan(text: "\n", style: config.style),
+              // Only when there is something to separate. A task list item is
+              // a block node (the checkbox) with no inline content at all, and
+              // an unconditional break put it on the line below its own
+              // bullet.
+              if (inline.isNotEmpty) TextSpan(text: "\n", style: config.style),
               ..._blockSpans(context, nested, config, separator: "\n"),
             ],
           ],
