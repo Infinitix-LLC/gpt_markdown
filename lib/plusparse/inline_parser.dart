@@ -23,6 +23,7 @@ const int _g = 0x67; // 'g'
 const int _quote = 0x22; // '"'
 const int _openBrace = 0x7B; // '{'
 const int _closeBrace = 0x7D; // '}'
+const int _pipe = 0x7C; // '|'
 
 List<MdNode> parseInline(String text, bool useDollar) {
   final n = text.length;
@@ -199,6 +200,20 @@ List<MdNode> parseInline(String text, bool useDollar) {
           }
         }
       }
+    }
+
+    // \| — the GFM escape for a literal pipe. Table cells are split before
+    // this runs (see _splitPipes in block_parser.dart), which is what lets a
+    // pipe reach a cell at all; here the backslash is dropped so the reader
+    // sees `|`. Only `|` is unescaped: a general \X rule would change how
+    // \*, \_ and friends render across every document.
+    if (!matched &&
+        c == _backslash &&
+        i + 1 < n &&
+        text.codeUnitAt(i + 1) == _pipe) {
+      buf.writeCharCode(_pipe);
+      i += 2;
+      matched = true;
     }
 
     if (!matched) {

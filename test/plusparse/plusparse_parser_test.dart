@@ -344,6 +344,89 @@ void main() {
       expect(doc.children.whereType<MdTable>(), isEmpty);
     });
 
+    // A `|` inside a cell used to end the cell, so `\(|z|\)` produced three
+    // columns and widened every row of the table. Cells are now split on
+    // depth-zero pipes only.
+    group('pipes inside table cells', () {
+      test('inline latex \\(…\\) keeps its pipes', () {
+        final doc = p(
+          '| N | Modulus (\\(|z|\\)) |\n|---|---|\n| \\(3 + 4i\\) | 5 |',
+        );
+        final table = doc.children[0] as MdTable;
+        expect(table.header.cells, hasLength(2));
+        expect(table.rows.single.cells, hasLength(2));
+        expect(
+          table.header.cells[1].content.whereType<MdInlineLatex>().single.tex,
+          '|z|',
+        );
+      });
+
+      test('dollar latex keeps its pipes when enabled', () {
+        final doc = Plusparse.parse(
+          r'| N | $|z|$ |' '\n|---|---|\n| a | 5 |',
+          useDollarSignsForLatex: true,
+        );
+        final table = doc.children[0] as MdTable;
+        expect(table.header.cells, hasLength(2));
+        expect(
+          table.header.cells[1].content.whereType<MdInlineLatex>().single.tex,
+          '|z|',
+        );
+      });
+
+      test('dollar latex does not hide pipes when disabled', () {
+        final doc = p(r'| N | $|z|$ |' '\n|---|---|\n| a | 5 |');
+        final table = doc.children[0] as MdTable;
+        expect(table.header.cells, hasLength(4));
+      });
+
+      test('code span keeps its pipes', () {
+        final doc = p('| A | `a|b` |\n|---|---|\n| 1 | 2 |');
+        final table = doc.children[0] as MdTable;
+        expect(table.header.cells, hasLength(2));
+        expect(
+          table.header.cells[1].content.whereType<MdInlineCode>().single.text,
+          'a|b',
+        );
+      });
+
+      test(r'\| is one cell and renders as a bare pipe', () {
+        final doc = p(r'| A | x \| y |' '\n|---|---|\n| 1 | 2 |');
+        final table = doc.children[0] as MdTable;
+        expect(table.header.cells, hasLength(2));
+        expect(inlineText(table.header.cells[1].content), 'x | y');
+      });
+
+      test('unterminated latex still splits on the pipe', () {
+        final doc = p('| A | \\(x |\n|---|---|\n| 1 | 2 |');
+        final table = doc.children[0] as MdTable;
+        expect(table.header.cells, hasLength(2));
+      });
+
+      test('empty cells are preserved', () {
+        final doc = p('| A |  | C |\n|---|---|---|\n| 1 |  | 3 |');
+        final table = doc.children[0] as MdTable;
+        expect(table.header.cells, hasLength(3));
+        expect(inlineText(table.header.cells[1].content), '');
+        expect(table.rows.single.cells, hasLength(3));
+      });
+
+      test('the reported ChatGPT modulus table has three columns', () {
+        final doc = p('''
+| Complex Number | Real Part (\\(a\\)) | Modulus (\\(|z|\\)) |
+|----------------|--------------------|-------------------|
+| \\(3 + 4i\\)     | 3                  | 5                 |
+| \\(1 - 2i\\)     | 1                  | \\(\\sqrt{5}\\)      |
+''');
+        final table = doc.children[0] as MdTable;
+        expect(table.aligns, hasLength(3));
+        expect(table.header.cells, hasLength(3));
+        for (final row in table.rows) {
+          expect(row.cells, hasLength(3));
+        }
+      });
+    });
+
     test('every streaming prefix of the ChatGPT sample parses', () {
       // Simulates token-by-token streaming: no prefix may throw.
       for (var end = 0; end <= sampleChatGpt.length; end += 7) {
