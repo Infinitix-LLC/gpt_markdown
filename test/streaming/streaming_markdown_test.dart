@@ -199,4 +199,96 @@ void main() {
       expect(find.byType(RepaintBoundary), findsWidgets);
     });
   });
+
+  group('layout stability', () {
+    const doc = '# Title\n\n'
+        'First paragraph here.\n\n'
+        'Second paragraph here.\n\n'
+        'Third paragraph here.\n\n'
+        'Fourth and final paragraph.\n';
+
+    Future<void> pumpAt(WidgetTester tester, String text, bool streaming) =>
+        tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: Align(
+                alignment: Alignment.topLeft,
+                child: SizedBox(
+                  width: 600,
+                  child: GptMarkdown(
+                    text,
+                    incremental: true,
+                    animation: GptMarkdownAnimation.fade,
+                    isStreaming: streaming,
+                    charactersPerSecond: 1e9,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+
+    /// Visible text -> its top edge, for every paragraph on screen.
+    Map<String, double> positions(WidgetTester tester) {
+      final out = <String, double>{};
+      for (final element in find.byType(RichText).evaluate()) {
+        final text = (element.widget as RichText)
+            .text
+            .toPlainText(includePlaceholders: false)
+            .trim();
+        // Short prefixes collide between blocks while a word is still being
+        // revealed ("T" is both "# T" and "Third..."), so only settled text
+        // is tracked.
+        if (text.length < 8) {
+          continue;
+        }
+        out[text] =
+            (element.renderObject as RenderBox).localToGlobal(Offset.zero).dy;
+      }
+      return out;
+    }
+
+    // Both halves of the reveal are built as separate documents, so the block
+    // gap at the seam belongs to neither. Without it the tail sat one gap too
+    // high, then dropped when the seam advanced past it and again when the
+    // reply finished and the document was built whole.
+    testWidgets('settled content never moves as the reveal advances', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(900, 3000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      final seen = <String, double>{};
+      void record(Map<String, double> now) {
+        now.forEach((text, y) {
+          final before = seen[text];
+          if (before != null) {
+            expect(
+              y,
+              moreOrLessEquals(before, epsilon: 0.5),
+              reason: '"$text" moved ${y - before}px',
+            );
+          }
+          seen[text] = y;
+        });
+      }
+
+      for (var n = 1; n <= doc.length; n++) {
+        await pumpAt(tester, doc.substring(0, n), true);
+        await tester.pump(const Duration(milliseconds: 16));
+        while (tester.takeException() != null) {}
+        record(positions(tester));
+      }
+
+      // Completion rebuilds the whole document in one piece — the frame where
+      // a missing seam gap used to show up as everything below it shifting.
+      await pumpAt(tester, doc, false);
+      await tester.pumpAndSettle();
+      while (tester.takeException() != null) {}
+      record(positions(tester));
+
+      expect(seen, isNotEmpty);
+    });
+  });
 }

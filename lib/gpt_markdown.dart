@@ -416,6 +416,13 @@ class GptMarkdown extends StatelessWidget {
       text: data,
       isStreaming: isStreaming,
       charactersPerSecond: charactersPerSecond,
+      // The settled prefix and the live tail are two separate documents, so
+      // the block gap at their boundary has to be supplied here; the
+      // whole-document build creates it on its own.
+      seamGap: blockGap(
+        context,
+        GptMarkdownConfig(style: style, textScaler: textScaler),
+      ),
       builder: _buildDocument,
     );
   }

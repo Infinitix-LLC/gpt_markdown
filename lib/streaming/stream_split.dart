@@ -49,9 +49,16 @@ int settledSplitOffset(String source) {
       inFence = true;
     } else if (trimmed.startsWith(r'\[') && !trimmed.contains(r'\]')) {
       inLatex = true;
-    } else if (trimmed.isEmpty && lineStart > 0) {
+    } else if (!atEnd && trimmed.isEmpty && lineStart > 0) {
       // The split goes after the blank line, so the tail starts on real
       // content rather than with leading whitespace.
+      //
+      // `!atEnd` matters: a source ending in a newline makes the final
+      // iteration see an empty last line, and counting it as a blank line
+      // would add a candidate past the end of the string. That extra entry
+      // pushes the real last candidate into the settled half, so the split
+      // runs one construct too far ahead and then jumps *backwards* as soon
+      // as the next character arrives — content settles, then unsettles.
       candidates.add(index + 1);
     }
 

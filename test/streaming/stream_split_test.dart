@@ -66,4 +66,31 @@ void main() {
     // Most of a long document ends up settled.
     expect(previous, greaterThan(buffer.length ~/ 2));
   });
+
+  // The test above only samples whole-paragraph boundaries, which is exactly
+  // where the offset used to look well behaved. Streaming arrives a character
+  // at a time, and a source ending in a newline used to count its empty last
+  // line as a blank line — one candidate too many, so the split ran a
+  // construct ahead and fell back the moment the next character landed.
+  // Settled content unsettling is visible as a jump.
+  test('never moves backward, character by character', () {
+    const source = '# Title\n\nFirst paragraph.\n\nSecond paragraph.\n';
+    var previous = 0;
+    for (var n = 1; n <= source.length; n++) {
+      final offset = settledSplitOffset(source.substring(0, n));
+      expect(
+        offset,
+        greaterThanOrEqualTo(previous),
+        reason: 'went backward at n=$n: "${source.substring(0, n)}"',
+      );
+      previous = offset;
+    }
+  });
+
+  test('a trailing newline does not settle the final construct', () {
+    const source = 'One.\n\nTwo.\n\nThree.\n\n';
+    final offset = settledSplitOffset(source);
+    // The tail must still hold the last construct: more may be coming.
+    expect(source.substring(offset).trim(), 'Three.');
+  });
 }

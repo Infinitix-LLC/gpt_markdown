@@ -1,5 +1,21 @@
 part of '../gpt_markdown.dart';
 
+/// The vertical space between two top-level blocks.
+///
+/// Approximates the "\n\n" paragraph break of the single-text pipeline: one
+/// empty line of the default 1.15 line height. Scaled like the text it
+/// separates, so the gap does not shrink relative to the type when a reader
+/// raises their font size.
+///
+/// Shared, not duplicated: [_IncrementalMdView] puts it between its own
+/// segments, and [GptMarkdown] hands the same value to [StreamingMarkdown] for
+/// the seam between the settled prefix and the live tail. Those two have to
+/// agree, or content moves when the seam does.
+double blockGap(BuildContext context, GptMarkdownConfig config) {
+  final scaler = config.textScaler ?? MediaQuery.textScalerOf(context);
+  return scaler.scale((config.style?.fontSize ?? 14) * 1.15);
+}
+
 /// Incremental (segment-cached) Markdown view for streaming content.
 ///
 /// The document is split into top-level segments ([splitStreamSegments]) and
@@ -54,12 +70,7 @@ class _IncrementalMdViewState extends State<_IncrementalMdView> {
     final segments = splitStreamSegments(widget.text);
     final next = <String, Widget>{};
     final children = <Widget>[];
-    // Approximates the "\n\n" paragraph break of the single-text pipeline:
-    // one empty line of the default 1.15 line height. Scaled like the text it
-    // separates, so the gap does not shrink relative to the type when a reader
-    // raises their font size.
-    final scaler = widget.config.textScaler ?? MediaQuery.textScalerOf(context);
-    final gap = scaler.scale((widget.config.style?.fontSize ?? 14) * 1.15);
+    final gap = blockGap(context, widget.config);
     for (var i = 0; i < segments.length; i++) {
       final segment = segments[i];
       final child =
