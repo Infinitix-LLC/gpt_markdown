@@ -391,7 +391,12 @@ class _IncrementalMdViewState extends State<_IncrementalMdView>
 
     return Column(
       mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+      // start, not stretch: stretch forces every segment to the maximum width
+      // the parent offers, so a two-word answer laid claim to the whole
+      // column. The single-text pipeline sizes to its content, and so should
+      // this — a paragraph that needs the width still takes it, because its
+      // own text wraps into it.
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: children,
     );
   }

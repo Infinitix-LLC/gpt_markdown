@@ -55,6 +55,11 @@
 
 * A `|` inside inline maths, a code span, or escaped as `\|` no longer ends a
   table cell. `| Modulus (\(|z|\)) |` was three columns.
+* The incremental path no longer forces its content to the full width it is
+  offered. The segment column stretched its children, so a two-word answer laid
+  claim to the whole column while the single-text pipeline sized to its content.
+  Both now size the same, and constructs that genuinely fill the width — a
+  heading, a quote, a fence, a rule — still do.
 * GFM task lists — `- [x] done` — render as checkboxes on the plusparse path.
   A checkbox is a block-level node and a list item's content is parsed inline,
   so the marker used to survive as the literal text `[x] done`. Applies to
