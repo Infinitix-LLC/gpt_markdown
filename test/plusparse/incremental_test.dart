@@ -196,4 +196,79 @@ void main() {
       },
     );
   });
+
+  // `stretch` on the segment column forced every child to the maximum width the
+  // parent offered, so a two-word answer laid claim to the whole column while
+  // the single-text pipeline sized to its content. The two must agree.
+  group('intrinsic width', () {
+    const cases = <String, String>{
+      'two words': 'Hi there',
+      'long paragraph':
+          'A much longer paragraph that should wrap and fill the line here.',
+      'heading': '# Short',
+      'bullet list': '- one\n- two',
+      'task list': '- [x] done',
+      'blockquote': '> quoted',
+      'table': '| A | B |\n|---|---|\n| 1 | 2 |',
+      'fenced code': '```dart\nvar x = 1;\n```',
+      'horizontal rule': '---',
+      'block maths': r'\[ E = mc^2 \]',
+      'mixed document': '# Title\n\nshort\n\n| A | B |\n|---|---|\n| 1 | 2 |',
+    };
+
+    /// Width under *loose* constraints — room available, nothing forcing it.
+    /// A tight `SizedBox` would make even a plain `Text` fill the space and
+    /// prove nothing.
+    Future<double> widthOf(
+      WidgetTester tester,
+      String source, {
+      required bool incremental,
+    }) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Align(
+              alignment: Alignment.topLeft,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 600),
+                child: GptMarkdown(source, incremental: incremental),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      while (tester.takeException() != null) {}
+      return (find.byType(GptMarkdown).evaluate().first.renderObject
+              as RenderBox)
+          .size
+          .width;
+    }
+
+    for (final entry in cases.entries) {
+      testWidgets('${entry.key} sizes like the regex pipeline', (tester) async {
+        tester.view.physicalSize = const Size(900, 2000);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.reset);
+
+        expect(
+          await widthOf(tester, entry.value, incremental: true),
+          moreOrLessEquals(
+            await widthOf(tester, entry.value, incremental: false),
+            epsilon: 0.5,
+          ),
+        );
+      });
+    }
+
+    testWidgets('a short answer does not claim the whole width', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(900, 2000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      expect(await widthOf(tester, 'Hi', incremental: true), lessThan(200));
+    });
+  });
 }

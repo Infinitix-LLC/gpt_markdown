@@ -155,13 +155,18 @@ class _ExamplePageState extends State<ExamplePage> {
 
   Widget _preview() => SingleChildScrollView(
         padding: const EdgeInsets.all(20),
-        child: GptMarkdown(
-          _controller.text,
-          // Both parsers are reachable so the two can be compared on the same
-          // input; see the "Parser" switch in the toolbar.
-          incremental: _incremental,
-          useDollarSignsForLatex: _useDollar,
-          onLinkTap: (url, title) => debugPrint('Link tapped: $url'),
+        child: DecoratedBox(
+        decoration: BoxDecoration(
+        border: Border.all(),
+        ),
+          child: GptMarkdown(
+            _controller.text,
+            // Both parsers are reachable so the two can be compared on the same
+            // input; see the "Parser" switch in the toolbar.
+            incremental: _incremental,
+            useDollarSignsForLatex: _useDollar,
+            onLinkTap: (url, title) => debugPrint('Link tapped: $url'),
+          ),
         ),
       );
 
