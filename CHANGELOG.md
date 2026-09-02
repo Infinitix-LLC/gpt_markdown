@@ -60,6 +60,14 @@
   claim to the whole column while the single-text pipeline sized to its content.
   Both now size the same, and constructs that genuinely fill the width — a
   heading, a quote, a fence, a rule — still do.
+* Block maths in a list item renders as maths. `1. \[` with the body on the
+  lines below left the `\[` as literal text and leaked the body out of the list
+  as a paragraph trailing a stray `\]` — an equation's body is opaque, like a
+  fence, so it is now claimed regardless of indentation.
+* `\[ ... \]` is recognised in an inline position too, and still renders as a
+  block. The block parser only ever claimed it when it opened a line, so block
+  maths written mid-sentence — `1. Result: \[ x^2 \]`, or anywhere inside a
+  paragraph — stayed literal text. Text on either side of it is preserved.
 * GFM task lists — `- [x] done` — render as checkboxes on the plusparse path.
   A checkbox is a block-level node and a list item's content is parsed inline,
   so the marker used to survive as the literal text `[x] done`. Applies to
