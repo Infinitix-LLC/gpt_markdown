@@ -257,9 +257,19 @@ bool _startsBlock(String t) {
     // Column where the item content begins (markers are ASCII).
     final contentCol = base + (trimmed.length - split.content.length);
 
+    // Block maths opened on the marker line — `1. \\[` with the body on the
+    // lines below.
+    //
+    // The body is opaque, like a fence: its lines are maths, not Markdown, and
+    // they are not indented under the marker. The nested-line scan below only
+    // takes lines indented past the marker, so without claiming them here the
+    // `\\[` stayed literal text and the body leaked out of the list as a
+    // paragraph with a stray `\\]`.
+    final latex = _listItemBlockLatex(lines, i, split.content);
+
     // Collect nested lines (indented past the marker).
     final nested = <String>[];
-    var k = i + 1;
+    var k = (latex?.next ?? i + 1);
     while (k < n) {
       if (isBlank(lines[k])) {
         nested.add('');
@@ -283,9 +293,12 @@ bool _startsBlock(String t) {
     // Checked before the inline parse for the same reason: `[x]` inline is
     // just a bracketed letter.
     final children = <MdNode>[];
-    final task = checkboxMarker(split.content);
-    final choice = task == null ? radioMarker(split.content) : null;
-    if (task != null) {
+    final task = latex == null ? checkboxMarker(split.content) : null;
+    final choice =
+        task == null && latex == null ? radioMarker(split.content) : null;
+    if (latex != null) {
+      children.add(MdBlockLatex(tex: latex.tex));
+    } else if (task != null) {
       children.add(
         MdCheckbox(
           checked: task.checked,
@@ -312,6 +325,53 @@ bool _startsBlock(String t) {
   }
 
   return (items: items, next: i, start: firstNum);
+}
+
+/// Block maths opened by a list item's own content, if any.
+///
+/// Mirrors the top-level `\\[ ... \\]` rule, including consuming to the end of
+/// the document when the closer has not arrived yet — a streaming reply's
+/// equation is still being written, and showing it as literal text until the
+/// last character lands reads worse than showing nothing.
+///
+/// [next] is the line to resume scanning from.
+({String tex, int next})? _listItemBlockLatex(
+  List<String> lines,
+  int index,
+  String content,
+) {
+  var first = content.trimLeft();
+  if (!first.startsWith('\\[')) {
+    return null;
+  }
+  while (first.startsWith('\\[')) {
+    first = first.substring(2);
+  }
+  // Closed on the same line: leave it to the inline parser, which keeps any
+  // text on either side of it. Claiming the whole line here would drop a
+  // trailing `done` in `1. \\[ x^2 \\] done`.
+  if (first.contains('\\]')) {
+    return null;
+  }
+  final body = <String>[];
+  if (first.trim().isNotEmpty) {
+    body.add(first);
+  }
+  var k = index + 1;
+  while (k < lines.length) {
+    final close = lines[k].indexOf('\\]');
+    if (close != -1) {
+      final pre = lines[k].substring(0, close);
+      if (pre.trim().isNotEmpty) {
+        body.add(pre);
+      }
+      k += 1;
+      break;
+    }
+    body.add(lines[k]);
+    k += 1;
+  }
+  return (tex: body.join('\n').trim(), next: k);
 }
 
 bool _markerMatches(String line, bool ordered) {

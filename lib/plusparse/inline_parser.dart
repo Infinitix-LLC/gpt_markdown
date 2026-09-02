@@ -208,6 +208,25 @@ List<MdNode> parseInline(String text, bool useDollar) {
       }
     }
 
+    // \[ block latex \] in an inline position.
+    //
+    // The block parser claims `\[` only when it opens a line, so block maths
+    // written mid-sentence — or after a list marker, `1. Result: \[ x^2 \]` —
+    // used to survive as literal text. The syntax is recognised wherever it
+    // appears; it still renders as a block, because that is what it is.
+    if (!matched &&
+        c == _backslash &&
+        i + 1 < n &&
+        text.codeUnitAt(i + 1) == _openBracket) {
+      final end = text.indexOf('\\]', i + 2);
+      if (end != -1) {
+        flush();
+        nodes.add(MdBlockLatex(tex: text.substring(i + 2, end).trim()));
+        i = end + 2;
+        matched = true;
+      }
+    }
+
     // \( inline latex \)
     if (!matched &&
         c == _backslash &&

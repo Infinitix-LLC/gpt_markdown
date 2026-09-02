@@ -404,6 +404,98 @@ void main() {
       });
     });
 
+    // A model writing out a derivation puts the equation on the list item, and
+    // the body on the lines below at no indent. The nested-line scan only
+    // takes lines indented past the marker, so the `\\[` stayed literal text
+    // and the body leaked out of the list as its own paragraph, trailing a
+    // stray `\\]`.
+    group('block maths in a list item', () {
+      test('opened on the marker line, body below', () {
+        final doc = p('1. \\[\n\\frac{7x^3}{x^2}=7x\\to+\\infty.\n\\]');
+        final list = doc.children.single as MdOrderedList;
+        final maths = list.items.single.children.single as MdBlockLatex;
+        expect(maths.tex, r'\frac{7x^3}{x^2}=7x\to+\infty.');
+      });
+
+      test('a bullet works the same way', () {
+        final doc = p('- \\[\n\\frac{a}{b}\n\\]');
+        final list = doc.children.single as MdUnorderedList;
+        expect(
+          (list.items.single.children.single as MdBlockLatex).tex,
+          r'\frac{a}{b}',
+        );
+      });
+
+      test('each item keeps its own equation', () {
+        final doc = p('1. \\[\na\n\\]\n2. \\[\nb\n\\]');
+        final list = doc.children.single as MdOrderedList;
+        expect(list.items.map((i) => (i.children.single as MdBlockLatex).tex), [
+          'a',
+          'b',
+        ]);
+      });
+
+      test('an indented body is still claimed', () {
+        final doc = p('1. \\[\n   x^2\n   \\]');
+        final list = doc.children.single as MdOrderedList;
+        expect((list.items.single.children.single as MdBlockLatex).tex, 'x^2');
+      });
+
+      test('a following plain item is untouched', () {
+        final doc = p('1. \\[\nx\n\\]\n2. plain text');
+        final list = doc.children.single as MdOrderedList;
+        expect(list.items, hasLength(2));
+        expect(inlineText(list.items[1].children), 'plain text');
+      });
+
+      test('an unclosed equation is still claimed, for streaming', () {
+        final doc = p('1. \\[\n\\frac{a}{b}');
+        final list = doc.children.single as MdOrderedList;
+        expect(
+          (list.items.single.children.single as MdBlockLatex).tex,
+          r'\frac{a}{b}',
+        );
+      });
+    });
+
+    // `\[ ... \]` is block syntax, but the block parser only claims it when it
+    // opens a line. Written mid-sentence it used to stay literal text.
+    group('block maths in an inline position', () {
+      test('after text on a list item', () {
+        final doc = p(r'1. Result: \[ x^2 \]');
+        final list = doc.children.single as MdOrderedList;
+        final children = list.items.single.children;
+        expect(inlineText([children.first]), 'Result: ');
+        expect((children.last as MdBlockLatex).tex, 'x^2');
+      });
+
+      test('text after the closer survives', () {
+        final doc = p(r'1. \[ x^2 \] done');
+        final list = doc.children.single as MdOrderedList;
+        final children = list.items.single.children;
+        expect((children.first as MdBlockLatex).tex, 'x^2');
+        expect(inlineText([children.last]), ' done');
+      });
+
+      test('mid-paragraph, outside any list', () {
+        final doc = p(r'before \[ x^2 \] after');
+        final para = doc.children.single as MdParagraph;
+        expect(para.children.whereType<MdBlockLatex>().single.tex, 'x^2');
+        expect(inlineText([para.children.first]), 'before ');
+        expect(inlineText([para.children.last]), ' after');
+      });
+
+      test('inline maths is still inline', () {
+        final doc = p(r'1. value \( x^2 \) here');
+        final list = doc.children.single as MdOrderedList;
+        expect(
+          list.items.single.children.whereType<MdInlineLatex>().single.tex,
+          'x^2',
+        );
+        expect(list.items.single.children.whereType<MdBlockLatex>(), isEmpty);
+      });
+    });
+
     test('pipe line without separator is not a table', () {
       final doc = p('a | b\nplain');
       expect(doc.children.whereType<MdTable>(), isEmpty);
