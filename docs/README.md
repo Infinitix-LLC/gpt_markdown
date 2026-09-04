@@ -6,16 +6,17 @@ Markdown and LaTeX rendering for Flutter, built for AI chat output.
 |---|---|
 | [Getting started](getting-started.md) | You are adding the package to an app |
 | [Customization](customization.md) | You want it to look like your app |
-| [Streaming](streaming.md) | You are rendering a reply as it generates |
+| [Streaming and incremental rendering](streaming.md) | You are rendering a reply as it generates or tuning performance |
 | [Inline syntax](inline-syntax.md) | You need `@mention`, `#channel`, `:emoji:` or autolinks |
 | [Custom components](custom-components.md) | Styles and builders are not enough |
+| [`GptMarkdown` options](api-options.md) | You need a constructor-default reference |
 | [Testing](testing.md) | Your widget tests do not find what you expect |
 | [Migration](../MIGRATION.md) | You are upgrading from 1.1.x |
 
 > [!NOTE]
-> Every code snippet in these guides is compiled by the test suite
-> (`test/docs/snippets_test.dart`). If a parameter is renamed, the guides stop
-> compiling — so they cannot quietly go stale.
+> Representative code from these guides is compiled by the test suite
+> (`test/docs/snippets_test.dart`). It covers the public option and builder
+> signatures; prose, links and examples are also checked during review.
 >
 > Numbers quoted as measurements come from tests in `test/`, not estimates.
 

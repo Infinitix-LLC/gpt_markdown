@@ -344,7 +344,7 @@ styleSheet: const GptMarkdownStyleSheet(
 ),
 ```
 
-**Localise the copy button** without replacing the block:
+**Localise the copy-button tooltip** without replacing the block:
 
 ```dart
 codeBlock: CodeBlockStyle(
@@ -358,6 +358,32 @@ codeBlock: CodeBlockStyle(
 ```dart
 GptMarkdown(text, onCodeCopy: (code) => analytics.log('code_copied'))
 ```
+
+### Syntax highlighting
+
+Fenced blocks are highlighted automatically when the opening fence names a
+recognized language:
+
+````markdown
+```python
+def greet(name: str) -> str:
+    return f"Hello, {name}!"
+```
+````
+
+The built-in highlighter registers 189 language grammars and follows the
+active light or dark brightness. Common fence aliases include `js`, `ts`,
+`py`, `python3`, `c++`, `sh` and `yml`. Unknown tags fall back to plain
+monospace code, and an omitted tag displays `Code` in the header.
+
+No syntax-theme field is exposed. `CodeBlockStyle` controls the panel, font and
+base/fallback text appearance; the built-in token palette is automatic. When
+an application needs its own tokenizer or token colors, replace the complete
+block with the existing `codeBuilder`.
+
+The built-in copy action keeps the code unchanged, briefly changes its icon to
+a check, ignores repeated taps during that state, and invokes `onCodeCopy`
+after the clipboard write succeeds.
 
 > [!WARNING]
 > Code lines do not wrap. On a phone at a raised text scale a long line

@@ -51,6 +51,18 @@ enum GptMarkdownAnimation {
   bool get animatesCharacters =>
       this != GptMarkdownAnimation.none &&
       this != GptMarkdownAnimation.typewriter;
+
+  /// Whether each character needs its own style, rather than its word.
+  ///
+  /// Only [wave] draws neighbouring characters differently — the crest
+  /// travels letter by letter. The fading effects style whole words: a word
+  /// arrives as one span, so no style boundary ever lands inside a shaped
+  /// run, and kerning, ligatures and line wrapping sit exactly where the
+  /// settled text will put them. A boundary inside a word is not free — each
+  /// side shapes as its own run, the advances change on a proportional font,
+  /// and a nearly-full line flips its wrap point back and forth as the
+  /// boundary moves.
+  bool get animatesPerCharacter => this == GptMarkdownAnimation.wave;
 }
 
 /// How a block plays its entrance once it is complete enough to render.

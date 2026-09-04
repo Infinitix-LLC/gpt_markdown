@@ -137,27 +137,55 @@ List<MdNode> parseInline(String text, bool useDollar) {
 
     // **bold**  /  *italic*
     if (!matched && c == _star) {
-      if (i + 1 < n && text.codeUnitAt(i + 1) == _star) {
-        final end = text.indexOf('**', i + 2);
-        if (end != -1) {
-          flush();
-          nodes.add(
-            MdBold(
-              children: parseInline(text.substring(i + 2, end), useDollar),
-            ),
-          );
-          i = end + 2;
-          matched = true;
+      // Emphasis is decided by the length of the *run* of asterisks, not by
+      // the first one. Reading `***both***` as `**` starting at the second
+      // asterisk left a stray `*` inside the bold, and closing a single `*`
+      // with `indexOf('*')` landed on the opening half of a nested `**`, which
+      // dropped the bold and cut the italic into pieces.
+      var run = 1;
+      while (i + run < n && text.codeUnitAt(i + run) == _star) {
+        run += 1;
+      }
+
+      // `***x***` is both.
+      if (run >= 3) {
+        final close = _nextStarRun(text, i + run, 3);
+        if (close != -1) {
+          final inner = text.substring(i + 3, close);
+          if (inner.trim().isNotEmpty) {
+            flush();
+            nodes.add(
+              MdBold(
+                children: [MdItalic(children: parseInline(inner, useDollar))],
+              ),
+            );
+            i = close + 3;
+            matched = true;
+          }
         }
       }
-      if (!matched) {
-        final end = text.indexOf('*', i + 1);
-        if (end != -1) {
-          final inner = text.substring(i + 1, end);
+      if (!matched && run == 2) {
+        final close = _nextStarRun(text, i + 2, 2);
+        if (close != -1) {
+          final inner = text.substring(i + 2, close);
+          if (inner.trim().isNotEmpty) {
+            flush();
+            nodes.add(MdBold(children: parseInline(inner, useDollar)));
+            i = close + 2;
+            matched = true;
+          }
+        }
+      }
+      if (!matched && run == 1) {
+        // Only a lone asterisk closes an italic; a `**` inside it opens a
+        // bold, which the recursive parse below then claims.
+        final close = _nextStarRun(text, i + 1, 1, exact: true);
+        if (close != -1) {
+          final inner = text.substring(i + 1, close);
           if (inner.trim().isNotEmpty) {
             flush();
             nodes.add(MdItalic(children: parseInline(inner, useDollar)));
-            i = end + 1;
+            i = close + 1;
             matched = true;
           }
         }
@@ -358,6 +386,30 @@ class _Delims {
     _bracket = brackets;
     _paren = parens;
   }
+}
+
+/// Start of the next run of asterisks at or after [from].
+///
+/// With [exact] the run must be exactly [length] long — how an italic finds
+/// its closer, since a `**` in the middle opens a bold rather than closing the
+/// italic. Otherwise the run must be at least [length].
+int _nextStarRun(String text, int from, int length, {bool exact = false}) {
+  var i = from;
+  while (i < text.length) {
+    if (text.codeUnitAt(i) != _star) {
+      i += 1;
+      continue;
+    }
+    var run = 1;
+    while (i + run < text.length && text.codeUnitAt(i + run) == _star) {
+      run += 1;
+    }
+    if (exact ? run == length : run >= length) {
+      return i;
+    }
+    i += run;
+  }
+  return -1;
 }
 
 _InlineMatch? _tryImage(String text, int i, _Delims delims) {

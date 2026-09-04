@@ -338,6 +338,23 @@ class CodeTextSpan extends TextSpan {
     super.semanticsLabel,
   });
 
+  /// Creates a tagged span over already-built [children] instead of one text
+  /// run.
+  ///
+  /// This is the form the streaming reveal emits while a code span's last
+  /// characters are still arriving: the pieces are separate spans, and the
+  /// container rebuilt around them has to keep the tag or the chip is not
+  /// painted until the whole paragraph settles. Measured by its subtree in
+  /// [collectInlineCodeRuns].
+  const CodeTextSpan.revealing({
+    required List<InlineSpan> super.children,
+    required this.codeStyle,
+    super.style,
+    super.recognizer,
+    super.mouseCursor,
+    super.semanticsLabel,
+  });
+
   /// The resolved style the chip behind this span is drawn with.
   final InlineCodeStyle codeStyle;
 }
@@ -384,22 +401,21 @@ List<InlineCodeRun> collectInlineCodeRuns(InlineSpan root) {
 
   void visit(InlineSpan span) {
     if (span is TextSpan) {
-      final length = span.text?.length ?? 0;
-      if (span is CodeTextSpan && length > 0) {
-        runs.add(
-          InlineCodeRun(
-            start: offset,
-            end: offset + length,
-            style: span.codeStyle,
-          ),
-        );
-      }
-      offset += length;
+      final start = offset;
+      offset += span.text?.length ?? 0;
       final children = span.children;
       if (children != null) {
         for (final child in children) {
           visit(child);
         }
+      }
+      // Measured after the subtree, so a tagged span built over children —
+      // [CodeTextSpan.revealing], the reveal's partially arrived form —
+      // covers everything inside it, not just its own (absent) text.
+      if (span is CodeTextSpan && offset > start) {
+        runs.add(
+          InlineCodeRun(start: start, end: offset, style: span.codeStyle),
+        );
       }
     } else if (span is PlaceholderSpan) {
       offset += 1;

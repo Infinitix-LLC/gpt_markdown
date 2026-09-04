@@ -25,6 +25,10 @@ class PlusparseRenderer {
     if (directives != null && directives.isNotEmpty) {
       text = maskInlineDirectives(text, directives);
     }
+    final patterns = config.inlinePatterns;
+    if (patterns != null && patterns.isNotEmpty) {
+      text = maskInlinePatterns(text, patterns);
+    }
     final doc = Plusparse.parse(text);
     if (inlineOnly &&
         doc.children.length == 1 &&
@@ -439,6 +443,22 @@ class PlusparseRenderer {
     // A masked directive is inert text to everything upstream; this is where
     // it becomes a span again. Done first so the host's builder receives the
     // payload before inline patterns or autolinking can touch it.
+    List<InlineSpan> withPatterns(String rest) {
+      // Patterns were lifted out before parsing so they could beat the
+      // built-in interpretation of the same text; this puts them back.
+      final patterns = config.inlinePatterns;
+      if (patterns == null || patterns.isEmpty) {
+        return _plainTextSpans(context, rest, config);
+      }
+      return expandInlinePatterns(
+        context,
+        rest,
+        patterns,
+        config,
+        (plain) => _plainTextSpans(context, plain, config),
+      );
+    }
+
     final directives = config.inlineDirectives;
     if (directives != null && directives.isNotEmpty) {
       return expandInlineDirectives(
@@ -446,10 +466,10 @@ class PlusparseRenderer {
         text,
         directives,
         config.style ?? const TextStyle(),
-        (rest) => _plainTextSpans(context, rest, config),
+        withPatterns,
       );
     }
-    return _plainTextSpans(context, text, config);
+    return withPatterns(text);
   }
 
   static List<InlineSpan> _plainTextSpans(
@@ -457,9 +477,9 @@ class PlusparseRenderer {
     String text,
     GptMarkdownConfig config,
   ) {
-    final patterns = config.inlinePatterns;
-    final hasPatterns = patterns != null && patterns.isNotEmpty;
-    if (!hasPatterns && !config.autolink) {
+    // Patterns have already been expanded by the caller, so the only
+    // consumer-facing syntax left here is autolinking.
+    if (!config.autolink) {
       return [TextSpan(text: text, style: config.style)];
     }
     return MarkdownComponent.generate(

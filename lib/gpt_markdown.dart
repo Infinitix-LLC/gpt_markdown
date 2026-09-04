@@ -11,6 +11,7 @@ export 'package:gpt_markdown/custom_widgets/inline_code.dart';
 // Reveal animation for streamed replies.
 export 'package:gpt_markdown/streaming/streaming_markdown.dart';
 export 'package:gpt_markdown/streaming/reveal_engine.dart';
+export 'package:gpt_markdown/streaming/inline_hold.dart';
 export 'package:gpt_markdown/streaming/reveal_effect.dart';
 export 'package:gpt_markdown/streaming/reveal_spans.dart';
 export 'package:gpt_markdown/streaming/block_entrance.dart';
@@ -41,11 +42,13 @@ import 'dart:math';
 
 import 'custom_widgets/code_field.dart';
 import 'custom_widgets/inline_code.dart';
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/scheduler.dart';
 
 import 'streaming/block_entrance.dart';
+import 'streaming/inline_hold.dart';
 import 'streaming/reveal_effect.dart';
 import 'streaming/reveal_engine.dart';
 import 'streaming/reveal_spans.dart';
@@ -130,7 +133,7 @@ class GptMarkdown extends StatelessWidget {
     this.blockAnimationDuration = const Duration(milliseconds: 200),
     this.blockAnimationCurve = Curves.easeOut,
     this.useDollarSignsForLatex = false,
-    this.incremental = false,
+    this.incremental = true,
   });
 
   /// The direction of the text.
@@ -419,7 +422,8 @@ class GptMarkdown extends StatelessWidget {
   ///
   /// Only [GptMarkdownBlockAnimation.growIn] changes the space a block takes
   /// while it plays; the rest animate paint alone, so content below them holds
-  /// still. Ignored when [animation] is [GptMarkdownAnimation.none].
+  /// still. It can be used independently when [animation] is
+  /// [GptMarkdownAnimation.none].
   final GptMarkdownBlockAnimation blockAnimation;
 
   /// Whether more text may still arrive. Only consulted when [animation] is
@@ -507,12 +511,16 @@ class GptMarkdown extends StatelessWidget {
     if (directives != null && directives.isNotEmpty) {
       tex = maskInlineDirectives(tex, directives);
     }
+    var dollarsAreMath = false;
     if (useDollarSignsForLatex) {
       tex = tex.replaceAllMapped(
         RegExp(r"(?<!\\)\$\$(.*?)(?<!\\)\$\$", dotAll: true),
         (match) => "\\[${match[1] ?? ""}\\]",
       );
       if (!tex.contains(r"\(")) {
+        // Same condition as the rewrite below: once a native `\(` appears,
+        // a single `$` can never become maths, so it must not be held either.
+        dollarsAreMath = true;
         tex = tex.replaceAllMapped(
           RegExp(r"(?<!\\)\$(.*?)(?<!\\)\$"),
           (match) => "\\(${match[1] ?? ""}\\)",
@@ -599,6 +607,7 @@ class GptMarkdown extends StatelessWidget {
             revealFadeSeconds: revealFadeSeconds,
             blockAnimationDuration: blockAnimationDuration,
             blockAnimationCurve: blockAnimationCurve,
+            holdMathDollars: dollarsAreMath,
           ),
         ),
       );

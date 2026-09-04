@@ -46,6 +46,7 @@ dependencies:
   fetch_client: ^1.1.2
   vector_math: ^2.1.4
   video_player: ^2.10.1
+  highlight: ^0.7.0
 
 dev_dependencies:
   flutter_test:
@@ -64,4 +65,3 @@ topics:
   - selectable
   - chatgpt
   - gemini
-

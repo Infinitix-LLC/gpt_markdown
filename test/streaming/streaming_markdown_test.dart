@@ -33,20 +33,25 @@ Future<void> pumpStreaming(
   bool isStreaming = true,
   GptMarkdownAnimation animation = GptMarkdownAnimation.fade,
 }) async {
-  await tester.pumpWidget(
-    MaterialApp(
-      home: Scaffold(
-        body: SingleChildScrollView(
-          child: GptMarkdown(
-            text,
-            animation: animation,
-            isStreaming: isStreaming,
-            charactersPerSecond: 100,
-          ),
+  Widget app(String t) => MaterialApp(
+    home: Scaffold(
+      body: SingleChildScrollView(
+        child: GptMarkdown(
+          t,
+          animation: animation,
+          isStreaming: isStreaming,
+          charactersPerSecond: 100,
         ),
       ),
     ),
   );
+  // Content present at mount appears whole; only appended text animates. A
+  // streaming test therefore mounts empty and delivers the text as an
+  // update, the way a real stream does.
+  if (isStreaming && find.byType(GptMarkdown).evaluate().isEmpty) {
+    await tester.pumpWidget(app(''));
+  }
+  await tester.pumpWidget(app(text));
   await tester.pump();
 }
 
@@ -232,7 +237,7 @@ void main() {
     /// Visible text -> its top edge, for every paragraph on screen.
     Map<String, double> positions(WidgetTester tester) {
       final out = <String, double>{};
-      for (final element in find.byType(RichText).evaluate()) {
+      for (final element in find.byWidgetPredicate((w) => w is RichText).evaluate()) {
         final text =
             (element.widget as RichText).text
                 .toPlainText(includePlaceholders: false)

@@ -29,19 +29,19 @@ class CodeBlockStyle {
     this.copiedLabel,
   });
 
-  /// Panel fill. Defaults to `ColorScheme.onInverseSurface`.
+  /// Panel fill. Defaults to `ColorScheme.surfaceContainer`.
   final Color? backgroundColor;
 
-  /// Panel outline. Defaults to none.
+  /// Panel outline. Defaults to `ColorScheme.outlineVariant`.
   final Color? borderColor;
 
   /// Outline thickness. Defaults to 1 when a colour is set.
   final double? borderWidth;
 
-  /// Corner rounding. Defaults to 8.
+  /// Corner rounding. Defaults to 12.
   final Radius? borderRadius;
 
-  /// Space around the code. Defaults to 16.
+  /// Space around the code. Defaults to 16, with a tighter top inset.
   final EdgeInsetsGeometry? padding;
 
   /// Space around the header row.
@@ -68,10 +68,10 @@ class CodeBlockStyle {
   /// Whether the copy button is shown. Defaults to true.
   final bool? showCopyButton;
 
-  /// Copy button text. Defaults to `Copy code`.
+  /// Accessible copy-button tooltip. Defaults to `Copy code`.
   final String? copyLabel;
 
-  /// Copy button text after copying. Defaults to `Copied!`.
+  /// Accessible copy-button tooltip after copying. Defaults to `Copied!`.
   final String? copiedLabel;
 
   /// This style, with any unset field taken from [other], field by field.
@@ -101,20 +101,25 @@ class CodeBlockStyle {
   /// This style with every remaining default filled in.
   CodeBlockStyle resolve(ColorScheme scheme) {
     return CodeBlockStyle(
-      backgroundColor: backgroundColor ?? scheme.onInverseSurface,
-      borderColor: borderColor,
+      backgroundColor: backgroundColor ?? scheme.surfaceContainer,
+      borderColor: borderColor ?? scheme.outlineVariant.withValues(alpha: 0.65),
       borderWidth: borderWidth ?? 1,
-      borderRadius: borderRadius ?? const Radius.circular(8),
-      padding: padding ?? const EdgeInsets.all(16),
-      headerPadding:
-          headerPadding ??
-          const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      borderRadius: borderRadius ?? const Radius.circular(12),
+      padding: padding ?? const EdgeInsets.fromLTRB(16, 10, 16, 16),
+      headerPadding: headerPadding ?? const EdgeInsets.fromLTRB(10, 8, 8, 2),
       fontFamily: fontFamily,
       fontFamilyPackage: fontFamilyPackage,
       fontSize: fontSize,
       textColor: textColor,
       showLanguageLabel: showLanguageLabel ?? true,
-      languageStyle: languageStyle,
+      languageStyle:
+          languageStyle ??
+          TextStyle(
+            color: scheme.onSurfaceVariant,
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.35,
+          ),
       showCopyButton: showCopyButton ?? true,
       copyLabel: copyLabel ?? 'Copy code',
       copiedLabel: copiedLabel ?? 'Copied!',

@@ -217,6 +217,52 @@ scales: the package wraps them so they do not scale twice.
 
 ---
 
+## Protected host data with `InlineDirective`
+
+Use `InlinePattern` when the custom syntax is still ordinary text. Use
+`InlineDirective` when a delimited payload must reach your builder verbatim and
+must never be interpreted as Markdown.
+
+For example, a server may insert a private marker containing JSON that the app
+turns into a widget:
+
+```dart
+const widgetOpen = '\u{E200}widget\u{E202}';
+const widgetClose = '\u{E201}';
+
+GptMarkdown(
+  reply,
+  inlineDirectives: [
+    InlineDirective(
+      open: widgetOpen,
+      close: widgetClose,
+      builder: (context, payload, style) => WidgetSpan(
+        alignment: PlaceholderAlignment.middle,
+        child: EmbeddedCard.fromJson(payload),
+      ),
+    ),
+  ],
+)
+```
+
+A directive is removed before either Markdown parser runs, carried through the
+document as inert data, and restored at render time. Characters such as `**`,
+backticks, `~~`, links and JSON punctuation inside the payload remain intact.
+
+Choose delimiters that ordinary model output cannot produce accidentally.
+Private Use Area code points are a practical choice when your server inserts
+the markers after generation.
+
+During streaming, a directive is built only after its closing delimiter
+arrives. An incomplete directive stays literal rather than producing a
+half-built widget. Directives work with `incremental: true` and do not require
+custom `MarkdownComponent` lists.
+
+Do not use a directive for mentions, channels, emoji, or syntax that should
+participate in Markdown nesting. Those belong in `InlinePattern`.
+
+---
+
 ## Scopes
 
 Markdown nests: a link label can contain bold text, a table cell can contain a
