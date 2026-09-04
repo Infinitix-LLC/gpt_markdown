@@ -79,13 +79,21 @@ Rebuild `GptMarkdown` with the complete text received so far. The settled prefix
 ```dart
 GptMarkdown(
   streamedReply,
+  incremental: true, // default: caches every unchanged top-level segment
   animation: GptMarkdownAnimation.fade,
+  blockAnimation: GptMarkdownBlockAnimation.fadeIn,
   isStreaming: stillGenerating,
   charactersPerSecond: 300,
 )
 ```
 
-The reveal adapts when tokens arrive quickly, fast-forwards when generation finishes, avoids unsafe splits inside code fences and block math, and automatically respects reduced-motion settings.
+The single-pass parser is 20x–69x faster than the legacy parser in the package
+benchmarks. Segment caching rebuilds only the changing tail, so append cost
+stays roughly flat as a reply grows. The reveal adapts when tokens arrive
+quickly, fast-forwards when generation finishes, avoids unsafe splits inside
+code fences and block math, and respects reduced-motion settings. See the
+[streaming and incremental rendering guide](docs/streaming.md) for every
+animation mode, compatibility rules and benchmark methodology.
 
 ## 📝 Markdown, LaTeX, and rich AI output
 
@@ -127,7 +135,8 @@ Supported output includes:
 - Tables with column alignment and horizontal overflow
 - Inline and block LaTeX using `\( ... \)` and `\[ ... \]`
 - Optional dollar-sign LaTeX through `useDollarSignsForLatex: true`
-- Fenced code blocks with language labels, copy controls, and open-fence streaming support
+- Fenced code blocks with automatic syntax highlighting, language labels,
+  copy controls, and open-fence streaming support
 
 Wrap the renderer with `SelectionArea` when selectable output is needed:
 
@@ -242,6 +251,7 @@ Upgrading from 1.1.x? Read the [migration guide](MIGRATION.md).
 | [Streaming](docs/streaming.md) | Pacing, performance, accessibility, and limitations |
 | [Inline syntax](docs/inline-syntax.md) | Autolinks, mentions, channels, and scopes |
 | [Custom components](docs/custom-components.md) | Block and inline extensions |
+| [`GptMarkdown` options](docs/api-options.md) | Every constructor option and default |
 | [Migration](MIGRATION.md) | Changes from 1.1.x to 1.2.0 |
 
 ## 💬 Community

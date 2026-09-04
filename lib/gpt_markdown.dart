@@ -419,7 +419,8 @@ class GptMarkdown extends StatelessWidget {
   ///
   /// Only [GptMarkdownBlockAnimation.growIn] changes the space a block takes
   /// while it plays; the rest animate paint alone, so content below them holds
-  /// still. Ignored when [animation] is [GptMarkdownAnimation.none].
+  /// still. It can be used independently when [animation] is
+  /// [GptMarkdownAnimation.none].
   final GptMarkdownBlockAnimation blockAnimation;
 
   /// Whether more text may still arrive. Only consulted when [animation] is

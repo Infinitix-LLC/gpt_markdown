@@ -1,9 +1,8 @@
-/// Compiles every code snippet in `README.md`, `docs/` and
-/// `example/example.md`.
+/// Compiles representative code from `README.md`, `docs/` and examples.
 ///
 /// Documentation rots silently: a renamed parameter or a changed builder
 /// signature leaves the guide wrong with nothing to catch it. This file is the
-/// guard — if a snippet in `docs/` stops compiling, this stops compiling.
+/// guard for the public constructor, style and builder signatures.
 ///
 /// It is a compile-time check. The test body only has to exist.
 library;
@@ -12,6 +11,22 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gpt_markdown/gpt_markdown.dart';
+
+const documentedCharacterAnimations = <GptMarkdownAnimation>[
+  GptMarkdownAnimation.none,
+  GptMarkdownAnimation.typewriter,
+  GptMarkdownAnimation.fade,
+  GptMarkdownAnimation.blurIn,
+  GptMarkdownAnimation.wave,
+];
+
+const documentedBlockAnimations = <GptMarkdownBlockAnimation>[
+  GptMarkdownBlockAnimation.none,
+  GptMarkdownBlockAnimation.fadeIn,
+  GptMarkdownBlockAnimation.growIn,
+  GptMarkdownBlockAnimation.slideUp,
+  GptMarkdownBlockAnimation.scaleIn,
+];
 
 class ShoutMd extends InlineMd {
   @override
@@ -32,18 +47,37 @@ class ShoutMd extends InlineMd {
 Widget docsCompile(BuildContext context) {
   return GptMarkdown(
     'text',
+    incremental: true,
     animation: GptMarkdownAnimation.fade,
+    blockAnimation: GptMarkdownBlockAnimation.slideUp,
     isStreaming: true,
     charactersPerSecond: 300,
+    revealFadeSeconds: 0.25,
+    blockAnimationDuration: const Duration(milliseconds: 200),
+    blockAnimationCurve: Curves.easeOut,
     autolink: true,
     autolinkSchemes: const {'myapp'},
     useDollarSignsForLatex: true,
+    textAlign: TextAlign.start,
+    textScaler: TextScaler.noScaling,
+    maxLines: 20,
+    overflow: TextOverflow.ellipsis,
+    followLinkColor: false,
+    latexWorkaround: (tex) => tex,
     onLinkTap: (url, title) {},
     onImageTap: (url) {},
     onCodeCopy: (code) {},
     onSourceTagTap: (content) {},
     onCheckboxChanged: (value) {},
     inlineComponents: [ShoutMd(), ...MarkdownComponent.inlineComponents],
+    inlineDirectives: [
+      InlineDirective(
+        open: '\u{E200}widget\u{E202}',
+        close: '\u{E201}',
+        builder:
+            (context, payload, style) => TextSpan(text: payload, style: style),
+      ),
+    ],
     styleSheet: const GptMarkdownStyleSheet(
       heading: HeadingStyle(textStyle: TextStyle(letterSpacing: -0.5)),
       link: LinkStyle(decoration: TextDecoration.none),

@@ -141,6 +141,62 @@ GptMarkdown(text, animation: GptMarkdownAnimation.none)
 GptMarkdown(text, animation: GptMarkdownAnimation.fade, isStreaming: false)
 ```
 
+### Test the lifecycle, not only one frame
+
+A useful streaming test covers append, completion and replacement:
+
+```dart
+await tester.pumpWidget(app(text: 'Hello', streaming: true));
+await tester.pumpWidget(app(text: 'Hello world', streaming: true));
+await tester.pump(const Duration(milliseconds: 100));
+
+// Completion fast-forwards whatever remains.
+await tester.pumpWidget(app(text: 'Hello world', streaming: false));
+await tester.pumpAndSettle();
+
+// A replacement is a regenerate, not an append.
+await tester.pumpWidget(app(text: 'Different answer', streaming: true));
+await tester.pump(const Duration(milliseconds: 16));
+```
+
+Test reduced motion separately by wrapping the widget in a `MediaQuery` whose
+`disableAnimations` is true. The complete text should render without waiting
+for a ticker.
+
+### Check both parser paths when extending grammar
+
+`incremental: true` is the default plusparse path; `false` selects the legacy
+renderer unless an animation forces span reveal. Parser or Markdown-syntax
+changes should have parity coverage:
+
+```dart
+for (final incremental in [false, true]) {
+  await tester.pumpWidget(
+    MaterialApp(
+      home: GptMarkdown(source, incremental: incremental),
+    ),
+  );
+  // Assert the same visible result for each path.
+}
+```
+
+Custom `components` and `inlineComponents` intentionally use the legacy path,
+so test them there rather than assuming `incremental: true` exercises
+plusparse.
+
+### Test block entrances independently
+
+Character and block animations are separate. For a table, fence or block
+maths, set a non-`none` character animation and the block entrance under test,
+then pump part of `blockAnimationDuration`. Only `growIn` should change layout
+height; `fadeIn`, `slideUp` and `scaleIn` reserve the final space immediately.
+
+### Test code-copy feedback
+
+Mock `SystemChannels.platform` before tapping the built-in copy button. Assert
+that the copy icon changes to a check, ignores pointer input for the feedback
+period without adopting disabled colors, and returns after two seconds.
+
 ---
 
 ## Testing a style
@@ -249,8 +305,10 @@ CI and never gate a build.
 
 ## Documentation snippets are compiled
 
-Every snippet in `docs/` lives in `test/docs/snippets_test.dart` and is
-compiled by the test suite. If you rename a parameter, that file stops
-compiling — so the guides cannot quietly go stale.
+Representative snippets from `docs/` live in
+`test/docs/snippets_test.dart` and are compiled by the test suite. The file
+covers public constructor options, style objects and builder signatures so an
+API rename fails loudly. It is not an automatic Markdown code-fence extractor,
+so prose, links and examples still need review.
 
 Add to it when you document something new.

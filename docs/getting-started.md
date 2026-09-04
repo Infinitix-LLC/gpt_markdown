@@ -4,7 +4,7 @@
 
 ```yaml
 dependencies:
-  gpt_markdown: ^1.2.0
+  gpt_markdown: ^1.2.1
 ```
 
 ```dart
@@ -56,7 +56,7 @@ ListView.builder(
 |---|---|
 | Headings | `#` to `######` |
 | Emphasis | `**bold**`, `*italic*`, `~~strike~~`, `<u>underline</u>` |
-| Code | `` `inline` ``, ```` ```fenced``` ```` |
+| Code | `` `inline` ``, language-tagged highlighted fences |
 | Lists | `-`, `1.`, nested |
 | Tasks | `- [x]`, `- [ ]` |
 | Options | `(x)`, `( )` |
@@ -70,6 +70,17 @@ ListView.builder(
 
 Bare URLs, `www.` hosts and email addresses are linked automatically — see
 [inline syntax](inline-syntax.md).
+
+Fenced code is highlighted automatically when it carries a language tag:
+
+````markdown
+```dart
+final greeting = 'Hello';
+```
+````
+
+Unknown or omitted languages remain readable as plain code. See
+[code-block customization](customization.md#syntax-highlighting).
 
 ---
 
@@ -230,9 +241,10 @@ SelectionArea(child: GptMarkdown(reply))
 > content height; constraining it without scrolling clips the reply.
 
 > [!TIP]
-> **Rendering a reply while it generates?** Do not rebuild the whole widget per
-> token — see [streaming](streaming.md), which measures 11 ms per token against
-> 14.6 ms for the naive path, and stays flat as the reply grows.
+> **Rendering a reply while it generates?** Rebuild only the active message
+> with the complete text received so far. The default `incremental: true`
+> renderer caches settled segments, so append cost stays roughly flat as the
+> reply grows. See [streaming and performance](streaming.md#performance).
 
 ---
 
@@ -241,3 +253,4 @@ SelectionArea(child: GptMarkdown(reply))
 * Make it look like your app → [customization](customization.md)
 * Render a reply as it generates → [streaming](streaming.md)
 * `@mention`, `#channel`, autolinks → [inline syntax](inline-syntax.md)
+* Look up every constructor option → [`GptMarkdown` options](api-options.md)
