@@ -496,6 +496,55 @@ void main() {
       });
     });
 
+    // Emphasis is decided by the length of the run of asterisks. Reading
+    // `***both***` as `**` starting at the second asterisk left a stray `*`
+    // inside the bold, and closing a single `*` with the next `*` found landed
+    // on the opening half of a nested `**` — which dropped the bold and cut
+    // the italic into three.
+    group('emphasis nesting', () {
+      MdNode only(String source) =>
+          (p(source).children.single as MdParagraph).children.single;
+
+      test('triple asterisks are bold and italic', () {
+        final bold = only('***both***') as MdBold;
+        final italic = bold.children.single as MdItalic;
+        expect(inlineText(italic.children), 'both');
+      });
+
+      test('bold nested inside italic keeps both', () {
+        final italic = only('*i **bi** i*') as MdItalic;
+        expect(inlineText(italic.children), 'i bi i');
+        expect(italic.children.whereType<MdBold>(), hasLength(1));
+      });
+
+      test('italic nested inside bold keeps both', () {
+        final bold = only('**b *bi* b**') as MdBold;
+        expect(bold.children.whereType<MdItalic>(), hasLength(1));
+      });
+
+      test('unclosed emphasis stays literal', () {
+        for (final source in ['a *un z', 'a **un z', 'a ***un z']) {
+          expect(
+            p(source).children.single,
+            isA<MdParagraph>().having(
+              (n) =>
+                  n.children.whereType<MdBold>().length +
+                  n.children.whereType<MdItalic>().length,
+              'no emphasis',
+              0,
+            ),
+            reason: source,
+          );
+        }
+      });
+
+      test('separate runs stay separate', () {
+        final para = p('**b** *i*').children.single as MdParagraph;
+        expect(para.children.whereType<MdBold>(), hasLength(1));
+        expect(para.children.whereType<MdItalic>(), hasLength(1));
+      });
+    });
+
     test('pipe line without separator is not a table', () {
       final doc = p('a | b\nplain');
       expect(doc.children.whereType<MdTable>(), isEmpty);

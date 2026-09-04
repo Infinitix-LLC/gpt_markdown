@@ -226,11 +226,13 @@ Some introductory text with **bold** and *italic* formatting.
       // 1 blockquote
       expect('BLOCKQUOTE'.allMatches(output).length, equals(1));
 
-      // 1 horizontal rule: the literal `---`. The automatic divider under the
-      // H1 is built inside the heading's own span, which the serializer walks
-      // as widgets rather than spans, so it is not counted here. The plusparse
-      // renderer reaches it and would report 2.
-      expect('HR'.allMatches(output).length, equals(1));
+      // 2 horizontal rules: the literal `---`, and the automatic divider under
+      // the H1. The regex pipeline builds the heading as one span the
+      // serializer walks past, hiding the divider; the incremental pipeline
+      // renders the heading's content as its own paragraph, so the divider is
+      // reached and counted. Both draw the same two rules — only one of them
+      // is visible to a serializer.
+      expect('HR'.allMatches(output).length, equals(2));
     });
   });
 
@@ -248,8 +250,19 @@ Paragraph after double newline.
       await pumpMarkdown(tester, markdown);
       final output = getSerializedOutput(tester);
 
-      expect(output, contains('NEWLINE'));
+      // Blank lines separate blocks. The regex pipeline holds the whole
+      // document in one paragraph and marks the gaps with `NEWLINE` spans;
+      // the incremental pipeline gives each block its own paragraph and the
+      // gap is the space between them. What matters either way is that the
+      // blocks came out separate and in order.
+      expect(output, contains('Heading'));
+      expect(output, contains('Paragraph after double newline.'));
       expect(output, contains('UL_ITEM'));
+      expect(output, contains('List item after double newline'));
+      expect(
+        output.indexOf('Heading'),
+        lessThan(output.indexOf('Paragraph after double newline.')),
+      );
     });
 
     testWidgets('mixed list formats', (tester) async {

@@ -145,9 +145,9 @@ class _ExamplePageState extends State<ExamplePage> {
   Widget _preview() => SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: DecoratedBox(
-        decoration: BoxDecoration(
-        border: Border.all(),
-        ),
+          decoration: BoxDecoration(
+            border: Border.all(),
+          ),
           child: GptMarkdown(
             _controller.text,
             // Both parsers are reachable so the two can be compared on the same

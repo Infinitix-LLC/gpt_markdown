@@ -31,6 +31,12 @@
 
 ### Changed
 
+* **`incremental` now defaults to `true`**, so the single-pass parser is the
+  default renderer. It lays out correctly where the regex pipeline does not —
+  no spurious line after a fenced block — and is 20x to 69x faster. Pass
+  `incremental: false` for the old pipeline. Custom
+  `components`/`inlineComponents` still select it automatically.
+
 * The reveal styles spans that are already built rather than re-slicing the
   source each frame, so a document is rendered once per text change and a frame
   restyles only the characters still arriving. Custom
@@ -41,6 +47,44 @@
   entrance, not merely until the reveal has caught up.
 
 ### Fixed
+
+* `***both***` renders as bold *and* italic, and `*italic **bold** italic*`
+  keeps its bold. Emphasis is now decided by the length of the run of
+  asterisks: reading `***` as `**` from the second asterisk left a stray `*`
+  inside the bold, and closing a single `*` with the next asterisk found landed
+  on the opening half of a nested `**`, dropping the bold and cutting the
+  italic into three.
+* `InlinePattern` beats the built-in reading of the same text on the
+  incremental pipeline, as it always has on the regex one — a pattern for
+  `**bold**` renders the pattern, not emphasis. Matches are lifted out before
+  parsing and put back at render, because once there is a tree there is no
+  text left for a pattern to claim. Scope filtering is preserved, and a pattern
+  no longer reaches inside fenced code or block maths.
+
+* Changing `animation:` no longer changes how the document is parsed. Every
+  animating effect forces the incremental pipeline, so with the default
+  `incremental: false` only `GptMarkdownAnimation.none` still went through the
+  regex pipeline — which wraps text differently and leaves an extra line after
+  a fenced block. Set `incremental: true` and every effect, `none` included,
+  lays out identically; the example's streaming demo now pins it.
+
+* An animated reveal no longer leaves the document split one span per
+  character. `settledBelow` trailed the head by a fixed window forever, so even
+  a finished reply kept its last 64 characters as individual spans. Flutter
+  shapes each style run separately, so that changed how text kerned and wrapped
+  against `GptMarkdownAnimation.none`, and broke a construct styling a
+  continuous stretch — an inline code chip — into pieces. Characters needing no
+  style of their own now coalesce, and a reveal that has caught up collapses
+  back to exactly the spans it started from.
+
+* Streamed text no longer restyles after the reader has seen it. A construct is
+  literal text until its closing delimiter arrives, so `` `npm install` ``
+  appeared as prose and turned into a monospace chip a moment later, reflowing
+  the line around it — the same for `**bold**`, `*italic*`, `~~strike~~`,
+  `<u>…</u>`, `\( … \)` and `[label](href)`. The reveal now waits behind an
+  unterminated construct, so a character is in its final form when it appears.
+  A delimiter that never closes — a lone backtick, a footnote asterisk — is
+  taken for prose after a short run rather than stalling the reveal.
 
 * `|` inside inline maths, a code span, or escaped as `\|` no longer ends a
   table cell — `| Modulus (\(|z|\)) |` was three columns.
@@ -60,6 +104,50 @@
 * Streaming no longer shifts settled content down by a block gap when the
   reveal advances past it, or again when the reply completes.
 * `settledSplitOffset` no longer moves backward as text arrives.
+* The inline-code chip paints while its paragraph is still animating. The chip
+  is drawn for spans tagged `CodeTextSpan`, and the reveal rebuilt every span
+  as a plain `TextSpan` — so the code text sat bare, in the right monospace,
+  until the whole segment settled (1.8 s after the text on the demo reply),
+  then the chrome popped in at once and popped back out on the next chunk.
+  Settled spans now pass through the reveal as their original objects, and a
+  partially revealed code span keeps its tag via `CodeTextSpan.revealing`.
+* Fading text no longer jitters the words around it. Each mid-fade character
+  was its own span, and Flutter shapes each span as its own run — kerning and
+  ligatures broke at boundaries that moved every frame, so on a proportional
+  font wrap points flickered near the head. The fading effects now style whole
+  words (`wave` still travels letter by letter, its point), so a style
+  boundary only ever falls on whitespace.
+* The reveal never moves backwards. A construct opening late — `[the docs]`
+  closing as prose and then `(` arriving — pulled the visible tail back behind
+  the opener: text the reader had read vanished for the length of the hold,
+  and on its return the engine re-stamped it and replayed its fade, blinking
+  characters half a window behind the head. The hold now only advances, and
+  the engine holds its head and marks everything beneath it settled when the
+  target shrinks.
+* Scrolling back to a streamed reply no longer replays it. Reveal progress and
+  the blocks' one-shot entrances lived in element state, so a lazy list
+  disposing an item and re-inflating it on scroll-back re-typed the whole
+  message from nothing (with `isStreaming` still true) and re-ran every
+  table's and fence's entrance from opacity zero. Content already present at
+  mount now appears whole and plays no entrance; only text arriving after
+  mount animates.
+* A finished block entrance keeps its (paint-free) wrapper instead of swapping
+  to the bare child, which changed the widget type and re-inflated the block's
+  subtree once, mid-stream.
+* Two identical blocks — two rules, two identical fences — no longer collide
+  on one entrance key. The cached widget carried its position key inside the
+  content-keyed cache, a duplicate-keys crash in debug builds.
+* A fence glued to a paragraph with no blank line streams its body. The inline
+  hold read the fence's own backticks as inline delimiters and withheld the
+  entire code block until it closed.
+* With `useDollarSignsForLatex`, an equation closing no longer blanks and
+  re-types the message. The `$…$` → `\(…\)` rewrite edits the text
+  retroactively, which failed the append-only check and reset the reveal; an
+  edit confined to the tail now carries on from where it was. An unpaired `$`
+  is also held rather than shown as prose it will not stay.
+* A chunk ending in the first half of an opener — `\` before `\(`, `<` before
+  `<u>` — is held until the next character decides it, instead of being shown
+  and then vanishing.
 
 ## 1.2.1
 

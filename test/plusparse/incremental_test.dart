@@ -271,4 +271,60 @@ void main() {
       expect(await widthOf(tester, 'Hi', incremental: true), lessThan(200));
     });
   });
+
+  // Changing how text *appears* must not change how it is *parsed*. Every
+  // animating effect forces the incremental pipeline, so with the regex
+  // pipeline selected `GptMarkdownAnimation.none` renders through a different
+  // parser than its neighbours — different wrapping, and an extra line after a
+  // fenced block. Pinning the parser has to make them agree exactly.
+  group('animation does not change layout', () {
+    const source =
+        'Run the installer and then build the app to see how the '
+        'text wraps across several lines here.\n\n'
+        '```dart\nvar x = 1;\nvar y = 2;\n```\n\n'
+        'Trailing paragraph after the code block.';
+
+    Future<double> heightOf(
+      WidgetTester tester,
+      GptMarkdownAnimation animation,
+    ) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SizedBox(
+              width: 300,
+              child: GptMarkdown(
+                source,
+                animation: animation,
+                incremental: true,
+                isStreaming: false,
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      while (tester.takeException() != null) {}
+      return (find.byType(SizedBox).evaluate().first.renderObject as RenderBox)
+          .size
+          .height;
+    }
+
+    testWidgets('every effect lays out identically on one parser', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(900, 1400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      final baseline = await heightOf(tester, GptMarkdownAnimation.none);
+      for (final effect in GptMarkdownAnimation.values) {
+        expect(
+          await heightOf(tester, effect),
+          moreOrLessEquals(baseline, epsilon: 0.5),
+          reason: '$effect laid out differently from none',
+        );
+      }
+    });
+  });
 }

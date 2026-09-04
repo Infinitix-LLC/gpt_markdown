@@ -201,3 +201,155 @@ List<InlineSpan> expandInlineDirectives(
   }
   return out;
 }
+
+/// Sentinels wrapping a masked [InlinePattern] match.
+const String _patternOpen = '\u{E012}';
+const String _patternClose = '\u{E013}';
+
+/// Replaces every [patterns] match in [source] with an inert sentinel.
+///
+/// [InlinePattern] promises that a pattern beats the built-in interpretation of
+/// the same text — a pattern for `**bold**` renders a chip, not bold. The regex
+/// pipeline gets that for free by dispatching patterns and components through
+/// one combined match. A parser cannot: by the time it has an AST, `**bold**`
+/// is already emphasis and there is no text left for a pattern to claim.
+///
+/// So the match is lifted out before parsing, exactly as a directive is, and
+/// put back at render time. Matches are taken in one pass, earliest first and
+/// earlier patterns winning a tie, so a later pattern can never match inside
+/// the Base64 of an earlier one.
+///
+/// Fenced code and block maths are skipped: their content is not Markdown, and
+/// a pattern reaching inside them would rewrite the source a reader asked to
+/// see verbatim.
+String maskInlinePatterns(String source, List<InlinePattern> patterns) {
+  if (patterns.isEmpty) {
+    return source;
+  }
+  final opaque = _opaqueRegions(source);
+  final hits = <({int start, int end, int pattern, String text})>[];
+  for (var index = 0; index < patterns.length; index++) {
+    for (final match in patterns[index].pattern.allMatches(source)) {
+      final text = match[0];
+      if (text == null || text.isEmpty) {
+        continue;
+      }
+      if (opaque.any((r) => match.start < r.$2 && match.end > r.$1)) {
+        continue;
+      }
+      hits.add((
+        start: match.start,
+        end: match.end,
+        pattern: index,
+        text: text,
+      ));
+    }
+  }
+  if (hits.isEmpty) {
+    return source;
+  }
+  hits.sort((a, b) {
+    final byStart = a.start.compareTo(b.start);
+    return byStart != 0 ? byStart : a.pattern.compareTo(b.pattern);
+  });
+
+  final buffer = StringBuffer();
+  var cursor = 0;
+  for (final hit in hits) {
+    if (hit.start < cursor) {
+      continue; // Overlaps one already taken.
+    }
+    buffer
+      ..write(source.substring(cursor, hit.start))
+      ..write(_patternOpen)
+      ..write(hit.pattern)
+      ..write(':')
+      ..write(base64Encode(utf8.encode(hit.text)))
+      ..write(_patternClose);
+    cursor = hit.end;
+  }
+  buffer.write(source.substring(cursor));
+  return buffer.toString();
+}
+
+/// Byte ranges of [source] a pattern must not reach into.
+List<(int, int)> _opaqueRegions(String source) {
+  final regions = <(int, int)>[];
+  var offset = 0;
+  int? fenceStart;
+  int? mathStart;
+  for (final line in source.split('\n')) {
+    final trimmed = line.trimLeft();
+    if (fenceStart != null) {
+      if (trimmed.startsWith('```') || trimmed.startsWith('~~~')) {
+        regions.add((fenceStart, offset + line.length));
+        fenceStart = null;
+      }
+    } else if (mathStart != null) {
+      if (trimmed.contains(r'\]')) {
+        regions.add((mathStart, offset + line.length));
+        mathStart = null;
+      }
+    } else if (trimmed.startsWith('```') || trimmed.startsWith('~~~')) {
+      fenceStart = offset;
+    } else if (trimmed.startsWith(r'\[') && !trimmed.contains(r'\]')) {
+      mathStart = offset;
+    }
+    offset += line.length + 1;
+  }
+  // An unterminated region runs to the end.
+  final open = fenceStart ?? mathStart;
+  if (open != null) {
+    regions.add((open, source.length));
+  }
+  return regions;
+}
+
+/// Expands masked pattern matches back into their builders' spans.
+///
+/// A pattern that does not apply in [scope] renders as the text it matched,
+/// which is what it would have been had the pattern never claimed it.
+List<InlineSpan> expandInlinePatterns(
+  BuildContext context,
+  String text,
+  List<InlinePattern> patterns,
+  GptMarkdownConfig config,
+  List<InlineSpan> Function(String text) rest,
+) {
+  final out = <InlineSpan>[];
+  final style = config.style ?? const TextStyle();
+  var cursor = 0;
+  while (cursor < text.length) {
+    final start = text.indexOf(_patternOpen, cursor);
+    if (start == -1) {
+      break;
+    }
+    final end = text.indexOf(_patternClose, start + 1);
+    if (end == -1) {
+      break;
+    }
+    final body = text.substring(start + 1, end);
+    final colon = body.indexOf(':');
+    final index = colon == -1 ? null : int.tryParse(body.substring(0, colon));
+    if (index == null || index < 0 || index >= patterns.length) {
+      cursor = start + 1;
+      continue;
+    }
+    if (start > cursor) {
+      out.addAll(rest(text.substring(cursor, start)));
+    }
+    final matched = utf8.decode(base64Decode(body.substring(colon + 1)));
+    final pattern = patterns[index];
+    final match = pattern.pattern.firstMatch(matched);
+    if (match == null || !pattern.scopes.contains(config.scope)) {
+      out.add(TextSpan(text: matched, style: config.style));
+    } else {
+      out.add(pattern.builder(context, match, style));
+    }
+    cursor = end + 1;
+  }
+  if (cursor < text.length) {
+    out.addAll(rest(text.substring(cursor)));
+  }
+  return out;
+}

@@ -52,6 +52,52 @@ void main() {
       expect(find.text('CHIP:#general'), findsOneWidget);
     });
 
+    // The precedence guarantee holds on both pipelines. The regex pipeline
+    // gets it by dispatching patterns and components through one combined
+    // match; the incremental pipeline cannot, because by the time it has a
+    // tree `**bold**` is already emphasis — so a match is lifted out before
+    // parsing and put back at render.
+    for (final incremental in [false, true]) {
+      final pipeline = incremental ? 'incremental' : 'regex';
+      testWidgets('$pipeline: a pattern beats the built-in reading', (
+        tester,
+      ) async {
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: GptMarkdown(
+                'a **bold** b',
+                incremental: incremental,
+                inlinePatterns: [chipPattern(RegExp(r'\*\*bold\*\*'))],
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        while (tester.takeException() != null) {}
+        expect(find.text('CHIP:**bold**'), findsOneWidget);
+      });
+
+      testWidgets('$pipeline: a pattern does not reach inside a fence', (
+        tester,
+      ) async {
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: GptMarkdown(
+                '```\n#general\n```',
+                incremental: incremental,
+                inlinePatterns: [chipPattern(RegExp(r'#general'))],
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        while (tester.takeException() != null) {}
+        expect(find.text('CHIP:#general'), findsNothing);
+      });
+    }
+
     testWidgets('wins over the built-in components', (tester) async {
       // `**bold**` would normally be claimed by BoldMd.
       await pumpWithPatterns(tester, 'a **bold** b', [

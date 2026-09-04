@@ -25,9 +25,21 @@ void main() {
     while (tester.takeException() != null) {}
     expect(find.textContaining('idle'), findsOneWidget);
 
+    // Every block entrance renders without throwing too. The second chip row
+    // is the block axis, so its options are found from the end.
+    for (final option in GptMarkdownBlockAnimation.values) {
+      await tester.tap(find.widgetWithText(ChoiceChip, option.name).last);
+      await tester.pumpAndSettle();
+      while (tester.takeException() != null) {}
+      expect(find.byType(GptMarkdown), findsOneWidget, reason: option.name);
+    }
+
     // Every animation option renders without throwing.
+    //
+    // `.first` because the toolbar carries two chip rows — characters and
+    // blocks — and both name an option `none`.
     for (final option in GptMarkdownAnimation.values) {
-      await tester.tap(find.widgetWithText(ChoiceChip, option.name));
+      await tester.tap(find.widgetWithText(ChoiceChip, option.name).first);
       await tester.pumpAndSettle();
       while (tester.takeException() != null) {}
       expect(find.byType(GptMarkdown), findsOneWidget, reason: option.name);

@@ -26,25 +26,30 @@ Future<void> _pump(
   bool isStreaming = true,
   double charactersPerSecond = 120,
 }) async {
-  await tester.pumpWidget(
-    MaterialApp(
-      home: Scaffold(
-        body: Align(
-          alignment: Alignment.topLeft,
-          child: SizedBox(
-            width: 600,
-            child: GptMarkdown(
-              text,
-              animation: animation,
-              blockAnimation: block,
-              isStreaming: isStreaming,
-              charactersPerSecond: charactersPerSecond,
-            ),
+  Widget app(String t) => MaterialApp(
+    home: Scaffold(
+      body: Align(
+        alignment: Alignment.topLeft,
+        child: SizedBox(
+          width: 600,
+          child: GptMarkdown(
+            t,
+            animation: animation,
+            blockAnimation: block,
+            isStreaming: isStreaming,
+            charactersPerSecond: charactersPerSecond,
           ),
         ),
       ),
     ),
   );
+  // Content present at mount has been seen and appears whole; only text that
+  // arrives afterwards animates. Streaming tests therefore mount empty and
+  // deliver the document as an update, the way a real stream does.
+  if (isStreaming) {
+    await tester.pumpWidget(app(''));
+  }
+  await tester.pumpWidget(app(text));
 }
 
 /// Whether [text] is on screen anywhere, including inside the widget spans
@@ -60,7 +65,7 @@ bool _shows(String text) =>
 /// and would step the count rather than ramp it.
 String _visible(WidgetTester tester) {
   final buffer = StringBuffer();
-  for (final element in find.byType(RichText).evaluate()) {
+  for (final element in find.byWidgetPredicate((w) => w is RichText).evaluate()) {
     buffer.write(
       (element.widget as RichText).text.toPlainText(includePlaceholders: false),
     );
@@ -84,7 +89,7 @@ Set<double> _alphas(WidgetTester tester) {
     span.children?.forEach(walk);
   }
 
-  for (final element in find.byType(RichText).evaluate()) {
+  for (final element in find.byWidgetPredicate((w) => w is RichText).evaluate()) {
     walk((element.widget as RichText).text);
   }
   return seen;
@@ -104,7 +109,7 @@ int _painted(WidgetTester tester) {
     span.children?.forEach(walk);
   }
 
-  for (final element in find.byType(RichText).evaluate()) {
+  for (final element in find.byWidgetPredicate((w) => w is RichText).evaluate()) {
     walk((element.widget as RichText).text);
   }
   return count;
@@ -506,6 +511,125 @@ void main() {
       final children = (out.single as TextSpan).children!;
       // One settled run plus at most the window, never ten.
       expect(children.length, lessThan(10));
+    });
+  });
+
+  // One span per character is not the same as one span. Flutter shapes each
+  // style run separately, so a paragraph split per character kerns and wraps
+  // differently from the same paragraph whole, and a construct that styles a
+  // continuous stretch — an inline code chip — is broken into pieces. Only
+  // what is genuinely mid-entrance may be split; everything else coalesces,
+  // and a reveal that has caught up leaves no trace at all.
+  group('span coalescing', () {
+    const source =
+        'Run `npm install` and then build the app to see how it '
+        'wraps across several lines of text here in this paragraph.';
+
+    final rich = find.byWidgetPredicate((w) => w is RichText);
+
+    Future<void> settle(
+      WidgetTester tester,
+      GptMarkdownAnimation animation, {
+      required bool streaming,
+    }) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SizedBox(
+              width: 260,
+              child: GptMarkdown(
+                source,
+                animation: animation,
+                isStreaming: streaming,
+                charactersPerSecond: 2000,
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      for (var i = 0; i < 30; i++) {
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+      while (tester.takeException() != null) {}
+    }
+
+    int spansOnScreen() {
+      var total = 0;
+      void walk(InlineSpan span) {
+        total += 1;
+        if (span is TextSpan) {
+          span.children?.forEach(walk);
+        }
+      }
+
+      for (final element in rich.evaluate()) {
+        walk((element.widget as RichText).text);
+      }
+      return total;
+    }
+
+    for (final streaming in [true, false]) {
+      final state = streaming ? 'still streaming' : 'finished';
+      testWidgets('a caught-up reveal collapses back ($state)', (tester) async {
+        tester.view.physicalSize = const Size(900, 900);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.reset);
+
+        // `typewriter` reveals but never styles a character, so it is the
+        // floor: an animating effect that has caught up must cost no more.
+        await settle(
+          tester,
+          GptMarkdownAnimation.typewriter,
+          streaming: streaming,
+        );
+        final floor = spansOnScreen();
+
+        for (final effect in [
+          GptMarkdownAnimation.fade,
+          GptMarkdownAnimation.blurIn,
+          GptMarkdownAnimation.wave,
+        ]) {
+          await settle(tester, effect, streaming: streaming);
+          expect(
+            spansOnScreen(),
+            floor,
+            reason: '$effect left the document split per character',
+          );
+        }
+      });
+    }
+
+    testWidgets('an inline code chip stays a single run', (tester) async {
+      tester.view.physicalSize = const Size(900, 900);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      for (final effect in GptMarkdownAnimation.values) {
+        await settle(tester, effect, streaming: true);
+        var runs = 0;
+        var characters = 0;
+        void walk(InlineSpan span, TextStyle? inherited) {
+          if (span is! TextSpan) {
+            return;
+          }
+          final style =
+              inherited == null ? span.style : inherited.merge(span.style);
+          final family = (style?.fontFamily ?? '').toLowerCase();
+          final text = span.text;
+          if (text != null && text.isNotEmpty && family.contains('mono')) {
+            runs += 1;
+            characters += text.length;
+          }
+          span.children?.forEach((child) => walk(child, style));
+        }
+
+        for (final element in rich.evaluate()) {
+          walk((element.widget as RichText).text, null);
+        }
+        expect(runs, 1, reason: '$effect broke the chip into pieces');
+        expect(characters, 'npm install'.length, reason: '$effect');
+      }
     });
   });
 }

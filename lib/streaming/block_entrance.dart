@@ -91,9 +91,12 @@ class _GptMarkdownBlockEntranceState extends State<GptMarkdownBlockEntrance>
   @override
   Widget build(BuildContext context) {
     final controller = _controller;
-    // Not animating, or already finished: hand back the child untouched so a
-    // settled document carries none of this in its tree.
-    if (controller == null || controller.isCompleted) {
+    // Not animating at all: the child passes through untouched. Once an
+    // entrance *has* played, though, the wrapper stays — swapping to the bare
+    // child would change the widget type at this slot and re-inflate the
+    // whole block subtree, losing any state inside a table or fence for the
+    // sake of removing a finished, paint-free passthrough.
+    if (controller == null) {
       return widget.child;
     }
     final faded = FadeTransition(opacity: _eased, child: widget.child);

@@ -55,6 +55,7 @@ class _IncrementalMdView extends StatefulWidget {
     this.revealFadeSeconds = 0.25,
     this.blockAnimationDuration = const Duration(milliseconds: 200),
     this.blockAnimationCurve = Curves.easeOut,
+    this.holdMathDollars = false,
   });
 
   final String text;
@@ -78,6 +79,10 @@ class _IncrementalMdView extends StatefulWidget {
   final Duration blockAnimationDuration;
   final Curve blockAnimationCurve;
 
+  /// Whether `$…$` in the source is maths, so the reveal holds an unpaired
+  /// `$` instead of showing it as prose it will not stay.
+  final bool holdMathDollars;
+
   @override
   State<_IncrementalMdView> createState() => _IncrementalMdViewState();
 }
@@ -90,7 +95,10 @@ class _IncrementalMdViewState extends State<_IncrementalMdView>
   /// to avoid.
   final Map<String, List<InlineSpan>> _spans = {};
 
-  /// Fully settled segments, built once and handed back by identity.
+  /// Fully settled segment paragraphs, built once and handed back by
+  /// identity. The entrance wrapper is applied outside the cache: it is keyed
+  /// by position, and two identical segments — two rules, say — share one
+  /// cached paragraph but must not share one keyed wrapper.
   final Map<String, Widget> _settled = {};
 
   late RevealEngine _engine = RevealEngine(
@@ -107,10 +115,40 @@ class _IncrementalMdViewState extends State<_IncrementalMdView>
   ///
   /// Deferred to a build because the target is a property of the *rendered*
   /// document, and nothing has been rendered yet when the state is created.
-  /// Set for a reply that was already complete when it mounted — history, a
-  /// re-opened conversation — which must appear whole rather than typing
-  /// itself out to a reader who has seen it before.
-  late bool _snapPending = !widget.isStreaming;
+  /// Always set at mount: whatever the document already holds when this state
+  /// is created — history, a re-opened conversation, a message a lazy list
+  /// disposed and re-inflated mid-scroll — has been seen, and must appear
+  /// whole rather than type itself out again. Only text that arrives *after*
+  /// mount animates. (Streaming flags are no help here: `isStreaming` is
+  /// commonly still true for a message scrolled back to during a live reply,
+  /// and replaying its whole reveal from nothing blanked it for half a
+  /// second.)
+  bool _snapPending = true;
+
+  /// Rendered characters already present when this state mounted.
+  ///
+  /// Segments that lie entirely below this were on screen before this element
+  /// existed, so they skip their block entrance. Without it, every trip
+  /// through a lazy list's cache boundary replayed every table and fence from
+  /// opacity zero.
+  int _mountOffset = 0;
+
+  /// Releases the inline hold when the stream goes quiet without closing.
+  ///
+  /// A host that forgets to flip `isStreaming` off after the last chunk would
+  /// otherwise leave the final characters behind an unclosed delimiter hidden
+  /// forever — the hold only releases when more text arrives, and no more
+  /// text is coming. Any new text disarms and re-arms it.
+  Timer? _holdRelease;
+  bool _holdExpired = false;
+
+  /// High-water mark of the inline hold, as an offset into the whole source.
+  ///
+  /// The hold can ask to move backwards: `[the docs]` closes and reveals as
+  /// prose, then `(` arrives and the whole construct is pending again.
+  /// Un-showing text a reader has already read is worse than restyling it
+  /// when the construct finally closes, so the hold only ever advances.
+  int _holdHighWater = 0;
 
   @override
   void didChangeDependencies() {
@@ -123,6 +161,11 @@ class _IncrementalMdViewState extends State<_IncrementalMdView>
   @override
   void didUpdateWidget(covariant _IncrementalMdView oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (widget.text != oldWidget.text) {
+      _holdRelease?.cancel();
+      _holdRelease = null;
+      _holdExpired = false;
+    }
     if (!oldWidget.config.isSame(widget.config)) {
       _dropCaches();
     }
@@ -140,11 +183,32 @@ class _IncrementalMdViewState extends State<_IncrementalMdView>
         widget.text.length >= oldWidget.text.length &&
         widget.text.startsWith(oldWidget.text);
     if (!extended) {
-      // A regenerate or a branch switch replaces the text rather than
-      // extending it; continuing from the old offset would be meaningless.
-      _engine.reset();
-      _startTicking();
-      return;
+      final limit = min(widget.text.length, oldWidget.text.length);
+      var shared = 0;
+      while (shared < limit &&
+          widget.text.codeUnitAt(shared) == oldWidget.text.codeUnitAt(shared)) {
+        shared += 1;
+      }
+      // An edit confined to the tail is a rewrite, not a new reply — the
+      // `$…$` → `\(…\)` conversion completing, most likely. The reveal
+      // carries on from where it is; resetting here blanked the whole message
+      // for a frame and re-typed it on every equation that closed. The
+      // tolerance matches the longest run the inline hold can be keeping
+      // hidden ([markupDelimiterHold]), because that hold is exactly what
+      // confines the rewrite to unseen text.
+      final tailEdit =
+          shared > 0 &&
+          oldWidget.text.length - shared <= markupDelimiterHold + 8;
+      if (!tailEdit) {
+        // A regenerate or a branch switch replaces the text rather than
+        // extending it; continuing from the old offset would be meaningless,
+        // and the new reply is genuinely unseen, so entrances play again.
+        _engine.reset();
+        _mountOffset = 0;
+        _holdHighWater = 0;
+        _startTicking();
+        return;
+      }
     }
 
     if (widget.isStreaming) {
@@ -160,6 +224,7 @@ class _IncrementalMdViewState extends State<_IncrementalMdView>
 
   @override
   void dispose() {
+    _holdRelease?.cancel();
     _ticker?.dispose();
     super.dispose();
   }
@@ -255,14 +320,132 @@ class _IncrementalMdViewState extends State<_IncrementalMdView>
     return placeholders > 0 && text <= placeholders;
   }
 
+  /// The segments to show, with the tail trimmed back to markup that has
+  /// finished arriving.
+  ///
+  /// A construct is literal text until its closing delimiter lands, so
+  /// revealing characters the moment they arrive means showing them in the
+  /// wrong form and restyling them a moment later — `` `npm install` `` turns
+  /// monospace after the reader has already read it, and the line reflows
+  /// around the chip. Holding the head behind the unterminated construct costs
+  /// a little latency and means every character is final when it appears.
+  ///
+  /// Only the last segment can be incomplete, and only while more is coming.
+  /// A fence or block maths is left alone: those are opaque to begin with, and
+  /// [splitStreamSegments] already keeps them whole.
+  List<String> _visibleSegments(String source, List<String> segments) {
+    if (!widget.isStreaming ||
+        !widget.revealing ||
+        _holdExpired ||
+        segments.isEmpty) {
+      return segments;
+    }
+    final last = segments.last;
+    final opener = last.trimLeft();
+    // Block maths is opaque: whole or nothing. An unterminated `\[` hands
+    // partial tex to the renderer, which paints the raw source on any cut
+    // landing mid-command — the equation flickered rendered <-> raw several
+    // times while it streamed. So a closed block shows and an open one waits.
+    if (opener.startsWith(r'\[')) {
+      if (last.contains(r'\]')) {
+        return segments;
+      }
+      _armHoldRelease();
+      return segments.sublist(0, segments.length - 1);
+    }
+    // An open fence streams as itself — its backticks are not inline
+    // delimiters, and its body must not be withheld.
+    if (_hasOpenFence(last)) {
+      return segments;
+    }
+    // Fences that have already closed are opaque to the inline scanner too:
+    // only the prose after the last one is scanned, or a closed fence's
+    // backticks would be read as inline code and the prose after it would
+    // stream unheld.
+    final scanFrom = _afterLastFence(last);
+    var safe =
+        scanFrom +
+        inlineSafeLength(
+          last.substring(scanFrom),
+          holdMathDollars: widget.holdMathDollars,
+        );
+    // The hold never moves backwards. Offsets are kept against the whole
+    // source so the mark survives the tail segment closing and a new one
+    // opening.
+    final tailStart = source.lastIndexOf(last);
+    if (tailStart >= 0) {
+      final floor = _holdHighWater - tailStart;
+      if (floor > safe) {
+        safe = min(floor, last.length);
+      }
+      _holdHighWater = tailStart + safe;
+    }
+    if (safe >= last.length) {
+      return segments;
+    }
+    _armHoldRelease();
+    final trimmed = last.substring(0, safe);
+    final out = segments.sublist(0, segments.length - 1);
+    if (trimmed.trim().isNotEmpty) {
+      out.add(trimmed);
+    }
+    return out;
+  }
+
+  /// Arms the quiet-stream release, once per stretch of unchanged text.
+  void _armHoldRelease() {
+    _holdRelease ??= Timer(const Duration(milliseconds: 1500), () {
+      if (mounted) {
+        setState(() => _holdExpired = true);
+      }
+    });
+  }
+
+  /// Whether [segment] contains a fence that has not closed yet.
+  ///
+  /// The same naive toggle [splitStreamSegments] uses, so the two always
+  /// agree about what is inside a fence.
+  static bool _hasOpenFence(String segment) {
+    var open = false;
+    for (final line in segment.split('\n')) {
+      if (line.trimLeft().startsWith('```')) {
+        open = !open;
+      }
+    }
+    return open;
+  }
+
+  /// Offset just past the last line that closes a fence in [segment], or 0.
+  static int _afterLastFence(String segment) {
+    var open = false;
+    var after = 0;
+    var offset = 0;
+    for (final line in segment.split('\n')) {
+      final lineEnd = offset + line.length;
+      if (line.trimLeft().startsWith('```')) {
+        open = !open;
+        if (!open) {
+          after = lineEnd < segment.length ? lineEnd + 1 : segment.length;
+        }
+      }
+      offset = lineEnd + 1;
+    }
+    return after;
+  }
+
   /// Wraps [child] in its one-shot entrance, when the segment has one.
   ///
   /// Keyed by position, not by text: the tail's source changes with every
   /// chunk, and a text key would remount the entrance and replay it on every
   /// keystroke. Position is append-only while a reply grows, so the key holds
   /// exactly as long as the block does.
-  Widget _entrance(int index, List<InlineSpan> spans, Widget child) {
+  ///
+  /// A segment already on screen when this state mounted plays nothing: its
+  /// reader has seen it, and a lazy list re-creating this state on scroll
+  /// must not replay what did not move.
+  Widget _entrance(int index, int start, List<InlineSpan> spans, Widget child) {
     if (widget.blockAnimation == GptMarkdownBlockAnimation.none ||
+        start < _mountOffset ||
         !_isAtomic(spans)) {
       return child;
     }
@@ -279,7 +462,15 @@ class _IncrementalMdViewState extends State<_IncrementalMdView>
   Widget build(BuildContext context) {
     // Already masked by `GptMarkdown`, so a directive is inert text here and
     // cannot be split across segments.
-    final segments = splitStreamSegments(widget.text);
+    // Masked before segmentation so a match can never be split across
+    // segments, and before parsing so it beats the built-in reading of the
+    // same text. Directives are already masked by `GptMarkdown`.
+    final patterns = widget.config.inlinePatterns;
+    final source =
+        patterns == null || patterns.isEmpty
+            ? widget.text
+            : maskInlinePatterns(widget.text, patterns);
+    final segments = _visibleSegments(source, splitStreamSegments(source));
     final gap = blockGap(context, widget.config);
 
     // Rendered-character extents, and the running total the ticker aims at.
@@ -299,9 +490,11 @@ class _IncrementalMdViewState extends State<_IncrementalMdView>
     _total = offset;
 
     // A reader who has already seen this reply should not watch it type
-    // itself out again.
+    // itself out again — and the blocks it contains have no entrance left to
+    // make.
     if (_snapPending) {
       _snapPending = false;
+      _mountOffset = _total;
       _engine.snapToEnd(_total);
     }
 
@@ -309,7 +502,13 @@ class _IncrementalMdViewState extends State<_IncrementalMdView>
     // document still renders, it just renders whole.
     final revealing =
         widget.revealing && !MediaQuery.disableAnimationsOf(context);
-    final fading = revealing && widget.effect.animatesCharacters;
+    // Once the last character has finished arriving there is nothing to style,
+    // and the document should be exactly what it would have been without an
+    // animation — one span per run, not one per character. Anything else keeps
+    // a finished reply shaping as hundreds of separate runs, which moves its
+    // wrapping and breaks a construct that styles a continuous stretch.
+    final settled = _engine.revealedFloor >= _total && !_engine.tailStillFading;
+    final fading = revealing && widget.effect.animatesCharacters && !settled;
     final revealed = revealing ? _engine.revealedFloor : _total;
     final settledBelow = fading ? revealed - RevealEngine.fadeWindow : revealed;
     final children = <Widget>[];
@@ -329,15 +528,14 @@ class _IncrementalMdViewState extends State<_IncrementalMdView>
 
       final Widget child;
       if (end <= settledBelow) {
-        // Settled: hand back the same widget instance, entrance wrapper and
-        // all, so Flutter skips the rebuild and the relayout entirely. The
-        // wrapper lives inside the cache rather than over it — a fresh
-        // wrapper each build is a different widget, which is the reuse this
-        // exists to protect.
-        child =
-            liveSettled[segment] =
-                _settled[segment] ??
-                _entrance(i, spans[i], _paragraph(spans[i]));
+        // Settled: the paragraph is cached and handed back by identity, so
+        // Flutter skips its rebuild and relayout. The keyed entrance wrapper
+        // is applied per position, outside the cache: its child is identical
+        // build to build, so the subtree under it is still skipped, and two
+        // identical segments no longer share one key.
+        final paragraph =
+            liveSettled[segment] = _settled[segment] ?? _paragraph(spans[i]);
+        child = _entrance(i, start, spans[i], paragraph);
       } else {
         // The colour is resolved here and not before the loop on purpose:
         // reading Theme and DefaultTextStyle registers an inherited
@@ -346,6 +544,7 @@ class _IncrementalMdViewState extends State<_IncrementalMdView>
         // every segment whenever an ancestor rebuilt.
         child = _entrance(
           i,
+          start,
           spans[i],
           _paragraph(
             applyReveal(

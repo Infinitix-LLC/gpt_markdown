@@ -55,37 +55,22 @@ String getSerializedOutput(WidgetTester tester) {
     return '';
   }
 
-  // Serialize the first (main) RichText - this has the structure
-  final mainOutput = serializeMarkdown(richTexts.first.text);
-
-  // Extract text content from ALL RichText widgets to capture nested content
-  final allTextContent = <String>[];
-  for (final rt in richTexts) {
-    final text = _extractAllText(rt.text);
-    if (text.isNotEmpty) {
-      allTextContent.add(text);
-    }
-  }
-
-  // Return the main serialized output (structure-aware)
-  // The test can also use allTextContent for text verification if needed
-  return mainOutput;
-}
-
-/// Extracts plain text from a span tree (for content verification)
-String _extractAllText(InlineSpan span) {
-  final buffer = StringBuffer();
-  if (span is TextSpan) {
-    if (span.text != null) {
-      buffer.write(span.text);
-    }
-    if (span.children != null) {
-      for (final child in span.children!) {
-        buffer.write(_extractAllText(child));
-      }
-    }
-  }
-  return buffer.toString();
+  // Every paragraph, in document order.
+  //
+  // The regex pipeline builds one paragraph holding the whole document, so the
+  // first `RichText` was the document. The incremental pipeline renders each
+  // top-level segment as its own paragraph, and a construct that needs a
+  // widget — a list item, a table cell, a heading — renders its content in a
+  // paragraph of its own beneath a placeholder. Serializing only the first
+  // reports the opening block; serializing only the outermost reports
+  // `UL_ITEM()` with nothing in it.
+  //
+  // Nesting does not double-count: a placeholder contributes no text to its
+  // parent's span tree, so each run of text is serialized exactly once.
+  return richTexts
+      .map((rt) => serializeMarkdown(rt.text))
+      .where((out) => out.isNotEmpty)
+      .join('\n');
 }
 
 /// Combined helper that pumps markdown and asserts on the serialized output.

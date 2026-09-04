@@ -66,6 +66,12 @@ class RevealEngine {
   /// index is fully revealed regardless of what the ring holds.
   int _settledBelow = 0;
 
+  /// The target of the last [tick] — how many characters the document
+  /// actually holds. The head can sit above it after a shrink, so "is the
+  /// tail still fading" is asked of the newest character that *exists*, not
+  /// of the head.
+  int _lastTarget = 0;
+
   /// Characters revealed so far, fractional between characters.
   double get revealed => _revealed;
 
@@ -78,7 +84,7 @@ class RevealEngine {
   /// it has finished arriving — stopping the ticker at the former freezes the
   /// final characters part-way through.
   bool get tailStillFading {
-    final last = _revealed.floor() - 1;
+    final last = math.min(_revealed.floor(), _lastTarget) - 1;
     if (last < _settledBelow || last < 0) {
       return false;
     }
@@ -108,6 +114,7 @@ class RevealEngine {
   void reset() {
     _revealed = 0;
     _settledBelow = 0;
+    _lastTarget = 0;
     _fastForwarding = false;
   }
 
@@ -115,6 +122,7 @@ class RevealEngine {
   void snapToEnd(int length) {
     _revealed = length.toDouble();
     _settledBelow = length;
+    _lastTarget = length;
     _fastForwarding = false;
   }
 
@@ -149,6 +157,22 @@ class RevealEngine {
   bool tick(double dt, int target, double charactersPerSecond) {
     _clock += dt;
 
+    _lastTarget = target;
+    // The document can shrink under a live reveal — a construct completing
+    // renders fewer characters than its literal text, or a rewrite shortens
+    // the source. What was on screen has been seen: the head holds its
+    // ground, and only the *vanished* range [target, head) is marked settled
+    // — characters below the target still exist, are still mid-fade, and
+    // keep fading. Vanished indices keep their own old stamps (nothing
+    // restamps below the head), so if the text grows back over them they
+    // read as finished rather than replaying, and the `floor - fadeWindow`
+    // early-out in [progressFor] covers any slot a newer character
+    // overwrites. A deliberate shrink goes through [reset] or [truncateTo]
+    // instead.
+    if (target < _revealed) {
+      _settledBelow = math.max(_settledBelow, target);
+    }
+
     var speed = charactersPerSecond;
     final backlog = target - _revealed;
     if (backlog > 0) {
@@ -157,7 +181,10 @@ class RevealEngine {
     }
 
     final before = _revealed.floor();
-    _revealed = math.min(_revealed + speed * dt, target.toDouble());
+    _revealed = math.min(
+      _revealed + speed * dt,
+      math.max(target.toDouble(), _revealed),
+    );
     final after = _revealed.floor();
 
     if (after > before) {

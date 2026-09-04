@@ -4,6 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:gpt_markdown/gpt_markdown.dart';
 
 import 'demo_theme.dart';
+import 'streaming_reply.dart';
+
+// The reply moved to its own file as it grew; re-exported so anything
+// importing it from here keeps working.
+export 'streaming_reply.dart';
 
 /// Streaming reveal demo — a simulated LLM reply.
 ///
@@ -13,59 +18,6 @@ import 'demo_theme.dart';
 /// flutter run -d chrome -t lib/streaming_demo.dart
 /// ```
 void main() => runApp(const StreamingApp());
-
-/// A reply with the mix of constructs a real answer contains, so the reveal
-/// can be judged against code blocks and tables rather than plain prose.
-const streamingReply = r'''# Reversing a linked list
-
-Here is the **iterative** approach. It runs in \( O(n) \) time and uses
-\( O(1) \) extra space, which is why it is usually preferred over recursion.
-
-## The idea
-
-Walk the list once, and as you go, point each node back at the one before it.
-You need three references at any moment:
-
-1. `prev` — the part already reversed
-2. `curr` — the node being moved
-3. `next` — saved before you overwrite `curr.next`
-
-## The code
-
-```dart
-ListNode? reverse(ListNode? head) {
-  ListNode? prev;
-  var curr = head;
-  while (curr != null) {
-    final next = curr.next;
-    curr.next = prev;
-    prev = curr;
-    curr = next;
-  }
-  return prev;
-}
-```
-
-## Complexity
-
-| Approach | Time | Space | Notes |
-|---|:---:|:---:|---|
-| Iterative | O(n) | O(1) | preferred |
-| Recursive | O(n) | O(n) | stack depth is the list length |
-
-## Things to watch
-
-- [x] the empty list returns null
-- [x] a single node returns itself
-- [ ] a cycle never terminates — detect it first
-
-> If the list might contain a cycle, run Floyd's algorithm before reversing.
-> See [the docs](https://example.com) or https://pub.dev for more.
-
----
-
-That is everything. Ask if you want the recursive version too.
-''';
 
 /// The demo app shell.
 class StreamingApp extends StatelessWidget {
@@ -194,6 +146,13 @@ class _StreamingPageState extends State<StreamingPage> {
                   padding: const EdgeInsets.all(20),
                   child: GptMarkdown(
                     received,
+                    // Pinned so the animation control changes only the
+                    // animation. Without it `GptMarkdownAnimation.none` falls
+                    // to the regex pipeline while every other value forces the
+                    // incremental one, and switching between them re-wraps the
+                    // text and adds a line after a fenced block — a parser
+                    // difference wearing an animation's clothes.
+                    incremental: true,
                     animation: _animation,
                     blockAnimation: _blockAnimation,
                     isStreaming: _running,
