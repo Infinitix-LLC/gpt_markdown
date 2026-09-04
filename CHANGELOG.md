@@ -2,6 +2,19 @@
 
 ### Added
 
+* Fenced code blocks now highlight recognized language tags with comprehensive
+  built-in light and dark palettes. Common aliases such as `js`, `ts`, `py`,
+  `python3`, `c++`, `sh`, and `yml` are supported; unknown or omitted languages
+  continue to render as plain code.
+* The default fenced-code panel now uses one seamless rounded surface with a
+  compact language pill and icon-only copy action—there is no divider competing
+  with chat-bubble layouts. The copy icon briefly changes to a check mark, and
+  existing copy labels remain accessible, localisable tooltips.
+  The action ignores taps while copying and for the full check-mark state—while
+  retaining its normal colour—so rapid taps cannot queue duplicate clipboard
+  writes or callbacks.
+  Unlabelled fences display `Code` in the language pill instead of leaving it
+  visually empty.
 * **A new parser.** `GptMarkdown(text, incremental: true)` renders through
   plusparse — a single-pass character scanner producing a real AST — instead of
   the recursive combined-regex pipeline. Same widgets, same theming, same

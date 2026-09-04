@@ -14,6 +14,7 @@ dependencies:
   flutter:
     sdk: flutter
   flutter_math_fork: ^0.7.4
+  highlight: ^0.7.0
 
 dev_dependencies:
   flutter_test:
@@ -32,4 +33,3 @@ topics:
   - selectable
   - chatgpt
   - gemini
-

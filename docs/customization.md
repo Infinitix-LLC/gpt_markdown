@@ -344,7 +344,7 @@ styleSheet: const GptMarkdownStyleSheet(
 ),
 ```
 
-**Localise the copy button** without replacing the block:
+**Localise the copy-button tooltip** without replacing the block:
 
 ```dart
 codeBlock: CodeBlockStyle(
