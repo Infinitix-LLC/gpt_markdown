@@ -315,40 +315,50 @@ class _CodeFieldState extends State<CodeField> {
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     if (showLabel)
-                      DecoratedBox(
-                        decoration: BoxDecoration(
-                          color:
-                              Theme.of(
-                                context,
-                              ).colorScheme.surfaceContainerHighest,
-                          borderRadius: BorderRadius.circular(7),
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 9,
-                            vertical: 5,
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                Icons.code_rounded,
-                                size: 13,
-                                color:
-                                    Theme.of(
-                                      context,
-                                    ).colorScheme.onSurfaceVariant,
+                      Flexible(
+                        child: Align(
+                          alignment: AlignmentDirectional.centerStart,
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              color:
+                                  Theme.of(
+                                    context,
+                                  ).colorScheme.surfaceContainerHighest,
+                              borderRadius: BorderRadius.circular(7),
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 9,
+                                vertical: 5,
                               ),
-                              const SizedBox(width: 5),
-                              Text(
-                                displayName,
-                                style: widget.style.languageStyle,
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.terminal_rounded,
+                                    size: 13,
+                                    color:
+                                        Theme.of(
+                                          context,
+                                        ).colorScheme.onSurfaceVariant,
+                                  ),
+                                  const SizedBox(width: 5),
+                                  Flexible(
+                                    child: Text(
+                                      displayName,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: widget.style.languageStyle,
+                                    ),
+                                  ),
+                                ],
                               ),
-                            ],
+                            ),
                           ),
                         ),
                       ),
-                    const Spacer(),
+                    if (showLabel && showCopy) const SizedBox(width: 8),
+                    if (!showLabel) const Spacer(),
                     if (showCopy)
                       IgnorePointer(
                         ignoring: _copying || _copied,
