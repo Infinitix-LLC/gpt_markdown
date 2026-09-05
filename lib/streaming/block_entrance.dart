@@ -108,13 +108,23 @@ class _GptMarkdownBlockEntranceState extends State<GptMarkdownBlockEntrance>
         return faded;
 
       case GptMarkdownBlockAnimation.growIn:
-        return SizeTransition(
-          sizeFactor: _eased,
-          // topStart, not the default centre: the transition's own Align
-          // spans the full width, and centring would inset every block
-          // narrower than the column.
-          alignment: AlignmentDirectional.topStart,
-          child: faded,
+        // Hand-rolled rather than SizeTransition: its Align has no
+        // widthFactor, which under bounded constraints is "expand", and since
+        // this wrapper now stays after the entrance it would force the whole
+        // document to the offered width forever. widthFactor 1.0 keeps the
+        // block shrink-wrapped while the height grows in.
+        return ClipRect(
+          child: AnimatedBuilder(
+            animation: _eased,
+            builder:
+                (context, child) => Align(
+                  alignment: AlignmentDirectional.topStart,
+                  widthFactor: 1.0,
+                  heightFactor: _eased.value.clamp(0.0, 1.0),
+                  child: child,
+                ),
+            child: faded,
+          ),
         );
 
       case GptMarkdownBlockAnimation.slideUp:
