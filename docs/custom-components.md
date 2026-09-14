@@ -11,7 +11,65 @@ For syntax the package does not know about.
 
 ---
 
-## The two lists
+## Modern block components
+
+Use `blockComponents` to add new blocks without switching off the modern
+parser and segment caches. Inline extensions continue to use `InlinePattern`
+or `InlineDirective`.
+
+```dart
+// Keep this list in a field, rather than recreate it on every streamed chunk.
+final blocks = <MarkdownBlockComponent>[
+  MarkdownBlockComponent(
+    syntax: const FencedBlockSyntax(
+      type: 'warning',
+      opening: ':::warning',
+      closing: ':::',
+    ),
+    builder: (context, node, config) => Container(
+      padding: const EdgeInsets.all(12),
+      color: Colors.amber.shade100,
+      child: Text(node.body, style: config.style),
+    ),
+  ),
+];
+
+GptMarkdown(source, blockComponents: blocks);
+```
+
+This recognizes `:::warning` on its own line through a closing `:::` line.
+Blank lines stay inside the block, and `node.closed` is false while incomplete.
+The body is opaque to inline patterns, directives, and dollar-math rewriting;
+same-fence nesting is not interpreted. Custom blocks are
+atomic for character reveal and can use the existing `blockAnimation` entrance.
+
+For another grammar, subclass `MarkdownBlockSyntax`, supply a nonempty `type`
+and `prefix`, and return `MarkdownBlockMatch(node: MdCustomBlock(...),
+endLine: exclusiveEnd)`. Return null to decline a match. The parser must be pure,
+handle incomplete input, consume at least one line, and inspect only its consumed
+region. An unfinished container should consume all remaining lines. Store any
+extra immutable parsed data in `node.data`; the builder consumes it without
+reparsing. Registrations must have unique types. Rules are tried in registration
+order before built-ins at block boundaries, gated by their opening prefixes.
+Built-in code-fence bodies remain opaque.
+
+The registry is intentionally for local block syntax. Cross-document rules such
+as a later definition changing earlier blocks need a different invalidation
+strategy and should not be implemented by secretly inspecting other segments.
+Treat registered lists as immutable and replace component entries when behavior
+changes. See [rendering architecture](rendering-architecture.md) for caching and
+long-document rendering.
+
+## Legacy components (fully supported)
+
+The APIs below are unchanged. Passing either `components` or `inlineComponents`
+selects the legacy parser; if `blockComponents` is also supplied, the legacy
+lists take precedence and modern block extensions are ignored. Explicit
+`incremental: false` likewise selects legacy rendering when span reveal is off.
+Modern block extensions supplement built-ins; legacy component lists replace
+built-ins as described below.
+
+## The two legacy lists
 
 ```dart
 GptMarkdown(

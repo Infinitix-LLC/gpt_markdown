@@ -357,6 +357,7 @@ Widget codeBlockWidget(
       CodeField(
         name: name,
         codes: code,
+        highlightCode: closed || (style.highlightWhileStreaming ?? true),
         style: style,
         onCopy: config.onCodeCopy,
       );
@@ -581,4 +582,31 @@ Widget latexWidget(
     maths = Padding(padding: padding, child: maths);
   }
   return maths;
+}
+
+/// Owns the horizontal scroll state of one mounted table.
+class _TableViewport extends StatefulWidget {
+  const _TableViewport({required this.child});
+  final Widget child;
+  @override
+  State<_TableViewport> createState() => _TableViewportState();
+}
+
+class _TableViewportState extends State<_TableViewport> {
+  final _controller = ScrollController();
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => Scrollbar(
+    controller: _controller,
+    child: SingleChildScrollView(
+      controller: _controller,
+      scrollDirection: Axis.horizontal,
+      child: widget.child,
+    ),
+  );
 }

@@ -1,3 +1,33 @@
+## Unreleased
+
+### Added
+
+* Modern `blockComponents` registration: pure-Dart block syntax, immutable
+  payloads, prefix dispatch, and independent Flutter renderers. Includes
+  `FencedBlockSyntax` for custom containers. Legacy component APIs retain
+  precedence and remain supported.
+* `SliverGptMarkdown` for viewport-lazy rendering of long documents.
+* `PlusparseRenderer.renderDocument` for rendering retained ASTs.
+* Optional fixed table widths and deferred code highlighting via
+  `TableStyle.columnWidth` and `CodeBlockStyle.highlightWhileStreaming`.
+
+### Compatibility
+
+* Existing widget and legacy-component integrations keep their APIs. Direct AST
+  consumers with exhaustive `MdNode` switches must handle `MdCustomBlock`.
+
+### Performance and fixes
+
+* Build nested quote and heading content once, including during reveal.
+* Retain hidden spans; cache segmentation, ASTs, character counts, and offsets
+  outside animation ticks. Notify only the active reveal window.
+* Re-split only the previous tail on append; preserve parsing across theme changes.
+* Share parsed syntax but keep rendered instances separate for repeated blocks.
+* Preserve table scroll controllers across updates and dispose them on unmount.
+* Keep default table sizing compatible with layout-dependent custom cells;
+  fixed column policies bypass that measurement work.
+* Cache anchored regex dispatch in the legacy parser too.
+
 ## 1.3.0
 
 ### Added

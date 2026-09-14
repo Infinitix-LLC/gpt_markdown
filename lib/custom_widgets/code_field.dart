@@ -23,7 +23,11 @@ class CodeField extends StatefulWidget {
     required this.codes,
     this.style = const CodeBlockStyle(),
     this.onCopy,
+    this.highlightCode = true,
   });
+
+  /// Whether to apply syntax highlighting to the current code.
+  final bool highlightCode;
 
   /// The language written after the opening fence.
   final String name;
@@ -186,7 +190,8 @@ class _CodeFieldState extends State<CodeField> {
   };
 
   List<InlineSpan> _highlightedCode(Brightness brightness) {
-    final requested = widget.name.trim().toLowerCase();
+    final requested =
+        widget.highlightCode ? widget.name.trim().toLowerCase() : '';
     if (_cachedCode == widget.codes &&
         _cachedLanguage == requested &&
         _cachedBrightness == brightness) {

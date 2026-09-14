@@ -86,6 +86,9 @@ class CustomTableColumnWidth extends TableColumnWidth {
   double maxIntrinsicWidth(Iterable<RenderBox> cells, double containerWidth) {
     double width = 50;
     for (var each in cells) {
+      // Custom cells may contain LayoutBuilder, which cannot answer intrinsic
+      // queries. Keep the compatible default; TableStyle.columnWidth lets
+      // applications opt into fixed widths without this measurement pass.
       each.layout(const BoxConstraints(), parentUsesSize: true);
       width = max(width, each.size.width);
     }

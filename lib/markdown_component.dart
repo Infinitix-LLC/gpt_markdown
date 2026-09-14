@@ -98,6 +98,27 @@ abstract class MarkdownComponent {
   /// palette), so the set of distinct patterns is not bounded by the package.
   /// The cache is dropped wholesale rather than grown without limit.
   static const int _combinedRegexCacheLimit = 64;
+  static final Map<(String, bool, bool, bool), RegExp> _anchoredRegexCache = {};
+
+  static RegExp _anchoredRegexFor(RegExp expression) {
+    final key = (
+      expression.pattern,
+      expression.isMultiLine,
+      expression.isDotAll,
+      expression.isCaseSensitive,
+    );
+    final cached = _anchoredRegexCache[key];
+    if (cached != null) return cached;
+    if (_anchoredRegexCache.length >= _combinedRegexCacheLimit) {
+      _anchoredRegexCache.clear();
+    }
+    return _anchoredRegexCache[key] = RegExp(
+      '^(?:${expression.pattern})\$',
+      multiLine: expression.isMultiLine,
+      dotAll: expression.isDotAll,
+      caseSensitive: expression.isCaseSensitive,
+    );
+  }
 
   static RegExp _combinedRegexFor(List<MarkdownComponent> components) {
     final pattern = components.map<String>((e) => e.exp.pattern).join("|");
@@ -164,16 +185,7 @@ abstract class MarkdownComponent {
       onMatch: (p0) {
         String element = p0[0] ?? "";
         for (var each in components) {
-          var p = each.exp.pattern;
-          // The group matters: `^a|b$` anchors only the first and last
-          // alternative, so any component whose pattern has a top-level `|`
-          // would claim matches it does not actually cover.
-          var exp = RegExp(
-            '^(?:$p)\$',
-            multiLine: each.exp.isMultiLine,
-            dotAll: each.exp.isDotAll,
-            caseSensitive: each.exp.isCaseSensitive,
-          );
+          final exp = _anchoredRegexFor(each.exp);
           if (exp.hasMatch(element)) {
             spans.add(each.span(context, element, config));
             return "";
@@ -1198,101 +1210,94 @@ class TableMd extends BlockMd {
       );
     }
 
-    final controller = ScrollController();
-    return Scrollbar(
-      controller: controller,
-      child: SingleChildScrollView(
-        controller: controller,
-        scrollDirection: Axis.horizontal,
-        child: Table(
-          textDirection: config.textDirection,
-          defaultColumnWidth: CustomTableColumnWidth(),
-          defaultVerticalAlignment: TableCellVerticalAlignment.middle,
-          border: TableBorder.all(
-            width: tableStyle.borderWidth ?? 1,
-            color:
-                tableStyle.borderColor ??
-                Theme.of(context).colorScheme.onSurface,
-            borderRadius:
-                tableRadius == null
-                    ? BorderRadius.zero
-                    : BorderRadius.all(tableRadius),
-          ),
-          children:
-              value
-                  .asMap()
-                  .entries
-                  .where((entry) {
-                    // Skip the separator row (second row) from rendering
-                    if (hasHeader && entry.key == 1) {
-                      return false;
-                    }
-                    return true;
-                  })
-                  .map<TableRow>(
-                    (entry) => TableRow(
-                      decoration:
-                          (hasHeader && entry.key == 0)
-                              ? BoxDecoration(
-                                color:
-                                    tableStyle.headerBackground ??
-                                    Theme.of(
-                                      context,
-                                    ).colorScheme.surfaceContainerHighest,
-                              )
-                              : null,
-                      children: List.generate(maxCol, (index) {
-                        var e = entry.value;
-                        String data = e[index] ?? "";
-                        if (RegExp(r"^:?--+:?$").hasMatch(data.trim()) ||
-                            data.trim().isEmpty) {
-                          return const SizedBox();
-                        }
-
-                        // Apply alignment based on column alignment
-                        Widget content = Padding(
-                          padding:
-                              tableStyle.cellPadding ??
-                              const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 4,
-                              ),
-                          child: MdWidget(
-                            context,
-                            (e[index] ?? "").trim(),
-                            false,
-                            config: config.copyWith(
-                              scope: MarkdownScope.tableCell,
-                            ),
-                          ),
-                        );
-
-                        // Wrap with alignment widget
-                        switch (columnAlignments[index]) {
-                          case TextAlign.center:
-                            content = Center(child: content);
-                            break;
-                          case TextAlign.right:
-                            content = Align(
-                              alignment: Alignment.centerRight,
-                              child: content,
-                            );
-                            break;
-                          case TextAlign.left:
-                          default:
-                            content = Align(
-                              alignment: Alignment.centerLeft,
-                              child: content,
-                            );
-                            break;
-                        }
-
-                        return content;
-                      }),
-                    ),
-                  )
-                  .toList(),
+    return _TableViewport(
+      child: Table(
+        textDirection: config.textDirection,
+        defaultColumnWidth: tableStyle.columnWidth ?? CustomTableColumnWidth(),
+        defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+        border: TableBorder.all(
+          width: tableStyle.borderWidth ?? 1,
+          color:
+              tableStyle.borderColor ?? Theme.of(context).colorScheme.onSurface,
+          borderRadius:
+              tableRadius == null
+                  ? BorderRadius.zero
+                  : BorderRadius.all(tableRadius),
         ),
+        children:
+            value
+                .asMap()
+                .entries
+                .where((entry) {
+                  // Skip the separator row (second row) from rendering
+                  if (hasHeader && entry.key == 1) {
+                    return false;
+                  }
+                  return true;
+                })
+                .map<TableRow>(
+                  (entry) => TableRow(
+                    decoration:
+                        (hasHeader && entry.key == 0)
+                            ? BoxDecoration(
+                              color:
+                                  tableStyle.headerBackground ??
+                                  Theme.of(
+                                    context,
+                                  ).colorScheme.surfaceContainerHighest,
+                            )
+                            : null,
+                    children: List.generate(maxCol, (index) {
+                      var e = entry.value;
+                      String data = e[index] ?? "";
+                      if (RegExp(r"^:?--+:?$").hasMatch(data.trim()) ||
+                          data.trim().isEmpty) {
+                        return const SizedBox();
+                      }
+
+                      // Apply alignment based on column alignment
+                      Widget content = Padding(
+                        padding:
+                            tableStyle.cellPadding ??
+                            const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                        child: MdWidget(
+                          context,
+                          (e[index] ?? "").trim(),
+                          false,
+                          config: config.copyWith(
+                            scope: MarkdownScope.tableCell,
+                          ),
+                        ),
+                      );
+
+                      // Wrap with alignment widget
+                      switch (columnAlignments[index]) {
+                        case TextAlign.center:
+                          content = Center(child: content);
+                          break;
+                        case TextAlign.right:
+                          content = Align(
+                            alignment: Alignment.centerRight,
+                            child: content,
+                          );
+                          break;
+                        case TextAlign.left:
+                        default:
+                          content = Align(
+                            alignment: Alignment.centerLeft,
+                            child: content,
+                          );
+                          break;
+                      }
+
+                      return content;
+                    }),
+                  ),
+                )
+                .toList(),
       ),
     );
   }

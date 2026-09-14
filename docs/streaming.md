@@ -60,8 +60,14 @@ message
 The source is split into top-level segments at safe blank lines. A blank line
 inside fenced code or block maths is not a split point. When text is appended,
 unchanged segments keep their parsed spans and settled widget instances; only
-the tail is parsed, built and laid out again. The cost of an append therefore
-stays roughly flat instead of rising with the length of the answer.
+changed segments need parsing and rendering. Source normalization, prefix
+comparison, and segment reconciliation still depend on document size; a long
+unfinished block still grows in cost. During animation, segmentation and counts
+are reused and only the active reveal window receives tick notifications.
+
+For document-scale scrolling, use `SliverGptMarkdown` to create segment widgets
+on demand. See [rendering architecture](rendering-architecture.md) for extension
+registration, lazy rendering, and optional large-table/code policies.
 
 This optimization is useful even without animation:
 

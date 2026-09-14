@@ -202,7 +202,12 @@ GptMarkdown(
 
 Known names are matched longest-first, and patterns do not claim link labels by default. This prevents ambiguous tokens such as `#2959` from becoming channels, and keeps a pattern out of a label that is itself a widget — a placeholder nested inside a placeholder does not paint on iOS. The default link is a text span, so only a link built as a widget (the deprecated `linkBuilder`, or `details.asWidgetSpan(...)`) is affected.
 
-For deeper integrations, use `MarkdownComponent`, `InlineMd`, and `BlockMd`. Components can declare support for `content`, `linkLabel`, `tableCell`, and `heading` scopes.
+For new block syntax on the cached pipeline, use `MarkdownBlockComponent` and
+`MarkdownBlockSyntax` (or the ready-made `FencedBlockSyntax`). For long documents,
+use `SliverGptMarkdown` inside a `CustomScrollView`. See the
+[rendering architecture guide](docs/rendering-architecture.md).
+
+Legacy integrations remain supported through `MarkdownComponent`, `InlineMd`, and `BlockMd`. Components can declare support for `content`, `linkLabel`, `tableCell`, and `heading` scopes.
 
 ## 🔗 Autolinks
 

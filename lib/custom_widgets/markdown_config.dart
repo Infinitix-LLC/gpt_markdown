@@ -513,6 +513,7 @@ class GptMarkdownConfig {
     this.components,
     this.inlineComponents,
     this.inlinePatterns,
+    this.blockComponents,
     this.tableBuilder,
     this.inlineCodeStyle,
     this.styleSheet,
@@ -529,6 +530,27 @@ class GptMarkdownConfig {
     this.autolinkSchemes = const <String>{},
     this.scope = MarkdownScope.content,
   });
+
+  static final _registries = Expando<MarkdownBlockRegistry>();
+  static final _renderers = Expando<Map<String, MarkdownBlockBuilder>>();
+
+  /// Components must be treated as immutable after registration.
+  MarkdownBlockRegistry? get blockRegistry {
+    final components = blockComponents;
+    if (components == null || components.isEmpty) return null;
+    return _registries[components] ??= MarkdownBlockRegistry(
+      components.map((component) => component.syntax),
+    );
+  }
+
+  Map<String, MarkdownBlockBuilder> get blockRenderers {
+    final components = blockComponents;
+    if (components == null || components.isEmpty) return const {};
+    return _renderers[components] ??= {
+      for (final component in components)
+        component.syntax.type: component.builder,
+    };
+  }
 
   /// The direction of the text.
   final TextDirection textDirection;
@@ -636,6 +658,9 @@ class GptMarkdownConfig {
   /// App-specific inline syntaxes. See [GptMarkdown.inlinePatterns].
   final List<InlinePattern>? inlinePatterns;
 
+  /// Modern block syntax extensions. Legacy component lists take precedence.
+  final List<MarkdownBlockComponent>? blockComponents;
+
   /// Overrides the themed inline `code` style for this widget only.
   final InlineCodeStyle? inlineCodeStyle;
 
@@ -719,6 +744,7 @@ class GptMarkdownConfig {
     final List<MarkdownComponent>? components,
     final List<MarkdownComponent>? inlineComponents,
     final List<InlinePattern>? inlinePatterns,
+    final List<MarkdownBlockComponent>? blockComponents,
     final TableBuilder? tableBuilder,
     final InlineCodeStyle? inlineCodeStyle,
     final GptMarkdownStyleSheet? styleSheet,
@@ -765,6 +791,7 @@ class GptMarkdownConfig {
       components: components ?? this.components,
       inlineComponents: inlineComponents ?? this.inlineComponents,
       inlinePatterns: inlinePatterns ?? this.inlinePatterns,
+      blockComponents: blockComponents ?? this.blockComponents,
       tableBuilder: tableBuilder ?? this.tableBuilder,
       inlineCodeStyle: inlineCodeStyle ?? this.inlineCodeStyle,
       styleSheet: styleSheet ?? this.styleSheet,
@@ -874,6 +901,7 @@ class GptMarkdownConfig {
         // so this falls back to element identity. A consumer that rebuilds the
         // list inline pays a regeneration per rebuild — the safe direction.
         listEquals(inlinePatterns, other.inlinePatterns) &&
+        listEquals(blockComponents, other.blockComponents) &&
         // Same reasoning: `MarkdownComponent` has no value equality, so these
         // compare by element identity. Swapping a component list at runtime
         // used to be ignored outright.

@@ -22,8 +22,9 @@ double blockGap(BuildContext context, GptMarkdownConfig config) {
 /// each renders as its own `Text.rich` in a column, cached by its source text.
 /// Appending to the reply only rebuilds the tail segment — earlier segments
 /// keep their exact widget instances, so Flutter skips rebuilding and
-/// re-laying-out everything above (LaTeX, tables, lists…) and per-chunk cost
-/// stays constant instead of growing with answer length.
+/// re-laying-out everything above (LaTeX, tables, lists…). Source updates still
+/// compare prefixes and reconcile segment metadata; growing blocks still
+/// require parsing. Animation ticks notify only the active reveal window.
 ///
 /// ## The reveal
 ///
@@ -89,17 +90,29 @@ class _IncrementalMdView extends StatefulWidget {
 
 class _IncrementalMdViewState extends State<_IncrementalMdView>
     with SingleTickerProviderStateMixin {
-  /// Rendered spans per segment source. Spans, not widgets: the reveal
+  /// Rendered spans per position and source. Parsed ASTs can be shared by
+  /// identical source, but widget spans may own GlobalKeys or controllers
+  /// and must never be shared between simultaneous document positions.
+  /// Spans, not widgets: the reveal
   /// restyles them every frame, and re-rendering to get them back would put
   /// the parser in the frame loop, which is the cost this whole design exists
   /// to avoid.
-  final Map<String, List<InlineSpan>> _spans = {};
+  final Map<(int, String), List<InlineSpan>> _spans = {};
+  final Map<String, MdDocument> _documents = {};
+  final Map<(int, String), int> _characterCounts = {};
+  List<String> _segments = const [];
+  List<List<InlineSpan>> _rendered = const [];
+  List<int> _starts = const [];
+  List<int> _counts = const [];
+  bool _prepared = false;
+  final _segmentCache = MarkdownSegmentCache();
+  final List<ValueNotifier<int>> _segmentFrames = [];
+  bool _motionEnabled = true;
 
   /// Fully settled segment paragraphs, built once and handed back by
   /// identity. The entrance wrapper is applied outside the cache: it is keyed
-  /// by position, and two identical segments — two rules, say — share one
-  /// cached paragraph but must not share one keyed wrapper.
-  final Map<String, Widget> _settled = {};
+  /// by position. Repeated source has independent widget/controller ownership.
+  final Map<(int, String), Widget> _settled = {};
 
   late RevealEngine _engine = RevealEngine(
     fadeSeconds: widget.revealFadeSeconds,
@@ -161,10 +174,20 @@ class _IncrementalMdViewState extends State<_IncrementalMdView>
   @override
   void didUpdateWidget(covariant _IncrementalMdView oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.text != oldWidget.text) {
+    if (widget.text != oldWidget.text ||
+        widget.isStreaming != oldWidget.isStreaming ||
+        widget.revealing != oldWidget.revealing ||
+        widget.holdMathDollars != oldWidget.holdMathDollars) {
+      _prepared = false;
       _holdRelease?.cancel();
       _holdRelease = null;
       _holdExpired = false;
+    }
+    if (!listEquals(
+      oldWidget.config.blockComponents,
+      widget.config.blockComponents,
+    )) {
+      _documents.clear();
     }
     if (!oldWidget.config.isSame(widget.config)) {
       _dropCaches();
@@ -226,11 +249,16 @@ class _IncrementalMdViewState extends State<_IncrementalMdView>
   void dispose() {
     _holdRelease?.cancel();
     _ticker?.dispose();
+    for (final frame in _segmentFrames) {
+      frame.dispose();
+    }
     super.dispose();
   }
 
   void _dropCaches() {
+    _prepared = false;
     _spans.clear();
+    _characterCounts.clear();
     _settled.clear();
   }
 
@@ -255,12 +283,38 @@ class _IncrementalMdViewState extends State<_IncrementalMdView>
     if (dt <= 0) {
       return;
     }
-    setState(() {
-      final keepGoing = _engine.tick(dt, _total, widget.charactersPerSecond);
-      if (!keepGoing) {
-        _stopTicking();
+    final before = _engine.revealedFloor;
+    final visibleBefore = _visibleCount(before);
+    final keepGoing = _engine.tick(dt, _total, widget.charactersPerSecond);
+    final after = _engine.revealedFloor;
+    final visibleAfter = _visibleCount(after);
+    if (!keepGoing) _stopTicking();
+    if (!_motionEnabled) return;
+    // Only crossing a segment boundary changes the document's child list.
+    // Inside a segment, notify just the active reveal/fade window.
+    if (visibleBefore != visibleAfter) setState(() {});
+    final from = max(
+      0,
+      _visibleCount(max(0, before - RevealEngine.fadeWindow)) - 1,
+    );
+    for (var i = from; i < visibleAfter && i < _segmentFrames.length; i++) {
+      _segmentFrames[i].value++;
+    }
+  }
+
+  /// Number of segments whose start precedes the revealed offset.
+  int _visibleCount(int revealed) {
+    var low = 0;
+    var high = _starts.length;
+    while (low < high) {
+      final mid = (low + high) >> 1;
+      if (_starts[mid] < revealed) {
+        low = mid + 1;
+      } else {
+        high = mid;
       }
-    });
+    }
+    return low;
   }
 
   /// The config blocks are rendered under.
@@ -275,10 +329,13 @@ class _IncrementalMdViewState extends State<_IncrementalMdView>
           ? widget.config.copyWith(blocksRenderDirectly: true)
           : widget.config;
 
-  List<InlineSpan> _spansFor(BuildContext context, String segment) {
-    return _spans[segment] ??= PlusparseRenderer.render(
+  List<InlineSpan> _spansFor(BuildContext context, String segment, int index) {
+    return _spans[(index, segment)] ??= PlusparseRenderer.renderDocument(
       context,
-      segment,
+      _documents[segment] ??= Plusparse.parse(
+        segment,
+        blockRegistry: widget.config.blockRegistry,
+      ),
       _renderConfig,
     );
   }
@@ -457,6 +514,11 @@ class _IncrementalMdViewState extends State<_IncrementalMdView>
     }
     final last = segments.last;
     final opener = last.trimLeft();
+    // Custom blocks own their incomplete-input policy; inline delimiters in
+    // their opaque bodies must never be held by the Markdown reveal.
+    if (widget.config.blockRegistry?.match(last.split('\n'), 0) != null) {
+      return segments;
+    }
     // Block maths is opaque: whole or nothing. An unterminated `\[` hands
     // partial tex to the renderer, which paints the raw source on any cut
     // landing mid-command — the equation flickered rendered <-> raw several
@@ -511,7 +573,10 @@ class _IncrementalMdViewState extends State<_IncrementalMdView>
   void _armHoldRelease() {
     _holdRelease ??= Timer(const Duration(milliseconds: 1500), () {
       if (mounted) {
-        setState(() => _holdExpired = true);
+        setState(() {
+          _holdExpired = true;
+          _prepared = false;
+        });
       }
     });
   }
@@ -573,36 +638,91 @@ class _IncrementalMdViewState extends State<_IncrementalMdView>
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    // Already masked by `GptMarkdown`, so a directive is inert text here and
-    // cannot be split across segments.
-    // Masked before segmentation so a match can never be split across
-    // segments, and before parsing so it beats the built-in reading of the
-    // same text. Directives are already masked by `GptMarkdown`.
+  // Source work belongs to source updates, never to the animation clock.
+  // Retain hidden spans too: visibility is not a cache invalidation signal.
+  void _prepareDocument(BuildContext context) {
+    if (_prepared) return;
     final patterns = widget.config.inlinePatterns;
     final source =
         patterns == null || patterns.isEmpty
             ? widget.text
-            : maskInlinePatterns(widget.text, patterns);
-    final segments = _visibleSegments(source, splitStreamSegments(source));
-    final gap = blockGap(context, widget.config);
-
-    // Rendered-character extents, and the running total the ticker aims at.
-    // Every segment is measured even when it will not be shown: the target has
-    // to be the whole visible document, or the reveal stops at whatever
-    // happens to be on screen. Measuring is a parse, which is cached — it is
-    // not a layout.
-    final spans = <List<InlineSpan>>[];
-    final starts = <int>[];
+            : maskInlinePatterns(
+              widget.text,
+              patterns,
+              blockRegistry: widget.config.blockRegistry,
+            );
+    _segments = _visibleSegments(
+      source,
+      _segmentCache.update(source, blockRegistry: widget.config.blockRegistry),
+    );
+    final live = _segments.toSet();
+    _documents.removeWhere((key, _) => !live.contains(key));
+    bool removed((int, String) key) =>
+        key.$1 >= _segments.length || _segments[key.$1] != key.$2;
+    _spans.removeWhere((key, _) => removed(key));
+    _characterCounts.removeWhere((key, _) => removed(key));
+    _settled.removeWhere((key, _) => removed(key));
+    _rendered = [];
+    _starts = [];
+    _counts = [];
     var offset = 0;
-    for (final segment in segments) {
-      final rendered = _spansFor(context, segment);
-      spans.add(rendered);
-      starts.add(offset);
-      offset += countRevealCharacters(rendered);
+    for (var index = 0; index < _segments.length; index++) {
+      final spans = _spansFor(context, _segments[index], index);
+      final count =
+          _characterCounts[(index, _segments[index])] ??= countRevealCharacters(
+            spans,
+          );
+      _rendered.add(spans);
+      _starts.add(offset);
+      _counts.add(count);
+      offset += count;
     }
     _total = offset;
+    final frameCount = widget.revealing ? _segments.length : 0;
+    while (_segmentFrames.length < frameCount) {
+      _segmentFrames.add(ValueNotifier<int>(0));
+    }
+    while (_segmentFrames.length > frameCount) {
+      _segmentFrames.removeLast().dispose();
+    }
+    _prepared = true;
+  }
+
+  Widget _buildSegment(BuildContext context, int index) {
+    final segment = _segments[index];
+    final spans = _rendered[index];
+    final start = _starts[index];
+    final end = start + _counts[index];
+    final revealing = widget.revealing && _motionEnabled;
+    final settled = _engine.revealedFloor >= _total && !_engine.tailStillFading;
+    final fading = revealing && widget.effect.animatesCharacters && !settled;
+    final revealed = revealing ? _engine.revealedFloor : _total;
+    final settledBelow = fading ? revealed - RevealEngine.fadeWindow : revealed;
+    final Widget paragraph;
+    if (end <= settledBelow) {
+      paragraph = _settled[(index, segment)] ??= _paragraph(spans);
+    } else {
+      paragraph = _paragraph(
+        applyReveal(
+          spans: spans,
+          revealed: revealed - start,
+          effect: widget.effect,
+          progressFor: (offset) => _engine.progressFor(start + offset),
+          defaultColor:
+              widget.config.style?.color ??
+              DefaultTextStyle.of(context).style.color ??
+              Theme.of(context).colorScheme.onSurface,
+          window: RevealEngine.fadeWindow,
+        ),
+      );
+    }
+    return _entrance(index, start, spans, paragraph);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    _prepareDocument(context);
+    final gap = blockGap(context, widget.config);
 
     // A reader who has already seen this reply should not watch it type
     // itself out again — and the blocks it contains have no entrance left to
@@ -622,73 +742,21 @@ class _IncrementalMdViewState extends State<_IncrementalMdView>
     // animation — one span per run, not one per character. Anything else keeps
     // a finished reply shaping as hundreds of separate runs, which moves its
     // wrapping and breaks a construct that styles a continuous stretch.
-    final settled = _engine.revealedFloor >= _total && !_engine.tailStillFading;
-    final fading = revealing && widget.effect.animatesCharacters && !settled;
+    _motionEnabled = revealing;
     final revealed = revealing ? _engine.revealedFloor : _total;
-    final settledBelow = fading ? revealed - RevealEngine.fadeWindow : revealed;
     final children = <Widget>[];
-    final liveSpans = <String, List<InlineSpan>>{};
-    final liveSettled = <String, Widget>{};
-
-    for (var i = 0; i < segments.length; i++) {
-      final segment = segments[i];
-      final start = starts[i];
-      final end = start + countRevealCharacters(spans[i]);
-
-      // The document ends where the reveal is.
-      if (start >= revealed) {
-        break;
-      }
-      liveSpans[segment] = spans[i];
-
-      final Widget child;
-      if (end <= settledBelow) {
-        // Settled: the paragraph is cached and handed back by identity, so
-        // Flutter skips its rebuild and relayout. The keyed entrance wrapper
-        // is applied per position, outside the cache: its child is identical
-        // build to build, so the subtree under it is still skipped, and two
-        // identical segments no longer share one key.
-        final paragraph =
-            liveSettled[segment] = _settled[segment] ?? _paragraph(spans[i]);
-        child = _entrance(i, start, spans[i], paragraph);
-      } else {
-        // The colour is resolved here and not before the loop on purpose:
-        // reading Theme and DefaultTextStyle registers an inherited
-        // dependency, and a dependency that fires drops the segment caches. A
-        // document that is not revealing must not pay that — it would rebuild
-        // every segment whenever an ancestor rebuilt.
-        child = _entrance(
-          i,
-          start,
-          spans[i],
-          _paragraph(
-            applyReveal(
-              spans: spans[i],
-              revealed: revealed - start,
-              effect: widget.effect,
-              progressFor: (index) => _engine.progressFor(start + index),
-              defaultColor:
-                  widget.config.style?.color ??
-                  DefaultTextStyle.of(context).style.color ??
-                  Theme.of(context).colorScheme.onSurface,
-              window: RevealEngine.fadeWindow,
-            ),
-          ),
-        );
-      }
-
-      if (i > 0) {
-        children.add(SizedBox(height: gap));
-      }
-      children.add(child);
+    final count = _visibleCount(revealed);
+    for (var i = 0; i < count; i++) {
+      if (i > 0) children.add(SizedBox(height: gap));
+      children.add(
+        revealing
+            ? ValueListenableBuilder<int>(
+              valueListenable: _segmentFrames[i],
+              builder: (context, _, _) => _buildSegment(context, i),
+            )
+            : _buildSegment(context, i),
+      );
     }
-
-    _spans
-      ..clear()
-      ..addAll(liveSpans);
-    _settled
-      ..clear()
-      ..addAll(liveSettled);
 
     // The ticker is armed here rather than in `initState` because the target
     // is a property of the *rendered* document: how many characters a source
@@ -698,9 +766,11 @@ class _IncrementalMdViewState extends State<_IncrementalMdView>
     //
     // Starting a ticker during build is safe: it schedules a callback, it does
     // not call back synchronously.
-    if (widget.revealing &&
+    if (revealing &&
         (_engine.revealedFloor < _total || _engine.tailStillFading)) {
       _startTicking();
+    } else if (!revealing) {
+      _stopTicking();
     }
 
     return Column(

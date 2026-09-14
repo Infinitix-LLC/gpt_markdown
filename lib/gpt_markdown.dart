@@ -76,6 +76,7 @@ export 'plusparse/plusparse.dart';
 
 part 'theme.dart';
 part 'inline_pattern.dart';
+part 'block_component.dart';
 part 'autolink.dart';
 part 'markdown_component.dart';
 part 'shared_render.dart';
@@ -83,6 +84,7 @@ part 'md_widget.dart';
 part 'inline_directive.dart';
 part 'plusparse/renderer.dart';
 part 'plusparse/incremental.dart';
+part 'plusparse/sliver.dart';
 
 /// This widget create a full markdown widget as a column view.
 class GptMarkdown extends StatelessWidget {
@@ -117,6 +119,7 @@ class GptMarkdown extends StatelessWidget {
     this.components,
     this.inlineComponents,
     this.inlinePatterns,
+    this.blockComponents,
     this.inlineCodeStyle,
     this.styleSheet,
     this.blockQuoteBuilder,
@@ -325,6 +328,9 @@ class GptMarkdown extends StatelessWidget {
   /// surrounding baseline.
   final List<InlinePattern>? inlinePatterns;
 
+  /// Modern block syntax extensions. Legacy component lists take precedence.
+  final List<MarkdownBlockComponent>? blockComponents;
+
   /// How inline `code` is drawn, for this widget only.
   ///
   /// Null fields fall back to the ambient [ColorScheme], so a single field is
@@ -530,36 +536,6 @@ class GptMarkdown extends StatelessWidget {
 
   /// Builds the document for [source], with no reveal involved.
   Widget _buildDocument(BuildContext context, String source) {
-    String tex = source.replaceAll('\r\n', '\n').replaceAll('\r', '\n').trim();
-    // Before anything reads the text as Markdown, and before either pipeline
-    // sees it, so a payload cannot be parsed, split or truncated.
-    final directives = inlineDirectives;
-    if (directives != null && directives.isNotEmpty) {
-      tex = maskInlineDirectives(tex, directives);
-    }
-    var dollarsAreMath = false;
-    if (useDollarSignsForLatex) {
-      tex = tex.replaceAllMapped(
-        RegExp(r"(?<!\\)\$\$(.*?)(?<!\\)\$\$", dotAll: true),
-        (match) => "\\[${match[1] ?? ""}\\]",
-      );
-      if (!tex.contains(r"\(")) {
-        // Same condition as the rewrite below: once a native `\(` appears,
-        // a single `$` can never become maths, so it must not be held either.
-        dollarsAreMath = true;
-        tex = tex.replaceAllMapped(
-          RegExp(r"(?<!\\)\$(.*?)(?<!\\)\$"),
-          (match) => "\\(${match[1] ?? ""}\\)",
-        );
-        tex = tex.splitMapJoin(
-          RegExp(r"\[.*?\]|\(.*?\)"),
-          onNonMatch: (p0) {
-            return p0.replaceAll("\\\$", "\$");
-          },
-        );
-      }
-    }
-    // tex = _removeExtraLinesInsideBlockLatex(tex);
     final config = GptMarkdownConfig(
       textDirection: textDirection,
       style: style,
@@ -588,6 +564,7 @@ class GptMarkdown extends StatelessWidget {
       components: components,
       inlineComponents: inlineComponents,
       inlinePatterns: inlinePatterns,
+      blockComponents: blockComponents,
       inlineCodeStyle: inlineCodeStyle,
       styleSheet: styleSheet,
       blockQuoteBuilder: blockQuoteBuilder,
@@ -603,6 +580,20 @@ class GptMarkdown extends StatelessWidget {
       autolinkSchemes: autolinkSchemes,
       tableBuilder: tableBuilder,
     );
+
+    final normalized = _normalizeMarkdownSource(
+      source,
+      useDollarSignsForLatex,
+      inlineDirectives,
+      blockRegistry:
+          components == null &&
+                  inlineComponents == null &&
+                  (incremental || _usesSpanReveal)
+              ? config.blockRegistry
+              : null,
+    );
+    final tex = normalized.text;
+    final dollarsAreMath = normalized.dollarsAreMath;
 
     // An explicit `textScaler` has to reach the inline widgets too: they
     // compensate for the paragraph's scaling of their box, and to do that they
@@ -648,4 +639,57 @@ class GptMarkdown extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Shared source preparation for compact and sliver rendering.
+({String text, bool dollarsAreMath}) _normalizeMarkdownSource(
+  String source,
+  bool useDollarSignsForLatex,
+  List<InlineDirective>? inlineDirectives, {
+  MarkdownBlockRegistry? blockRegistry,
+}) {
+  String tex =
+      (source.contains('\r')
+              ? source.replaceAll('\r\n', '\n').replaceAll('\r', '\n')
+              : source)
+          .trim();
+  // Before anything reads the text as Markdown, and before either pipeline
+  // sees it, so a payload cannot be parsed, split or truncated.
+  final directives = inlineDirectives;
+  if (directives != null && directives.isNotEmpty) {
+    tex = maskInlineDirectives(tex, directives, blockRegistry: blockRegistry);
+  }
+  var dollarsAreMath = false;
+  if (useDollarSignsForLatex) {
+    String rewrite(String value) {
+      dollarsAreMath = false;
+      value = value.replaceAllMapped(
+        RegExp(r"(?<!\\)\$\$(.*?)(?<!\\)\$\$", dotAll: true),
+        (match) => "\\[${match[1] ?? ""}\\]",
+      );
+      if (!value.contains(r"\(")) {
+        // Same condition as the rewrite below: once a native `\(` appears,
+        // a single `$` can never become maths, so it must not be held either.
+        dollarsAreMath = true;
+        value = value.replaceAllMapped(
+          RegExp(r"(?<!\\)\$(.*?)(?<!\\)\$"),
+          (match) => "\\(${match[1] ?? ""}\\)",
+        );
+        value = value.splitMapJoin(
+          RegExp(r"\[.*?\]|\(.*?\)"),
+          onNonMatch: (p0) {
+            return p0.replaceAll("\\\$", "\$");
+          },
+        );
+      }
+      return value;
+    }
+
+    tex =
+        blockRegistry == null
+            ? rewrite(tex)
+            : _outsideCustomBlocks(tex, blockRegistry, rewrite);
+  }
+  // tex = _removeExtraLinesInsideBlockLatex(tex);
+  return (text: tex, dollarsAreMath: dollarsAreMath);
 }

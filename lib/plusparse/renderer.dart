@@ -23,13 +23,38 @@ class PlusparseRenderer {
     // a no-op because a masked directive no longer holds its own delimiters.
     final directives = config.inlineDirectives;
     if (directives != null && directives.isNotEmpty) {
-      text = maskInlineDirectives(text, directives);
+      text = maskInlineDirectives(
+        text,
+        directives,
+        blockRegistry: config.blockRegistry,
+      );
     }
     final patterns = config.inlinePatterns;
     if (patterns != null && patterns.isNotEmpty) {
-      text = maskInlinePatterns(text, patterns);
+      text = maskInlinePatterns(
+        text,
+        patterns,
+        blockRegistry: config.blockRegistry,
+      );
     }
-    final doc = Plusparse.parse(text);
+    return renderDocument(
+      context,
+      Plusparse.parse(text, blockRegistry: config.blockRegistry),
+      config,
+      inlineOnly: inlineOnly,
+    );
+  }
+
+  /// Renders an existing syntax tree without parsing again. The document is
+  /// independent of Flutter themes; callers may retain it across style changes.
+  /// This does not mask inline extensions or normalize source; use [render]
+  /// when starting from raw Markdown with syntax-override patterns/directives.
+  static List<InlineSpan> renderDocument(
+    BuildContext context,
+    MdDocument doc,
+    GptMarkdownConfig config, {
+    bool inlineOnly = false,
+  }) {
     if (inlineOnly &&
         doc.children.length == 1 &&
         doc.children.first is MdParagraph) {
@@ -113,23 +138,36 @@ class PlusparseRenderer {
     GptMarkdownConfig config,
   ) {
     switch (node) {
+      case MdCustomBlock():
+        final builder = config.blockRenderers[node.type];
+        return [
+          _blockSpan(
+            builder == null
+                ? Text(node.body, style: config.style)
+                : builder(context, node, config),
+          ),
+        ];
       case MdParagraph(:final children):
         return _inlineSpans(context, children, config);
       case MdHeading(:final level, :final children):
-        return [
-          _revealableBlock(
-            content: _inlineSpans(context, children, config),
-            wrap:
-                (transform) => headingWidget(
-                  context,
-                  config,
-                  level: level,
-                  buildChildren:
-                      (conf) =>
-                          transform(_inlineSpans(context, children, conf)),
+        List<InlineSpan>? content;
+        InlineSpan heading(SpanTransform transform) {
+          final child = headingWidget(
+            context,
+            config,
+            level: level,
+            buildChildren:
+                (conf) => transform(
+                  content ??= _inlineSpans(context, children, conf),
                 ),
-          ),
-        ];
+          );
+          return RevealableSpan(
+            content: content!,
+            rebuild: heading,
+            children: [_blockSpan(child)],
+          );
+        }
+        return [heading(_identity)];
       case MdHorizontalRule():
         return [_blockSpan(hrWidget(context, config))];
       case MdCodeBlock(:final language, :final code, :final closed):
@@ -149,26 +187,29 @@ class PlusparseRenderer {
           _blockSpan(latexWidget(context, config, tex: tex, inline: false)),
         ];
       case MdBlockQuote(:final children):
-        // The quote owns its own span wrapper (the bar and the inset are part
-        // of it), so the revealable span is built around that rather than
-        // through `_revealableBlock`.
-        InlineSpan quote(SpanTransform transform) => RevealableSpan(
-          content: _blockSpans(context, children, config),
-          rebuild: quote,
-          children: [
-            blockQuoteSpan(
-              context,
-              config,
-              buildContent:
-                  (conf) => conf.getRich(
-                    TextSpan(
-                      children: transform(_blockSpans(context, children, conf)),
+        // Build once under the actual quote style. Counting an independently
+        // rendered copy used to double the work at EVERY nesting level.
+        List<InlineSpan>? content;
+        InlineSpan quote(SpanTransform transform) {
+          final child = blockQuoteSpan(
+            context,
+            config,
+            buildContent:
+                (conf) => conf.getRich(
+                  TextSpan(
+                    children: transform(
+                      content ??= _blockSpans(context, children, conf),
                     ),
-                    ambientScaling: conf.blocksRenderDirectly,
                   ),
-            ),
-          ],
-        );
+                  ambientScaling: conf.blocksRenderDirectly,
+                ),
+          );
+          return RevealableSpan(
+            content: content!,
+            rebuild: quote,
+            children: [child],
+          );
+        }
         return [quote(_identity)];
       case MdCheckbox(:final checked, :final children):
         // Built once and used for both the reveal's character count and the
@@ -340,77 +381,72 @@ class PlusparseRenderer {
             const TableStyle())
         .resolve(Theme.of(context).colorScheme);
     final tableRadius = tableStyle.borderRadius;
-    final controller = ScrollController();
     return _blockSpan(
-      Scrollbar(
-        controller: controller,
-        child: SingleChildScrollView(
-          controller: controller,
-          scrollDirection: Axis.horizontal,
-          child: Table(
-            textDirection: config.textDirection,
-            defaultColumnWidth: CustomTableColumnWidth(),
-            defaultVerticalAlignment: TableCellVerticalAlignment.middle,
-            border: TableBorder.all(
-              width: tableStyle.borderWidth ?? 1,
-              color:
-                  tableStyle.borderColor ??
-                  Theme.of(context).colorScheme.onSurface,
-              borderRadius:
-                  tableRadius == null
-                      ? BorderRadius.zero
-                      : BorderRadius.all(tableRadius),
-            ),
-            children: List<TableRow>.generate(rows.length, (index) {
-              final row = rows[index];
-              return TableRow(
-                decoration:
-                    index == 0
-                        ? BoxDecoration(
-                          color:
-                              tableStyle.headerBackground ??
-                              Theme.of(
-                                context,
-                              ).colorScheme.surfaceContainerHighest,
-                        )
-                        : null,
-                children: List<Widget>.generate(maxCol, (col) {
-                  final cell = col < row.cells.length ? row.cells[col] : null;
-                  if (cell == null || cell.content.isEmpty) {
-                    return const SizedBox();
-                  }
-                  Widget content = Padding(
-                    padding:
-                        tableStyle.cellPadding ??
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    child: config.getRich(
-                      TextSpan(
-                        children: _inlineSpans(context, cell.content, config),
-                      ),
-                    ),
-                  );
-                  switch (columnAlignments[col]) {
-                    case TextAlign.center:
-                      content = Center(child: content);
-                      break;
-                    case TextAlign.right:
-                      content = Align(
-                        alignment: Alignment.centerRight,
-                        child: content,
-                      );
-                      break;
-                    default:
-                      content = Align(
-                        alignment: Alignment.centerLeft,
-                        child: content,
-                      );
-                      break;
-                  }
-                  return content;
-                }),
-              );
-            }),
+      _TableViewport(
+        child: Table(
+          textDirection: config.textDirection,
+          defaultColumnWidth:
+              tableStyle.columnWidth ?? CustomTableColumnWidth(),
+          defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+          border: TableBorder.all(
+            width: tableStyle.borderWidth ?? 1,
+            color:
+                tableStyle.borderColor ??
+                Theme.of(context).colorScheme.onSurface,
+            borderRadius:
+                tableRadius == null
+                    ? BorderRadius.zero
+                    : BorderRadius.all(tableRadius),
           ),
+          children: List<TableRow>.generate(rows.length, (index) {
+            final row = rows[index];
+            return TableRow(
+              decoration:
+                  index == 0
+                      ? BoxDecoration(
+                        color:
+                            tableStyle.headerBackground ??
+                            Theme.of(
+                              context,
+                            ).colorScheme.surfaceContainerHighest,
+                      )
+                      : null,
+              children: List<Widget>.generate(maxCol, (col) {
+                final cell = col < row.cells.length ? row.cells[col] : null;
+                if (cell == null || cell.content.isEmpty) {
+                  return const SizedBox();
+                }
+                Widget content = Padding(
+                  padding:
+                      tableStyle.cellPadding ??
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  child: config.getRich(
+                    TextSpan(
+                      children: _inlineSpans(context, cell.content, config),
+                    ),
+                  ),
+                );
+                switch (columnAlignments[col]) {
+                  case TextAlign.center:
+                    content = Center(child: content);
+                    break;
+                  case TextAlign.right:
+                    content = Align(
+                      alignment: Alignment.centerRight,
+                      child: content,
+                    );
+                    break;
+                  default:
+                    content = Align(
+                      alignment: Alignment.centerLeft,
+                      child: content,
+                    );
+                    break;
+                }
+                return content;
+              }),
+            );
+          }),
         ),
       ),
     );
