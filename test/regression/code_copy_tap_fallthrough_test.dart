@@ -57,7 +57,7 @@ void main() {
 
     // Still inside the check-mark window: the button is "disabled", but the
     // pointer must be absorbed, not passed through.
-    await tester.tapAt(tester.getCenter(find.byType(IconButton)));
+    await tester.tapAt(tester.getCenter(find.byIcon(Icons.check_rounded)));
     await tester.pump();
 
     expect(
@@ -90,9 +90,11 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byType(IconButton));
+    // The control is a plain icon until first use, so tap the glyph rather
+    // than the IconButton it becomes.
+    await tester.tap(find.byIcon(Icons.content_copy_rounded));
     await tester.pump();
-    await tester.tap(find.byType(IconButton));
+    await tester.tap(find.byIcon(Icons.check_rounded));
     await tester.pump();
 
     expect(copied.length, 1);

@@ -251,10 +251,21 @@ class BlockWidgetSpan extends WidgetSpan {
   /// Wraps a block-level [child].
   const BlockWidgetSpan({
     required super.child,
+    this.bare,
     super.alignment,
     super.baseline,
     super.style,
   });
+
+  /// [child] without the flex wrapper a placeholder needs, for a caller that
+  /// is about to render this block as a sibling widget instead of inside a
+  /// paragraph.
+  ///
+  /// Inside a paragraph the wrapper earns its keep. Rendered directly it is
+  /// two render objects per block that resolve to the same constraints the
+  /// column already hands down, and paint walks every one of them on every
+  /// frame — which a streaming reply pays for on every chunk.
+  final Widget? bare;
 }
 
 /// A citation tag such as `[1]`, honouring
@@ -381,6 +392,7 @@ Widget unorderedListItem(
       DefaultTextStyle.of(context).style.fontSize ??
       kDefaultFontSize;
   return UnorderedListView(
+    scalesItsOwnText: config.blocksRenderDirectly,
     bulletColor:
         style.bulletColor ??
         config.style?.color ??
@@ -412,6 +424,7 @@ Widget orderedListItem(
     fontWeight: FontWeight.w100,
   );
   return OrderedListView(
+    scalesItsOwnText: config.blocksRenderDirectly,
     no: "$no.",
     textDirection: config.textDirection,
     style: marker == null ? base : base.merge(marker),

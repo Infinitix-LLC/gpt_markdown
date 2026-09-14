@@ -18,6 +18,41 @@
 
 ### Performance and fixes
 
+* The code block's copy button is a real button from the first build again. It
+  had been drawn as a plain icon until a pointer reached it, which saved ~340 us
+  per code block and broke three things: a keyboard user could never reach it
+  (the cheap form was not in the tab order, and neither way of promoting it can
+  be triggered by a key), the first stylus contact was swallowed and copied
+  nothing, and press-and-hold meant copy before promotion and tooltip-with-no-copy
+  after. On touch the first tap also had no ripple. It now also carries an
+  accessible name and button role, which `InkWell` and `Tooltip` do not supply
+  on their own.
+* Fix the code block's copy button changing size and position when hovered.
+  The cheap resting form and the interactive one both asked for 32 by 32, but
+  `IconButton` folds `visualDensity` into the constraints and reserves its own
+  tap target, so it resolved to a 24-pixel circle in a 40-pixel box: the button
+  shrank by 8 pixels and slid 4 the moment a pointer reached it. Both forms are
+  now drawn by the same code.
+* Drop the alignment box around left-aligned table cells, which is the default
+  and most columns. Content-sized columns lay every cell out twice, so the
+  redundant box cost two layout passes per cell; a table drops from 397 render
+  objects to 274 for 123 cells. The column's own alignment now wins over an
+  ambient `textAlign`, which the box used to mask.
+* Stop measuring a column once it has already reached the width it will be
+  clamped to.
+* Draw list markers in a single hanging-indent render object instead of a row
+  of padded boxes, and skip the flex wrapper for blocks rendered directly as
+  siblings. A bullet item drops from ~10 render objects to ~3 with every
+  measured size unchanged, which roughly halves what a list costs to paint on
+  every frame of a streaming reply.
+* A reply that is still arriving now exposes itself to assistive technology as
+  a single live block of text rather than re-publishing every block's
+  accessibility node on every frame. The whole text received so far remains
+  readable as that block's label, and the full structure — headings, links,
+  list items as separate nodes — returns as soon as the text goes quiet. This
+  roughly halves the per-chunk cost of a long streaming reply when an assistive
+  service is attached. The behaviour keys on text actually arriving, never on
+  `isStreaming`, which defaults to `true`.
 * Build nested quote and heading content once, including during reveal.
 * Retain hidden spans; cache segmentation, ASTs, character counts, and offsets
   outside animation ticks. Notify only the active reveal window.

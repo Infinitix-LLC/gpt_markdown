@@ -87,6 +87,7 @@ class PlusparseRenderer {
       mainAxisSize: MainAxisSize.min,
       children: [Flexible(child: child)],
     ),
+    bare: child,
     alignment: PlaceholderAlignment.baseline,
     baseline: TextBaseline.alphabetic,
   );
@@ -352,6 +353,21 @@ class PlusparseRenderer {
       };
     });
 
+    // A left-aligned cell no longer sits in an alignment box, so its text
+    // fills the column and its own `textAlign` is what places it. An unset
+    // `textAlign` already starts at the leading edge, which is exactly what
+    // that column wants — so only a caller who set one needs overriding, and
+    // the common table allocates nothing here. A centred or right-aligned
+    // column keeps its box and shrink-wraps inside it, where `textAlign` has
+    // nothing left to do.
+    final ambientAlign = config.textAlign;
+    final leftConfig =
+        (ambientAlign == null ||
+                ambientAlign == TextAlign.left ||
+                ambientAlign == TextAlign.start)
+            ? config
+            : config.copyWith(textAlign: TextAlign.left);
+
     final tableBuilder = config.tableBuilder;
     if (tableBuilder != null) {
       final customTable = List<CustomTableRow>.generate(rows.length, (index) {
@@ -386,7 +402,7 @@ class PlusparseRenderer {
         child: Table(
           textDirection: config.textDirection,
           defaultColumnWidth:
-              tableStyle.columnWidth ?? CustomTableColumnWidth(),
+              tableStyle.columnWidth ?? const CustomTableColumnWidth(),
           defaultVerticalAlignment: TableCellVerticalAlignment.middle,
           border: TableBorder.all(
             width: tableStyle.borderWidth ?? 1,
@@ -416,16 +432,26 @@ class PlusparseRenderer {
                 if (cell == null || cell.content.isEmpty) {
                   return const SizedBox();
                 }
+                final cellConfig =
+                    columnAlignments[col] == TextAlign.left
+                        ? leftConfig
+                        : config;
                 Widget content = Padding(
                   padding:
                       tableStyle.cellPadding ??
                       const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  child: config.getRich(
+                  child: cellConfig.getRich(
                     TextSpan(
-                      children: _inlineSpans(context, cell.content, config),
+                      children: _inlineSpans(context, cell.content, cellConfig),
                     ),
                   ),
                 );
+                // Only a column that pulls its content off the leading edge
+                // needs an alignment box. A left-aligned cell is already
+                // flush left. The box is not free: content-sized columns lay
+                // every cell out twice, once to measure and once for real, so
+                // a redundant wrapper is two extra layouts per cell on top of
+                // one more render object for paint to walk.
                 switch (columnAlignments[col]) {
                   case TextAlign.center:
                     content = Center(child: content);
@@ -437,10 +463,6 @@ class PlusparseRenderer {
                     );
                     break;
                   default:
-                    content = Align(
-                      alignment: Alignment.centerLeft,
-                      child: content,
-                    );
                     break;
                 }
                 return content;

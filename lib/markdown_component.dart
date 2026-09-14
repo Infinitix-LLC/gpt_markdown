@@ -1213,7 +1213,8 @@ class TableMd extends BlockMd {
     return _TableViewport(
       child: Table(
         textDirection: config.textDirection,
-        defaultColumnWidth: tableStyle.columnWidth ?? CustomTableColumnWidth(),
+        defaultColumnWidth:
+            tableStyle.columnWidth ?? const CustomTableColumnWidth(),
         defaultVerticalAlignment: TableCellVerticalAlignment.middle,
         border: TableBorder.all(
           width: tableStyle.borderWidth ?? 1,
@@ -1273,7 +1274,13 @@ class TableMd extends BlockMd {
                         ),
                       );
 
-                      // Wrap with alignment widget
+                      // Only a column that pulls its content off the leading
+                      // edge needs an alignment box. A left-aligned cell is
+                      // already flush left: the table hands it a tight width
+                      // and the text starts at the leading edge on its own.
+                      // The box is not free — content-sized columns lay every
+                      // cell out twice, once to measure and once for real, so
+                      // a redundant wrapper is two extra layouts per cell.
                       switch (columnAlignments[index]) {
                         case TextAlign.center:
                           content = Center(child: content);
@@ -1286,10 +1293,6 @@ class TableMd extends BlockMd {
                           break;
                         case TextAlign.left:
                         default:
-                          content = Align(
-                            alignment: Alignment.centerLeft,
-                            child: content,
-                          );
                           break;
                       }
 

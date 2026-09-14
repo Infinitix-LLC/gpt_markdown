@@ -114,6 +114,23 @@ class _IncrementalMdViewState extends State<_IncrementalMdView>
   /// by position. Repeated source has independent widget/controller ownership.
   final Map<(int, String), Widget> _settled = {};
 
+  /// How long after the last chunk a reply still counts as arriving.
+  ///
+  /// Long enough to bridge the gap between tokens, short enough that a reader
+  /// who stops to look does not wait for the document to become navigable.
+  static const Duration _arrivalQuiet = Duration(milliseconds: 250);
+
+  /// Whether text is still arriving by append — the streaming signature,
+  /// observed rather than declared. `isStreaming` cannot answer this: it
+  /// defaults to true and hosts routinely leave it on for a finished reply.
+  bool _arriving = false;
+  Timer? _arrivalTimer;
+
+  /// Plain text per segment, for the one semantics label a streaming reply
+  /// exposes. Only ever populated while an assistive service is reading, so a
+  /// reader who is not using one pays nothing for it.
+  final Map<(int, String), String> _plainText = {};
+
   late RevealEngine _engine = RevealEngine(
     fadeSeconds: widget.revealFadeSeconds,
   );
@@ -174,6 +191,10 @@ class _IncrementalMdViewState extends State<_IncrementalMdView>
   @override
   void didUpdateWidget(covariant _IncrementalMdView oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (widget.text != oldWidget.text &&
+        widget.text.startsWith(oldWidget.text)) {
+      _noteArrival();
+    }
     if (widget.text != oldWidget.text ||
         widget.isStreaming != oldWidget.isStreaming ||
         widget.revealing != oldWidget.revealing ||
@@ -247,6 +268,7 @@ class _IncrementalMdViewState extends State<_IncrementalMdView>
 
   @override
   void dispose() {
+    _arrivalTimer?.cancel();
     _holdRelease?.cancel();
     _ticker?.dispose();
     for (final frame in _segmentFrames) {
@@ -255,11 +277,24 @@ class _IncrementalMdViewState extends State<_IncrementalMdView>
     super.dispose();
   }
 
+  /// Marks the reply as arriving, and schedules the moment it stops being so.
+  void _noteArrival() {
+    _arriving = true;
+    _arrivalTimer?.cancel();
+    _arrivalTimer = Timer(_arrivalQuiet, () {
+      if (!mounted) {
+        return;
+      }
+      setState(() => _arriving = false);
+    });
+  }
+
   void _dropCaches() {
     _prepared = false;
     _spans.clear();
     _characterCounts.clear();
     _settled.clear();
+    _plainText.clear();
   }
 
   void _startTicking() {
@@ -385,12 +420,14 @@ class _IncrementalMdViewState extends State<_IncrementalMdView>
     if (span is! BlockWidgetSpan) {
       return null;
     }
-    // Returned whole, including the `Row`/`Flexible` `_blockSpan` wraps a
-    // block in. That wrapper is what makes a block size to its content rather
-    // than claim the full width — stripping it made a bullet list four times
-    // wider. It is also nearly free: the cost this unwrapping removes is the
-    // placeholder and the nested `Text.rich`, not a flex with one child.
-    return span.child;
+    // The flex wrapper `_blockSpan` adds is for the placeholder case: a
+    // paragraph hands a widget span tight-ish constraints, and the flex is
+    // what lets a block size to its content there rather than claim the full
+    // width — stripping it made a bullet list four times wider. A column
+    // child already gets loose constraints, so here the wrapper resolves to
+    // the same size and only adds two render objects for paint to walk on
+    // every frame. `bare` is the same block without it.
+    return span.bare ?? span.child;
   }
 
   /// Every block in [spans], if that is *all* [spans] holds.
@@ -662,6 +699,7 @@ class _IncrementalMdViewState extends State<_IncrementalMdView>
     _spans.removeWhere((key, _) => removed(key));
     _characterCounts.removeWhere((key, _) => removed(key));
     _settled.removeWhere((key, _) => removed(key));
+    _plainText.removeWhere((key, _) => removed(key));
     _rendered = [];
     _starts = [];
     _counts = [];
@@ -747,7 +785,6 @@ class _IncrementalMdViewState extends State<_IncrementalMdView>
     final children = <Widget>[];
     final count = _visibleCount(revealed);
     for (var i = 0; i < count; i++) {
-      if (i > 0) children.add(SizedBox(height: gap));
       children.add(
         revealing
             ? ValueListenableBuilder<int>(
@@ -773,8 +810,13 @@ class _IncrementalMdViewState extends State<_IncrementalMdView>
       _stopTicking();
     }
 
-    return Column(
+    final column = Column(
       mainAxisSize: MainAxisSize.min,
+      // `spacing`, not a `SizedBox` between every pair. Interleaving gaps
+      // doubles the number of children the framework has to walk and lay out
+      // on every rebuild, and a streaming reply rebuilds on every chunk — a
+      // long answer was reconciling ~560 children where ~280 carry content.
+      spacing: gap,
       // start, not stretch: stretch forces every segment to the maximum width
       // the parent offers, so a two-word answer laid claim to the whole
       // column. The single-text pipeline sizes to its content, and so should
@@ -783,5 +825,59 @@ class _IncrementalMdViewState extends State<_IncrementalMdView>
       crossAxisAlignment: CrossAxisAlignment.start,
       children: children,
     );
+    // Mid-reveal, the document is one live block of text rather than
+    // something to navigate: every block already on screen otherwise
+    // re-publishes its semantics on every frame, which is an announcement
+    // storm for anyone listening and, because an attached assistive service
+    // keeps the semantics pipeline alive, about half the per-chunk cost of a
+    // long reply.
+    //
+    // The gate is text observably still arriving — a reveal in flight, or a
+    // source that just grew by append and has not gone quiet. It is
+    // deliberately *not* `isStreaming`, which defaults to true and which
+    // hosts routinely leave on: tying it to the flag would collapse the
+    // semantics of every document that never touches it.
+    //
+    // Nothing is hidden while it holds: the text so far is the label. The
+    // structure — headings, links, list items as separate nodes — mounts the
+    // moment the reveal lands.
+    final animating =
+        _arriving ||
+        (revealing &&
+            (_engine.revealedFloor < _total || _engine.tailStillFading));
+    if (!animating) {
+      return column;
+    }
+    return Semantics(
+      container: true,
+      label:
+          MediaQuery.accessibleNavigationOf(context) ? _semanticsLabel() : null,
+      child: ExcludeSemantics(child: column),
+    );
+  }
+
+  /// The reply so far as one string, for [build]'s streaming semantics label.
+  ///
+  /// Per-segment text is cached alongside the spans it came from, so a chunk
+  /// only converts the segment it landed in.
+  String _semanticsLabel() {
+    final buffer = StringBuffer();
+    for (var index = 0; index < _segments.length; index++) {
+      final text =
+          _plainText[(index, _segments[index])] ??= TextSpan(
+            children: _rendered[index],
+          ).toPlainText(
+            includeSemanticsLabels: false,
+            includePlaceholders: false,
+          );
+      if (text.trim().isEmpty) {
+        continue;
+      }
+      if (buffer.isNotEmpty) {
+        buffer.write('\n');
+      }
+      buffer.write(text);
+    }
+    return buffer.toString();
   }
 }
