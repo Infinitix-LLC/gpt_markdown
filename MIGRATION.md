@@ -1,5 +1,123 @@
 # Migration guide
 
+## 1.2.x → next
+
+Nothing here stops code compiling. Two builders are deprecated and keep
+working until 2.0.0.
+
+One thing does change without a compiler warning: links render as text rather
+than as a widget. Read §1 — it is an improvement in every case I know of, but
+it moves goldens and it changes what `toPlainText` returns.
+
+---
+
+## 1. Links render as text, not as a widget
+
+**No code change needed.** This is a rendering change, and in almost every case
+an improvement you want.
+
+A link used to be a `LinkButton` inside a `WidgetSpan`. It is a `LinkTextSpan`
+now. What changes on screen:
+
+* A long link label **wraps mid-label**. Before, the whole label moved to the
+  next line because a `WidgetSpan` is atomic.
+* The label is **selectable** and included in copied text. Before, selection
+  skipped it entirely.
+* While streaming, the label **reveals character by character** rather than
+  appearing whole — a placeholder was one character to the reveal.
+* The label sits on the text baseline.
+* Hover is resolved once per paragraph instead of by a `StatefulWidget` per
+  link.
+
+Check for these if you depended on the old shape:
+
+* Tests using `find.byType(LinkButton)` — count `LinkTextSpan`s in the span
+  tree instead.
+* Tests using `find.byType(RichText)` — `BidiRichText extends RichText` and a
+  paragraph containing a link now routes through it, so use
+  `find.byWidgetPredicate((w) => w is RichText)`.
+* `toPlainText(includePlaceholders: false)` now **includes** link labels.
+* Golden images that contain links will shift.
+
+To keep a widget-shaped link, pass `inlineLinkBuilder` and return
+`details.asWidgetSpan(yourWidget)`.
+
+---
+
+## 2. `linkBuilder` is deprecated
+
+**Still works.** It is scheduled for removal in 2.0.0 and behaves exactly as
+before — including the `WidgetSpan` and the `GestureDetector` wrapped around
+it.
+
+It returns a `Widget`, so the package has to wrap it in a `WidgetSpan`. The
+label then sits off the text baseline, cannot wrap across lines, is skipped by
+text selection, is one opaque character to the streaming reveal, and does not
+paint on iOS inside a link label. Its four positional parameters are the other
+half of the problem: the resolved `LinkStyle`, whether the link is an autolink,
+and a link title have nowhere to go without breaking every caller.
+
+`inlineLinkBuilder` returns an `InlineSpan` and takes a single
+`LinkBuildDetails`, so later releases can add information without breaking
+anything you write today.
+
+If you only want to restyle links, you do not need a builder at all — set
+`LinkStyle` on `styleSheet`.
+
+```dart
+// before
+linkBuilder: (context, label, url, style) => GestureDetector(
+  onTap: () => launchUrl(Uri.parse(url)),
+  child: Text.rich(label),
+),
+
+// after — details.defaultSpan() keeps the tap, the hover and the styling
+inlineLinkBuilder: (link) => link.defaultSpan(),
+```
+
+`details.onTap` already invokes `onLinkTap` with the right arguments, so hand
+it along rather than calling `onLinkTap` yourself.
+
+> A `GestureRecognizer` only fires on a `TextSpan` that carries its own `text`,
+> never on one that only has `children`. A parsed link label is the second
+> kind, so `TextSpan(children: label, recognizer: tap)` renders correctly and
+> is never tapped. Return `details.defaultSpan()`, a `TappableTextSpan`, or
+> `details.asWidgetSpan()` — all three are tappable. A debug assert catches the
+> mistake.
+
+---
+
+## 3. `sourceTagBuilder` is deprecated
+
+**Still works**, unchanged, until 2.0.0 — including the `TextStyle` it has
+always been handed, which is `SourceTagStyle.textStyle` when the style sheet
+sets one and an empty `TextStyle` when it does not.
+
+Use `inlineSourceTagBuilder`. It receives the *resolved* `TextStyle` and the
+resolved `SourceTagStyle`, so a chip no longer has to guess the surrounding
+size and colour.
+
+```dart
+// before
+sourceTagBuilder: (context, content, style) => MyChip(content),
+
+// after — asWidgetSpan reproduces the stock padding, alignment and tap
+inlineSourceTagBuilder: (tag) => tag.asWidgetSpan(MyChip(tag.id)),
+```
+
+---
+
+## Not breaking
+
+* Nothing here stops code compiling.
+* The default **citation chip** is unchanged.
+* Both old builders are still consulted when the new one is null.
+* When both are set, the new builder wins.
+* `LinkButton` and `LinkSpanBuilder` still exist; nothing in the package builds
+  them any more.
+
+---
+
 ## 1.1.x → 1.2.0
 
 Nothing here stops code compiling — `1.2.0` is a drop-in upgrade. The changes

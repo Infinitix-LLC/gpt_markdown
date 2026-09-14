@@ -278,12 +278,20 @@ link. A component declares where it applies.
 `InlinePattern` defaults to `MarkdownComponent.allScopesExceptLinkLabel`.
 
 > [!WARNING]
-> That default matters. A link label is already rendered inside the link's own
-> `WidgetSpan`; a pattern returning a second one there produces a **nested
-> placeholder, which does not paint on iOS** — the text is simply invisible,
-> with no error.
+> That default matters whenever the link itself is a widget. The default link
+> rendering is a `LinkTextSpan` — real text — so a pattern nested in a label is
+> no longer nested in a placeholder. But a link *does* become a `WidgetSpan`
+> when you supply the deprecated `linkBuilder`, or when an `inlineLinkBuilder`
+> returns `details.asWidgetSpan(...)`. A pattern returning a second placeholder
+> inside one of those produces a **nested placeholder, which does not paint on
+> iOS** — the text is simply invisible, with no error.
 >
-> `[#design](https://example.com)` was blank on iOS for exactly this reason.
+> `[#design](https://example.com)` was blank on iOS for exactly this reason,
+> back when every link was a placeholder.
+>
+> The default is left as `allScopesExceptLinkLabel` regardless: changing it is
+> a behaviour change with its own tests
+> (`test/regression/nested_link_label_widget_test.dart`).
 
 Opt back in when your builder returns a `TextSpan`, which is safe to nest:
 

@@ -127,16 +127,20 @@ def greet(name: str, count: int = 3):
         tester.widget<IconButton>(find.byType(IconButton)).onPressed,
         isNotNull,
       );
+      // The button is deliberately NOT pointer-disabled during the check-mark
+      // window. Wrapping it in `IgnorePointer`/`AbsorbPointer` did not stop a
+      // second tap reaching an ancestor — an ancestor is already on the
+      // hit-test path — it only stopped the button claiming the gesture, so
+      // the tap fell through to whatever wraps the code block. The
+      // duplicate-clipboard guard lives in `_copyCode`; see
+      // test/regression/code_copy_tap_fallthrough_test.dart.
       expect(
-        tester
-            .widget<IgnorePointer>(
-              find.byWidgetPredicate(
-                (widget) =>
-                    widget is IgnorePointer && widget.child is IconButton,
-              ),
-            )
-            .ignoring,
-        isTrue,
+        find.byWidgetPredicate(
+          (widget) =>
+              (widget is IgnorePointer || widget is AbsorbPointer) &&
+              (widget as dynamic).child is IconButton,
+        ),
+        findsNothing,
       );
 
       await tester.pump(const Duration(seconds: 2));
@@ -145,17 +149,6 @@ def greet(name: str, count: int = 3):
       expect(
         tester.widget<IconButton>(find.byType(IconButton)).onPressed,
         isNotNull,
-      );
-      expect(
-        tester
-            .widget<IgnorePointer>(
-              find.byWidgetPredicate(
-                (widget) =>
-                    widget is IgnorePointer && widget.child is IconButton,
-              ),
-            )
-            .ignoring,
-        isFalse,
       );
     });
 

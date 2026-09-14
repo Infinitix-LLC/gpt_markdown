@@ -57,7 +57,7 @@ class PlusparseRenderer {
   );
 
   /// Replicates `BlockMd.span`'s wrapping of a block widget.
-  static InlineSpan _blockSpan(Widget child) => WidgetSpan(
+  static InlineSpan _blockSpan(Widget child) => BlockWidgetSpan(
     child: Row(
       mainAxisSize: MainAxisSize.min,
       children: [Flexible(child: child)],
@@ -164,45 +164,46 @@ class PlusparseRenderer {
                     TextSpan(
                       children: transform(_blockSpans(context, children, conf)),
                     ),
+                    ambientScaling: conf.blocksRenderDirectly,
                   ),
             ),
           ],
         );
         return [quote(_identity)];
       case MdCheckbox(:final checked, :final children):
+        // Built once and used for both the reveal's character count and the
+        // rendered label: `wrap` is handed the same `config` here, so a second
+        // build produced an identical list. Headings and block quotes do need
+        // two, because their `wrap` re-renders under a different config.
+        final labelSpans = _inlineSpans(context, children, config);
         return [
           _revealableBlock(
-            content: _inlineSpans(context, children, config),
+            content: labelSpans,
             wrap:
                 (transform) => checkboxWidget(
                   context,
                   config,
                   checked: checked,
                   label: config.getRich(
-                    TextSpan(
-                      children: transform(
-                        _inlineSpans(context, children, config),
-                      ),
-                    ),
+                    TextSpan(children: transform(labelSpans)),
+                    ambientScaling: config.blocksRenderDirectly,
                   ),
                 ),
           ),
         ];
       case MdRadio(:final selected, :final children):
+        final labelSpans = _inlineSpans(context, children, config);
         return [
           _revealableBlock(
-            content: _inlineSpans(context, children, config),
+            content: labelSpans,
             wrap:
                 (transform) => radioWidget(
                   context,
                   config,
                   selected: selected,
                   label: config.getRich(
-                    TextSpan(
-                      children: transform(
-                        _inlineSpans(context, children, config),
-                      ),
-                    ),
+                    TextSpan(children: transform(labelSpans)),
+                    ambientScaling: config.blocksRenderDirectly,
                   ),
                 ),
           ),
@@ -252,12 +253,15 @@ class PlusparseRenderer {
       ];
 
       final number = ordered ? "${item.number ?? (start + i)}" : null;
+      // Same config both times, so build the item body once.
+      final itemBody = body(config);
       spans.add(
         _revealableBlock(
-          content: body(config),
+          content: itemBody,
           wrap: (transform) {
             final itemChild = config.getRich(
-              TextSpan(children: transform(body(config))),
+              TextSpan(children: transform(itemBody)),
+              ambientScaling: config.blocksRenderDirectly,
             );
             return number == null
                 ? unorderedListItem(context, config, itemChild)

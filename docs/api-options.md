@@ -83,13 +83,18 @@ Builders replace structure. All are optional:
 | `tableBuilder` | A table |
 | `imageBuilder` | An image |
 | `latexBuilder` | Inline or block TeX |
-| `linkBuilder` | A Markdown or automatic link |
+| `inlineLinkBuilder` | A Markdown or automatic link, as a span |
+| `linkBuilder` | *Deprecated.* A link, as a widget |
 | `inlineCodeBuilder` | The span for inline code |
-| `sourceTagBuilder` | A citation/source tag |
+| `inlineSourceTagBuilder` | A citation/source tag, as a span |
+| `sourceTagBuilder` | *Deprecated.* A citation/source tag, as a widget |
 | `orderedListBuilder` | An ordered-list item |
 | `unOrderedListBuilder` | An unordered-list item |
 
-`highlightBuilder` is deprecated; use `inlineCodeBuilder`. Builder signatures
+`highlightBuilder`, `linkBuilder` and `sourceTagBuilder` are deprecated; use
+`inlineCodeBuilder`, `inlineLinkBuilder` and `inlineSourceTagBuilder`. Each
+returns an `InlineSpan` instead of a `Widget`, which keeps the content on the
+text baseline, wrapping across lines and selectable. Builder signatures
 and resolved styles are listed in [customization](customization.md#builders).
 
 ## Callbacks

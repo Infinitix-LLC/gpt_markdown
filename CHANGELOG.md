@@ -1,7 +1,32 @@
-## Unreleased
+## 1.3.0
 
 ### Added
 
+* `BlockWidgetSpan`, marking a placeholder that holds a *block* rather than an
+  inline construct. The two are not distinguishable by shape — an image and a
+  block quote are both a lone bottom-aligned `WidgetSpan` — so telling them
+  apart by looking silently swallowed every image in the document.
+* `GptMarkdownConfig.blocksRenderDirectly` and `GptMarkdownConfig.getRich`'s
+  `ambientScaling`, which together let a block that has been lifted out of its
+  paragraph scale from the ambient `MediaQuery`. Handing it `textScaler`
+  instead applies the scale twice — once to the glyphs, once to the width it
+  wraps into — which measured 4x the correct height on a bullet list.
+* `inlineLinkBuilder` and `inlineSourceTagBuilder` — span-returning
+  replacements for `linkBuilder` and `sourceTagBuilder`. A span link sits on
+  the text baseline, wraps across lines, is selectable, and reveals character
+  by character while streaming; the `WidgetSpan` the old builders force can do
+  none of those. Both receive a details object (`LinkBuildDetails`,
+  `SourceTagBuildDetails`) rather than positional arguments, so a later release
+  can hand them more information without breaking any builder. Call
+  `details.defaultSpan()` to keep the stock rendering and change one thing, or
+  `details.asWidgetSpan(widget)` when a widget is genuinely required.
+* `TappableTextSpan` and `LinkTextSpan` — text spans that answer a tap without
+  carrying a `GestureRecognizer`, plus `collectInlineTapRuns` and the
+  `InlineTapTargets` render mixin that resolve those taps by text range. A
+  recognizer only fires on a span that carries its own `text`, so a recognizer
+  on a wrapper span — which is what a parsed link label is — never fires. These
+  make a wrapper as tappable as a leaf, and make a placeholder inside a label
+  tappable too.
 * Fenced code blocks now highlight recognized language tags with comprehensive
   built-in light and dark palettes. Common aliases such as `js`, `ts`, `py`,
   `python3`, `c++`, `sh`, and `yml` are supported; unknown or omitted languages
@@ -44,6 +69,80 @@
 
 ### Changed
 
+* **Block constructs render as sibling widgets rather than as placeholders
+  inside a paragraph.** A heading, list item, table, fence, quote or block
+  equation used to be a `WidgetSpan` holding a second `Text.rich`; the
+  paragraph had to lay each one out as its own `RenderBox` before it could
+  shape a line, and the nested paragraph was a second full text-shaping pass.
+  Measured against the same document forced down the old path: headings 1.92x,
+  and a mixed answer 1.65x faster than the previous release.
+
+  Two consequences to know about. Documents with `maxLines` set keep the old
+  single-paragraph rendering, because N paragraphs cannot share one line
+  budget. And a list is about 0.5 px per item shorter, because stacking items
+  no longer pays the line-break leading between them — always tighter, never
+  taller.
+* **The default link rendering is now a span, not a widget.** A link used to
+  be a `LinkButton` inside a `WidgetSpan`; it is a `LinkTextSpan` now. Visible
+  consequences, all of them the point: a long link label **wraps mid-label**
+  instead of jumping whole to the next line, the label is **selectable and
+  copied** with the sentence around it, it **reveals character by character**
+  while streaming instead of appearing whole, and it sits on the text baseline.
+  Hover is resolved once per paragraph rather than by a `StatefulWidget` per
+  link. Measured at cold first paint: ~170 µs per link before, below the
+  measurement noise floor after.
+* Deprecated `LinkButton` and `LinkSpanBuilder`. Nothing in the package builds
+  them any more. They still work and will be removed in 2.0.0.
+* The link url is now reachable from the rendered tree. `LinkButton.url` was
+  never populated, so the url existed only inside the tap closure; a
+  `LinkTextSpan` carries it as a field, and the test serialiser emits it in the
+  `LINK("label", url="…")` form `test/README.md` always documented.
+* A second finger going down while a link is held can no longer redirect the
+  first finger's tap. The paragraph allocates a recognizer per gesture instead
+  of recycling one, for the same reason as above.
+* The whole line box of a link answers a tap, not just the tight glyph boxes.
+  The leading and trailing band of a line showed a pointing-hand cursor and did
+  nothing.
+* Hover state is dropped when the document's tap targets change, so a link can
+  no longer stay painted hovered — with the paragraph stuck on a click cursor —
+  after the text under the pointer has been replaced.
+* A paragraph gaining its first link no longer rebuilds its whole subtree.
+* A decoration-only span nested inside a link no longer swallows the link over
+  its own text. Tap resolution takes the innermost target, and a nested span
+  with no callback was still a target — so a link had a dead hole in the middle
+  of it, with the cursor still showing a pointing hand.
+* Hover is identified by a target's full range rather than its start offset, so
+  two nested targets that begin at the same place no longer restyle each other.
+* Hit-testing a link costs one engine call plus the targets that can actually
+  contain the pointer, rather than measuring every target in the paragraph on
+  every mouse move.
+* `[](url)` no longer trips the debug assert that guards `inlineLinkBuilder`.
+  An empty label has nothing to tap, which is correct rather than a mistake,
+  and the package's own recommended `defaultSpan()` was tripping it.
+* A rebuild landing mid-gesture can no longer redirect a tap to a different
+  link. Tappable leaves get a fresh gesture recognizer per build rather than a
+  recycled one, because a gesture in flight holds a reference to that object —
+  recycling it meant a press that began on one link could open another link's
+  url on release.
+* The copy button on a fenced code block is no longer pointer-disabled during
+  the check-mark window. `IgnorePointer` did not stop a second tap reaching an
+  ancestor — an ancestor is already on the hit-test path — it only stopped the
+  button claiming the gesture, so the tap fell through to whatever wrapped the
+  code block. The duplicate-clipboard guard was always in `_copyCode`.
+* Deprecated `linkBuilder`. Use `styleSheet`'s `LinkStyle` for appearance, or
+  `inlineLinkBuilder` for full control. It still works and will be removed in
+  2.0.0.
+* Deprecated `sourceTagBuilder`, replaced by `inlineSourceTagBuilder`. The new
+  builder is handed the *resolved* `TextStyle`; the old one keeps the empty
+  `TextStyle` it has always been given, because existing builders were written
+  against that.
+* A recognizer on a span is now carried onto every piece the streaming reveal
+  emits, so a tappable span stays tappable while it streams instead of only
+  once the segment settles.
+* Reveal timing for links changed as a consequence. The reveal counts a
+  placeholder as one character, so a link used to arrive whole; its label is
+  text now and reveals character by character like the prose around it.
+* The default **citation chip** rendering is unchanged.
 * **`incremental` now defaults to `true`**, so the single-pass parser is the
   default renderer. It lays out correctly where the regex pipeline does not —
   no spurious line after a fenced block — and is 20x to 69x faster. Pass

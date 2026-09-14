@@ -26,14 +26,17 @@ void main() {
     await probe.close();
 
     temp = await Directory.systemTemp.createTemp('tracker-test');
-    server = await Process.start('node', [
-      'src/index.mjs',
-    ], workingDirectory: proxyDir.path, environment: {
-      'PORT': '$port',
-      'HOST': '127.0.0.1',
-      'DB_PATH': '${temp.path}/test.db',
-      'LOG_REQUESTS': 'false',
-    });
+    server = await Process.start(
+      'node',
+      ['src/index.mjs'],
+      workingDirectory: proxyDir.path,
+      environment: {
+        'PORT': '$port',
+        'HOST': '127.0.0.1',
+        'DB_PATH': '${temp.path}/test.db',
+        'LOG_REQUESTS': 'false',
+      },
+    );
 
     api = TrackerApi(
       ChatConfig(
@@ -93,10 +96,11 @@ void main() {
     expect(reopened.isOpen, isTrue);
 
     final full = await api.issue(created.number);
-    expect(
-      full.timeline.map((e) => e.isComment ? 'comment' : e.type),
-      ['comment', 'closed', 'reopened'],
-    );
+    expect(full.timeline.map((e) => e.isComment ? 'comment' : e.type), [
+      'comment',
+      'closed',
+      'reopened',
+    ]);
   });
 
   test('labels are replaced with a diff on the timeline', () async {
@@ -152,7 +156,9 @@ void main() {
     await api.deleteIssue(issue.number);
     expect(
       () => api.issue(issue.number),
-      throwsA(isA<TrackerException>().having((e) => e.statusCode, 'status', 404)),
+      throwsA(
+        isA<TrackerException>().having((e) => e.statusCode, 'status', 404),
+      ),
     );
   });
 

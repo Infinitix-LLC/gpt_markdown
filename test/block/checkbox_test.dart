@@ -87,13 +87,21 @@ void main() {
         tester.view.devicePixelRatio = 1.0;
         addTearDown(tester.view.reset);
 
-        expect(
-          await height(tester, entry.value, incremental: true),
-          moreOrLessEquals(
-            await height(tester, entry.value, incremental: false),
-            epsilon: 0.5,
-          ),
+        // The two pipelines no longer agree to the pixel, deliberately. The
+        // incremental path lifts each list item out of its placeholder and
+        // stacks the items as widgets, so it no longer pays the line-break
+        // leading between them — about 0.5 px per item, and always tighter,
+        // never taller. Asserting equality here would only pin the cost back
+        // in place, so this asserts the bound that matters: the incremental
+        // path stays within a couple of percent and does not grow.
+        final incremental = await height(
+          tester,
+          entry.value,
+          incremental: true,
         );
+        final regex = await height(tester, entry.value, incremental: false);
+        expect(incremental, lessThanOrEqualTo(regex + 0.5));
+        expect(incremental, moreOrLessEquals(regex, epsilon: regex * 0.03));
       });
     }
 

@@ -263,11 +263,23 @@ class _IncrementalMdViewState extends State<_IncrementalMdView>
     });
   }
 
+  /// The config blocks are rendered under.
+  ///
+  /// `blocksRenderDirectly` tells the renderer that a block will be lifted out
+  /// of its paragraph — see [_unwrapBlock] — so the block's own content has to
+  /// scale itself rather than rely on a paragraph that is no longer there.
+  /// Gated on `maxLines`, because that is the one case a block still has to
+  /// stay inside a paragraph.
+  GptMarkdownConfig get _renderConfig =>
+      widget.config.maxLines == null
+          ? widget.config.copyWith(blocksRenderDirectly: true)
+          : widget.config;
+
   List<InlineSpan> _spansFor(BuildContext context, String segment) {
     return _spans[segment] ??= PlusparseRenderer.render(
       context,
       segment,
-      widget.config,
+      _renderConfig,
     );
   }
 
@@ -275,7 +287,110 @@ class _IncrementalMdViewState extends State<_IncrementalMdView>
   ///
   /// `isRoot` matters: without it the text renders at `TextScaler.noScaling`
   /// and a raised system font size has no effect at all.
-  Widget _paragraph(List<InlineSpan> spans) => widget.config.getRich(
+  /// The block widget [spans] is nothing but a wrapper around, or null.
+  ///
+  /// A block construct is emitted as a `WidgetSpan` so it can sit inside the
+  /// single-paragraph pipeline. Here it does not need to: a segment is already
+  /// its own child of the column, so wrapping the widget in a placeholder and
+  /// a second `Text.rich` around it buys nothing and costs a great deal. The
+  /// paragraph has to lay the placeholder's child out as its own `RenderBox`
+  /// before it can shape a line, and the nested `Text.rich` is a second full
+  /// text-shaping pass — measured at 145 µs per block against 5 µs for the
+  /// widget on its own.
+  ///
+  /// Only a [BlockWidgetSpan] is unwrapped. An inline image or inline equation
+  /// is also a lone `WidgetSpan` and must keep its paragraph — it is aligned
+  /// against a text baseline that would no longer exist. The two are not
+  /// distinguishable by shape, which is why the renderer marks them.
+  Widget? _unwrapBlock(List<InlineSpan> spans) {
+    if (spans.length != 1) {
+      return null;
+    }
+    var span = spans.first;
+    // The reveal wraps a block to keep its text reachable; the widget inside
+    // has already had the reveal's transform applied, so unwrapping after the
+    // fact is safe.
+    if (span is RevealableSpan) {
+      final children = span.children;
+      if (children == null || children.length != 1) {
+        return null;
+      }
+      span = children.first;
+    }
+    // A block quote carries its bar and inset in a plain `TextSpan` wrapper.
+    if (span is TextSpan && span.text == null) {
+      final children = span.children;
+      if (children == null || children.length != 1) {
+        return null;
+      }
+      span = children.first;
+    }
+    if (span is! BlockWidgetSpan) {
+      return null;
+    }
+    // Returned whole, including the `Row`/`Flexible` `_blockSpan` wraps a
+    // block in. That wrapper is what makes a block size to its content rather
+    // than claim the full width — stripping it made a bullet list four times
+    // wider. It is also nearly free: the cost this unwrapping removes is the
+    // placeholder and the nested `Text.rich`, not a flex with one child.
+    return span.child;
+  }
+
+  /// Every block in [spans], if that is *all* [spans] holds.
+  ///
+  /// A list is one segment of many blocks — one per item — separated by the
+  /// line breaks that used to do the spacing inside a paragraph. Stacking them
+  /// gets each item out of its placeholder too, which is where most of a
+  /// list's cost is.
+  ///
+  /// Returns null the moment anything that is not a block or a separator shows
+  /// up, so a paragraph with an inline image in it is never mistaken for one.
+  List<Widget>? _unwrapBlocks(List<InlineSpan> spans) {
+    if (spans.length < 2) {
+      return null;
+    }
+    final widgets = <Widget>[];
+    for (final span in spans) {
+      final block = _unwrapBlock(<InlineSpan>[span]);
+      if (block != null) {
+        widgets.add(block);
+        continue;
+      }
+      // A separator: the "\n" or "\n\n" the renderer puts between blocks.
+      // It carries no content, so dropping it loses nothing — the column
+      // stacks what it separated.
+      if (span is TextSpan &&
+          span.children == null &&
+          (span.text ?? '').trim().isEmpty) {
+        continue;
+      }
+      return null;
+    }
+    return widgets.length < 2 ? null : widgets;
+  }
+
+  Widget _paragraph(List<InlineSpan> spans) {
+    // `maxLines` is the one thing a column of widgets cannot honour: N
+    // paragraphs cannot share one line budget, so a clamped preview would get
+    // N times its allowance. Keep the single-paragraph path for those.
+    if (widget.config.maxLines == null) {
+      final block = _unwrapBlock(spans);
+      if (block != null) {
+        return block;
+      }
+      final blocks = _unwrapBlocks(spans);
+      if (blocks != null) {
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: blocks,
+        );
+      }
+    }
+    return _richParagraph(spans);
+  }
+
+  Widget _richParagraph(List<InlineSpan> spans) => widget.config.getRich(
     TextSpan(children: spans, style: widget.config.style?.copyWith()),
     isRoot: true,
   );

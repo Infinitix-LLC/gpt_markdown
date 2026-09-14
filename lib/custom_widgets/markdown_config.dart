@@ -21,6 +21,16 @@ typedef UnOrderedListBuilder =
     );
 
 /// A builder function for the source tag.
+@Deprecated(
+  'Use InlineSourceTagBuilder via GptMarkdown.inlineSourceTagBuilder. '
+  'This returns a Widget, which the package has to wrap in a WidgetSpan: it '
+  'sits off the baseline, cannot wrap across lines, is skipped by text '
+  'selection, is one opaque character to the streaming reveal, and does not '
+  'paint on iOS inside a link label. It is also handed an empty TextStyle '
+  'rather than the resolved one whenever the style sheet leaves '
+  'SourceTagStyle.textStyle unset, and its positional parameters cannot grow. '
+  'Will be removed in 2.0.0.',
+)
 typedef SourceTagBuilder =
     Widget Function(BuildContext context, String content, TextStyle textStyle);
 
@@ -43,6 +53,16 @@ typedef LatexBuilder =
     );
 
 /// A builder function for the link.
+@Deprecated(
+  'Use InlineLinkBuilder via GptMarkdown.inlineLinkBuilder. '
+  'This returns a Widget, which the package has to wrap in a WidgetSpan: the '
+  'label sits off the baseline, cannot wrap across lines, is skipped by text '
+  'selection, is one opaque character to the streaming reveal, and does not '
+  'paint on iOS inside a link label. Its four positional parameters are the '
+  'other half of the problem — the resolved LinkStyle, whether the link is an '
+  'autolink, and a link title have nowhere to go without breaking every '
+  'caller. Will be removed in 2.0.0.',
+)
 typedef LinkBuilder =
     Widget Function(
       BuildContext context,
@@ -171,6 +191,292 @@ typedef ImageBuilder =
       double? height,
     );
 
+/// What an inline builder is told about the construct it is rendering.
+///
+/// Every span-returning builder in this package receives one of these instead
+/// of a positional argument list. That is the whole point of the shape: a
+/// positional parameter cannot be added later without breaking every
+/// consumer, and this package has already had to deprecate two builders over
+/// exactly that. A field can be added here at any time and nothing that
+/// compiles today stops compiling.
+///
+/// The type is `base`, so no code outside this package can implement it, and
+/// each subclass is `final`. That is what makes "a new field is not a breaking
+/// change" a guarantee rather than a hope — there is no consumer
+/// implementation a new member could leave incomplete.
+///
+/// **The additive contract.** Every constructor parameter added from 1.3.0 on
+/// is optional and defaulted, so a builder written against 1.3.0 keeps
+/// compiling and keeps behaving the same. New *appearance* knobs go on
+/// [LinkStyle] or [SourceTagStyle], not here. The meaning of an existing field
+/// never changes.
+abstract base class InlineBuildDetails {
+  /// Creates the details common to every inline builder.
+  const InlineBuildDetails({
+    required this.context,
+    required this.config,
+    required this.style,
+  });
+
+  /// The element this construct is being built in.
+  final BuildContext context;
+
+  /// The configuration in force at this point in the document.
+  ///
+  /// Read [GptMarkdownConfig.scope] from it to tell a link in a table cell
+  /// from one in ordinary content, and [GptMarkdownConfig.textDirection] or
+  /// [GptMarkdownConfig.textScaler] when a widget of your own needs them.
+  /// [TableBuilder] and [OrderedListBuilder] already take a whole config for
+  /// the same reason.
+  final GptMarkdownConfig config;
+
+  /// The text style in effect for this construct, fully resolved.
+  ///
+  /// A builder never has to guess a default: this is what the construct would
+  /// have been drawn with, its own style already applied over the surrounding
+  /// one.
+  final TextStyle style;
+}
+
+/// What the link builder is told about one `[label](url)` or autolink.
+final class LinkBuildDetails extends InlineBuildDetails {
+  /// Creates link details.
+  const LinkBuildDetails({
+    required super.context,
+    required super.config,
+    required super.style,
+    required this.url,
+    required this.label,
+    required this.linkStyle,
+    this.labelSpans = const <InlineSpan>[],
+    this.isAutolink = false,
+    this.onTap,
+  });
+
+  /// The link target, verbatim from the document — `/docs/a`,
+  /// `https://x.dev`, `mailto:a@b.c`. Never resolved or normalised.
+  final String url;
+
+  /// The label as plain text.
+  ///
+  /// This is what [GptMarkdownConfig.onLinkTap] receives as its second
+  /// argument. For an autolink it is the URL itself. It is **not** a link
+  /// title — Markdown titles are not parsed yet, and when they are they arrive
+  /// as a field of their own.
+  final String label;
+
+  /// The label, already parsed and styled with [style].
+  ///
+  /// The parse has happened by the time a builder runs, in the
+  /// [MarkdownScope.linkLabel] scope, so `[**bold** link](url)` arrives as the
+  /// spans that render it. An autolink's label is one plain run, deliberately:
+  /// re-parsing a URL would let `ItalicMd` eat the underscores out of
+  /// `https://example.com/a_b_c`.
+  final List<InlineSpan> labelSpans;
+
+  /// The resolved [LinkStyle] — colour, hover colour, decoration, thickness
+  /// and weight, with [GptMarkdownTheme] fallbacks already applied.
+  ///
+  /// Passed alongside [style] so a builder can reach a value a [TextStyle]
+  /// cannot carry. `hoverColor` is the one that exists today.
+  final LinkStyle linkStyle;
+
+  /// Whether the package found this as a bare URL rather than as `[…](…)`.
+  final bool isAutolink;
+
+  /// Invokes [GptMarkdownConfig.onLinkTap] for this link, or null when no
+  /// handler is set.
+  ///
+  /// Hand it to [TappableTextSpan.onTap] — or to [defaultSpan], which does it
+  /// for you — rather than calling `onLinkTap` yourself, so the arguments stay
+  /// right when they change.
+  final VoidCallback? onTap;
+
+  /// [style] recoloured with [LinkStyle.hoverColor], for
+  /// [TappableTextSpan.hoverStyle].
+  TextStyle get hoverStyle => TextStyle(
+    color: linkStyle.hoverColor,
+    decorationColor: linkStyle.hoverColor,
+  );
+
+  /// Exactly what a link renders as when no builder is given.
+  ///
+  /// Returning this from [InlineLinkBuilder] is a no-op, which makes it the
+  /// safe starting point: keep it, then change one thing.
+  ///
+  /// [style] replaces the style on the **container** span. It does not
+  /// restyle the label, because [labelSpans] were already built with their own
+  /// styles — bold inside a link stays bold, and a colour set here does not
+  /// reach them. To recolour the label, rebuild it and pass [children]:
+  ///
+  /// ```dart
+  /// inlineLinkBuilder: (link) => link.defaultSpan(
+  ///   children: [TextSpan(text: link.label, style: link.style.copyWith(
+  ///     color: link.url.startsWith('https://') ? null : Colors.orange,
+  ///   ))],
+  /// ),
+  /// ```
+  ///
+  /// For a widget instead of a span, see [asWidgetSpan].
+  InlineSpan defaultSpan({TextStyle? style, List<InlineSpan>? children}) {
+    return LinkTextSpan.wrapping(
+      children: children ?? labelSpans,
+      url: url,
+      linkStyle: linkStyle,
+      style: style ?? this.style,
+      hoverStyle: hoverStyle,
+      onTap: onTap,
+    );
+  }
+
+  /// [child] in a placeholder wrapped exactly the way the deprecated
+  /// [LinkBuilder]'s result is, with [onTap] attached.
+  ///
+  /// The escape hatch for a link that genuinely has to be a widget. It cannot
+  /// wrap across lines, is skipped by text selection, is one opaque character
+  /// to the streaming reveal, and does not paint on iOS when nested inside
+  /// another placeholder — prefer a span where the design allows.
+  InlineSpan asWidgetSpan(
+    Widget child, {
+    PlaceholderAlignment alignment = PlaceholderAlignment.baseline,
+    TextBaseline? baseline = TextBaseline.alphabetic,
+  }) {
+    final tap = onTap;
+    return scaledWidgetSpan(
+      config: config,
+      alignment: alignment,
+      baseline: baseline,
+      child: tap == null ? child : GestureDetector(onTap: tap, child: child),
+    );
+  }
+}
+
+/// What the source-tag builder is told about one `[1]` citation chip.
+final class SourceTagBuildDetails extends InlineBuildDetails {
+  /// Creates source-tag details.
+  const SourceTagBuildDetails({
+    required super.context,
+    required super.config,
+    required super.style,
+    required this.id,
+    required this.sourceTagStyle,
+    this.onTap,
+  });
+
+  /// The tag's contents — `1` for `[1]`.
+  final String id;
+
+  /// The resolved [SourceTagStyle] — fill, text style, size, shape and
+  /// padding, with theme and defaults already folded in.
+  final SourceTagStyle sourceTagStyle;
+
+  /// Invokes [GptMarkdownConfig.onSourceTagTap] with [id], or null when no
+  /// handler is set.
+  final VoidCallback? onTap;
+
+  /// The chip the package would have built, as a placeholder span.
+  ///
+  /// Still a [WidgetSpan]: the default chip is a sized, filled circle with the
+  /// number scaled to fit, and there is no text-only equivalent of that.
+  /// Return this when you only want to wrap or decorate the stock chip.
+  InlineSpan defaultSpan() => defaultSourceTagSpan(this);
+
+  /// [chip] in a placeholder aligned and padded exactly the way the default
+  /// chip is — centred on the line box, with [SourceTagStyle.padding] around
+  /// it — and wired to [onTap].
+  ///
+  /// This is the realistic migration for a custom citation chip: it reproduces
+  /// the wrapping `sourceTagSpan` applies, which a hand-written [WidgetSpan]
+  /// does not.
+  InlineSpan asWidgetSpan(
+    Widget chip, {
+    PlaceholderAlignment alignment = PlaceholderAlignment.middle,
+  }) {
+    final tap = onTap;
+    return scaledWidgetSpan(
+      config: config,
+      alignment: alignment,
+      baseline: null,
+      child: Padding(
+        padding: sourceTagStyle.padding ?? const EdgeInsets.all(2),
+        child: tap == null ? chip : GestureDetector(onTap: tap, child: chip),
+      ),
+    );
+  }
+}
+
+/// Builds the span for one `[label](url)` link or autolink.
+///
+/// [details] carries the URL, the already-parsed label spans, the resolved
+/// [TextStyle] and [LinkStyle], and a tap callback already bound to
+/// [GptMarkdown.onLinkTap] — see [LinkBuildDetails]. It is the only parameter
+/// this signature will ever have: new information arrives as a new field on
+/// [LinkBuildDetails], never as a new argument here.
+///
+/// Return [LinkBuildDetails.defaultSpan] to keep the stock link and change
+/// only its style, a [LinkTextSpan] to build it yourself, or
+/// [LinkBuildDetails.asWidgetSpan] when a widget is genuinely required:
+///
+/// ```dart
+/// inlineLinkBuilder: (link) => LinkTextSpan.wrapping(
+///   children: [
+///     if (link.url.endsWith('.pdf'))
+///       const WidgetSpan(child: Icon(Icons.picture_as_pdf, size: 14)),
+///     ...link.labelSpans,
+///   ],
+///   url: link.url,
+///   linkStyle: link.linkStyle,
+///   style: link.style,
+///   hoverStyle: link.hoverStyle,
+///   onTap: link.onTap,
+/// ),
+/// ```
+///
+/// Do **not** attach a [GestureRecognizer] to a span that has children and no
+/// text of its own — it can never fire. Use [TappableTextSpan]: the package
+/// resolves those by text range at the paragraph, which works for a whole
+/// subtree, covers a [WidgetSpan] inside the label, and owns the recognizer's
+/// lifetime.
+///
+/// Returning an [InlineSpan] rather than a [Widget] is what keeps a link on
+/// the text baseline, wrapping across lines, selectable, visible to the
+/// streaming reveal, and painting on iOS inside another placeholder.
+typedef InlineLinkBuilder = InlineSpan Function(LinkBuildDetails details);
+
+/// Builds the span for one `[1]` citation chip.
+///
+/// [details] carries the chip's contents, the resolved [TextStyle] and
+/// [SourceTagStyle], and a tap callback already bound to
+/// [GptMarkdown.onSourceTagTap] — see [SourceTagBuildDetails]. As with
+/// [InlineLinkBuilder], new information arrives as a new field, never as a new
+/// argument.
+///
+/// The stock chip is a genuine widget, so [SourceTagBuildDetails.defaultSpan]
+/// returns a [WidgetSpan] and [SourceTagBuildDetails.asWidgetSpan] wraps one
+/// of your own with the same alignment, padding and tap handling:
+///
+/// ```dart
+/// inlineSourceTagBuilder: (tag) => tag.asWidgetSpan(
+///   CitationChip(id: tag.id, style: tag.sourceTagStyle),
+/// ),
+/// ```
+///
+/// Returning a [TappableTextSpan] instead keeps the citation on the baseline,
+/// wrapping and selectable, and lets it appear inside a link label without
+/// nesting one placeholder in another:
+///
+/// ```dart
+/// inlineSourceTagBuilder: (tag) => TappableTextSpan(
+///   text: '[${tag.id}]',
+///   onTap: tag.onTap,
+///   style: tag.style.copyWith(
+///     fontFeatures: const [FontFeature.superscripts()],
+///   ),
+/// ),
+/// ```
+typedef InlineSourceTagBuilder =
+    InlineSpan Function(SourceTagBuildDetails details);
+
 /// A configuration class for the GPT Markdown component.
 ///
 /// The [GptMarkdownConfig] class is used to configure the GPT Markdown component.
@@ -188,6 +494,8 @@ class GptMarkdownConfig {
     this.latexBuilder,
     this.followLinkColor = false,
     this.codeBuilder,
+    this.inlineSourceTagBuilder,
+    @Deprecated('Use inlineSourceTagBuilder. Will be removed in 2.0.0.')
     this.sourceTagBuilder,
     this.inlineDirectives,
     this.inlineCodeBuilder,
@@ -195,6 +503,9 @@ class GptMarkdownConfig {
     this.highlightBuilder,
     this.orderedListBuilder,
     this.unOrderedListBuilder,
+    this.blocksRenderDirectly = false,
+    this.inlineLinkBuilder,
+    @Deprecated('Use inlineLinkBuilder. Will be removed in 2.0.0.')
     this.linkBuilder,
     this.imageBuilder,
     this.maxLines,
@@ -240,7 +551,18 @@ class GptMarkdownConfig {
   /// The LaTeX builder.
   final LatexBuilder? latexBuilder;
 
-  /// The source tag builder.
+  /// Builds the span for a `[1]` citation chip, replacing the default chip.
+  ///
+  /// Wins over [sourceTagBuilder] when both are set.
+  final InlineSourceTagBuilder? inlineSourceTagBuilder;
+
+  /// Builds a widget for a `[1]` citation chip.
+  ///
+  /// Used only when [inlineSourceTagBuilder] is null. The result is wrapped
+  /// in a [WidgetSpan] centred on the line box, which is the shape that made
+  /// this hook a problem — and it is handed an empty [TextStyle] rather than
+  /// the resolved one.
+  @Deprecated('Use inlineSourceTagBuilder. Will be removed in 2.0.0.')
   final SourceTagBuilder? sourceTagBuilder;
 
   /// Host-defined inline regions the parser must not look inside.
@@ -278,7 +600,28 @@ class GptMarkdownConfig {
   @Deprecated('Use inlineCodeBuilder. Will be removed in 2.0.0.')
   final HighlightBuilder? highlightBuilder;
 
-  /// The link builder.
+  /// Whether a block construct is rendered as a sibling widget rather than as
+  /// a placeholder inside a paragraph.
+  ///
+  /// A block's own content normally opts out of text scaling, because the
+  /// paragraph holding its placeholder has already scaled it — scaling twice
+  /// was the bug that produced overlapping text. Lift the block out of the
+  /// paragraph and there is nothing left to scale it, so it has to scale
+  /// itself. Set by the layout, not by a consumer.
+  final bool blocksRenderDirectly;
+
+  /// Builds the span for a link, replacing the default rendering.
+  ///
+  /// Wins over [linkBuilder] when both are set.
+  final InlineLinkBuilder? inlineLinkBuilder;
+
+  /// Builds a widget for a link.
+  ///
+  /// Used only when [inlineLinkBuilder] is null. The result is wrapped in a
+  /// [WidgetSpan], which is the shape that made this hook a problem — prefer
+  /// [inlineLinkBuilder], or [GptMarkdown.styleSheet]'s [LinkStyle] when you
+  /// only want to restyle.
+  @Deprecated('Use inlineLinkBuilder. Will be removed in 2.0.0.')
   final LinkBuilder? linkBuilder;
 
   /// The image builder.
@@ -355,6 +698,8 @@ class GptMarkdownConfig {
     final TextScaler? textScaler,
     final String Function(String tex)? latexWorkaround,
     final LatexBuilder? latexBuilder,
+    final InlineSourceTagBuilder? inlineSourceTagBuilder,
+    @Deprecated('Use inlineSourceTagBuilder. Will be removed in 2.0.0.')
     final SourceTagBuilder? sourceTagBuilder,
     final List<InlineDirective>? inlineDirectives,
     final bool? followLinkColor,
@@ -364,6 +709,9 @@ class GptMarkdownConfig {
     final InlineCodeBuilder? inlineCodeBuilder,
     @Deprecated('Use inlineCodeBuilder. Will be removed in 2.0.0.')
     final HighlightBuilder? highlightBuilder,
+    final bool? blocksRenderDirectly,
+    final InlineLinkBuilder? inlineLinkBuilder,
+    @Deprecated('Use inlineLinkBuilder. Will be removed in 2.0.0.')
     final LinkBuilder? linkBuilder,
     final ImageBuilder? imageBuilder,
     final OrderedListBuilder? orderedListBuilder,
@@ -397,6 +745,9 @@ class GptMarkdownConfig {
       latexBuilder: latexBuilder ?? this.latexBuilder,
       followLinkColor: followLinkColor ?? this.followLinkColor,
       codeBuilder: codeBuilder ?? this.codeBuilder,
+      inlineSourceTagBuilder:
+          inlineSourceTagBuilder ?? this.inlineSourceTagBuilder,
+      // ignore: deprecated_member_use_from_same_package
       sourceTagBuilder: sourceTagBuilder ?? this.sourceTagBuilder,
       inlineDirectives: inlineDirectives ?? this.inlineDirectives,
       maxLines: maxLines ?? this.maxLines,
@@ -404,6 +755,9 @@ class GptMarkdownConfig {
       inlineCodeBuilder: inlineCodeBuilder ?? this.inlineCodeBuilder,
       // ignore: deprecated_member_use_from_same_package
       highlightBuilder: highlightBuilder ?? this.highlightBuilder,
+      blocksRenderDirectly: blocksRenderDirectly ?? this.blocksRenderDirectly,
+      inlineLinkBuilder: inlineLinkBuilder ?? this.inlineLinkBuilder,
+      // ignore: deprecated_member_use_from_same_package
       linkBuilder: linkBuilder ?? this.linkBuilder,
       imageBuilder: imageBuilder ?? this.imageBuilder,
       orderedListBuilder: orderedListBuilder ?? this.orderedListBuilder,
@@ -436,7 +790,11 @@ class GptMarkdownConfig {
   /// https://github.com/flutter/flutter/issues/54400 — the engine otherwise
   /// lays those inline widgets out left to right and they come out reversed.
   /// Everything else keeps using a plain [Text].
-  Widget getRich(InlineSpan span, {bool isRoot = false}) {
+  Widget getRich(
+    InlineSpan span, {
+    bool isRoot = false,
+    bool ambientScaling = false,
+  }) {
     // A nested paragraph sits inside a `WidgetSpan`, and a paragraph lays its
     // inline children out in scaled space — it hands them `maxWidth / scale`
     // and multiplies the reported size back. A child that scales its own text
@@ -445,10 +803,23 @@ class GptMarkdownConfig {
     // Passing `textScaler` here would defeat that: an explicit scaler on a
     // `Text` wins over the ambient `MediaQuery`, so the paragraph would scale
     // itself again despite the `withNoTextScaling` wrapper below.
-    final effectiveScaler = isRoot ? textScaler : TextScaler.noScaling;
+    //
+    // [ambientScaling] is the third case: a block lifted out of the paragraph
+    // entirely. It has to scale, so it cannot opt out — but it must scale from
+    // the ambient `MediaQuery`, which `GptMarkdown` has already set from
+    // `textScaler`. Handing it the scaler *again* applies it twice: once to
+    // the glyphs and once to the width the block wraps into, which measured 4x
+    // the correct height on a bullet list.
+    final scaleFromAmbient = ambientScaling && !isRoot;
+    final effectiveScaler =
+        scaleFromAmbient ? null : (isRoot ? textScaler : TextScaler.noScaling);
     final codeRuns = collectInlineCodeRuns(span);
+    // A tap target is resolved by the paragraph's render object, so a
+    // paragraph holding one has to go through BidiText. Missing this renders
+    // the span as ordinary text with no tap and no error.
+    final tapRuns = collectInlineTapRuns(span);
     final needsBidi = needsBidiPlaceholderFix(span);
-    if (codeRuns.isEmpty && !needsBidi) {
+    if (codeRuns.isEmpty && tapRuns.isEmpty && !needsBidi) {
       // Nothing to decorate and no placeholders to reorder — the stock widget
       // does the job, and stays the hot path for ordinary paragraphs.
       final Widget child = Text.rich(
@@ -459,7 +830,7 @@ class GptMarkdownConfig {
         maxLines: maxLines,
         overflow: overflow,
       );
-      if (isRoot) {
+      if (isRoot || scaleFromAmbient) {
         return child;
       }
       return MediaQuery.withNoTextScaling(child: child);
@@ -468,13 +839,14 @@ class GptMarkdownConfig {
       span,
       bidiEnabled: needsBidi,
       inlineCodeRuns: codeRuns,
+      inlineTapRuns: tapRuns,
       textDirection: textDirection,
       textScaler: effectiveScaler,
       textAlign: textAlign,
       maxLines: maxLines,
       overflow: overflow,
     );
-    if (isRoot) {
+    if (isRoot || scaleFromAmbient) {
       return child;
     }
     return MediaQuery.withNoTextScaling(child: child);
@@ -490,6 +862,7 @@ class GptMarkdownConfig {
         followLinkColor == other.followLinkColor &&
         scope == other.scope &&
         autolink == other.autolink &&
+        blocksRenderDirectly == other.blocksRenderDirectly &&
         // Value types, so comparing them is cheap and a runtime change to any
         // of them regenerates the spans. Getting this wrong is silent: the
         // widget rebuilds with the new config and keeps rendering the old
@@ -512,10 +885,12 @@ class GptMarkdownConfig {
         // latexWorkaround == other.latexWorkaround &&
         // latexBuilder == other.latexBuilder &&
         // sourceTagBuilder == other.sourceTagBuilder &&
+        // inlineSourceTagBuilder == other.inlineSourceTagBuilder &&
         // codeBuilder == other.codeBuilder &&
         // orderedListBuilder == other.orderedListBuilder &&
         // unOrderedListBuilder == other.unOrderedListBuilder &&
         // linkBuilder == other.linkBuilder &&
+        // inlineLinkBuilder == other.inlineLinkBuilder &&
         // imageBuilder == other.imageBuilder &&
         // inlineCodeBuilder == other.inlineCodeBuilder &&
         // onLinkTap == other.onLinkTap &&

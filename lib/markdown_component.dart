@@ -879,13 +879,20 @@ InlineSpan buildLinkSpan(
   List<InlineSpan> Function(GptMarkdownConfig conf)? buildLabelSpans,
 }) {
   final theme = GptMarkdownTheme.of(context);
+  // `LinkStyle.resolve` cannot reach these — it is handed a `ColorScheme` and
+  // the defaults live on `GptMarkdownTheme`. Resolve here so a builder is
+  // handed a `LinkStyle` whose fields are genuinely filled in.
   final linkStyleSpec = (resolvedStyleSheet(context, config).link ??
           const LinkStyle())
       .resolve(Theme.of(context).colorScheme);
   final baseColor = linkStyleSpec.color ?? theme.linkColor;
   final hoverColor = linkStyleSpec.hoverColor ?? theme.linkHoverColor;
   final decoration = linkStyleSpec.decoration ?? TextDecoration.underline;
-  final builder = config.linkBuilder;
+  final resolvedLinkStyle = linkStyleSpec.copyWith(
+    color: baseColor,
+    hoverColor: hoverColor,
+    decoration: decoration,
+  );
 
   List<InlineSpan> labelSpans(TextStyle style) {
     final conf = config.copyWith(style: style, scope: MarkdownScope.linkLabel);
@@ -901,22 +908,62 @@ InlineSpan buildLinkSpan(
     return MarkdownComponent.generate(context, label, conf, false);
   }
 
+  final linkTextStyle = (config.style ?? const TextStyle()).copyWith(
+    color: baseColor,
+    decorationColor: baseColor,
+    decoration: decoration,
+    decorationThickness: resolvedLinkStyle.decorationThickness,
+    fontWeight: resolvedLinkStyle.fontWeight,
+  );
+
+  final onLinkTap = config.onLinkTap;
+  final onTap = onLinkTap == null ? null : () => onLinkTap(url, label);
+
+  final builder = config.inlineLinkBuilder;
   if (builder != null) {
-    // Build a styled span to hand off to the custom linkBuilder.
-    final linkStyle = (config.style ?? const TextStyle()).copyWith(
-      color: baseColor,
-      decorationColor: baseColor,
-      decoration: decoration,
-      decorationThickness: linkStyleSpec.decorationThickness,
-      fontWeight: linkStyleSpec.fontWeight,
+    final details = LinkBuildDetails(
+      context: context,
+      config: config,
+      style: linkTextStyle,
+      url: url,
+      label: label,
+      labelSpans: labelSpans(linkTextStyle),
+      linkStyle: resolvedLinkStyle,
+      isAutolink: !parseLabel,
+      onTap: onTap,
     );
+    final span = builder(details);
+    assert(
+      onTap == null ||
+          // `[](url)` has no label, so there is genuinely nothing to tap and
+          // nothing wrong. Without this the package's own recommended
+          // `defaultSpan()` trips its own assert on valid Markdown.
+          span.toPlainText(includePlaceholders: false).isEmpty ||
+          _hasReachableTap(span),
+      'inlineLinkBuilder returned a span with nothing that can be tapped for '
+      '"$url". A GestureRecognizer only fires on a TextSpan that carries text, '
+      'and a plain TextSpan carries no tap at all. Return '
+      'details.defaultSpan(), a TappableTextSpan/LinkTextSpan, or '
+      'details.asWidgetSpan() for a widget.',
+    );
+    return span;
+  }
+
+  // ignore: deprecated_member_use_from_same_package
+  final legacyBuilder = config.linkBuilder;
+  if (legacyBuilder != null) {
+    // Kept so 1.2.x code compiles: a Widget still has to go in a placeholder,
+    // and the tap still has to be a GestureDetector around it.
     return scaledWidgetSpan(
       config: config,
       child: GestureDetector(
-        onTap: () => config.onLinkTap?.call(url, label),
-        child: builder(
+        // Always non-null, as it has been since 1.1: a null callback makes
+        // `GestureDetector` transparent, so a link would start passing taps
+        // through to whatever wraps it for anyone who has no `onLinkTap`.
+        onTap: () => onTap?.call(),
+        child: legacyBuilder(
           context,
-          TextSpan(children: labelSpans(linkStyle), style: linkStyle),
+          TextSpan(children: labelSpans(linkTextStyle), style: linkTextStyle),
           url,
           config.style ?? const TextStyle(),
         ),
@@ -924,28 +971,61 @@ InlineSpan buildLinkSpan(
     );
   }
 
-  // Default rendering — LinkButton rebuilds the span on every hover change so
-  // bold/italic text inside a link also picks up the hover colour.
-  return scaledWidgetSpan(
-    config: config,
-    child: LinkButton(
-      hoverColor: hoverColor,
-      color: baseColor,
-      onPressed: () => config.onLinkTap?.call(url, label),
-      text: label,
-      config: config,
-      spanBuilder: (color) {
-        final spanStyle = (config.style ?? const TextStyle()).copyWith(
-          color: color,
-          decorationColor: color,
-          decoration: decoration,
-          decorationThickness: linkStyleSpec.decorationThickness,
-          fontWeight: linkStyleSpec.fontWeight,
-        );
-        return TextSpan(children: labelSpans(spanStyle), style: spanStyle);
-      },
-    ),
+  // Default rendering — a span, not a widget.
+  //
+  // A `WidgetSpan` link sits off the text baseline, cannot wrap across lines
+  // (the whole label jumps to the next one), is skipped by text selection, and
+  // is one opaque character to the streaming reveal. As a span the label is
+  // real text: it wraps mid-label, selects with the sentence around it, and
+  // reveals character by character.
+  //
+  // The tap cannot ride on this span's own recognizer — a recognizer only
+  // fires on a span that carries its own `text`, and this one carries
+  // `children`. `LinkTextSpan` is resolved by text range instead; see
+  // `InlineTapTargets`.
+  //
+  // Hover is likewise resolved once per paragraph rather than by a
+  // `StatefulWidget` per link, which is what `LinkButton` used to do.
+  return LinkTextSpan.wrapping(
+    children: labelSpans(linkTextStyle),
+    url: url,
+    linkStyle: resolvedLinkStyle,
+    style: linkTextStyle,
+    hoverStyle: TextStyle(color: hoverColor, decorationColor: hoverColor),
+    onTap: onTap,
   );
+}
+
+/// Whether a tap can reach anything in [root].
+///
+/// True when the tree holds a [TappableTextSpan] with a measurable range, a
+/// [TextSpan] leaf carrying its own recognizer, or any placeholder — a
+/// placeholder owns its own gestures, so the package cannot tell whether it is
+/// tappable and does not guess. Debug only.
+bool _hasReachableTap(InlineSpan root) {
+  if (collectInlineTapRuns(root).isNotEmpty) {
+    return true;
+  }
+  var reachable = false;
+  void visit(InlineSpan span) {
+    if (reachable) {
+      return;
+    }
+    if (span is! TextSpan) {
+      reachable = true;
+      return;
+    }
+    if (span.recognizer != null && (span.text?.isNotEmpty ?? false)) {
+      reachable = true;
+      return;
+    }
+    for (final child in span.children ?? const <InlineSpan>[]) {
+      visit(child);
+    }
+  }
+
+  visit(root);
+  return reachable;
 }
 
 /// Image component

@@ -6,7 +6,18 @@ import 'package:gpt_markdown/custom_widgets/indent_widget.dart';
 import 'package:gpt_markdown/custom_widgets/link_button.dart';
 import 'package:gpt_markdown/custom_widgets/unordered_ordered_list.dart';
 import 'package:gpt_markdown/gpt_markdown.dart'
-    show CodeTextSpan, MarkdownComponent, MdWidget;
+    show CodeTextSpan, LinkTextSpan, MarkdownComponent, MdWidget;
+
+/// Serializes a single widget that is not inside a paragraph.
+///
+/// Block constructs used to reach the serializer as `WidgetSpan`s inside a
+/// `RichText`. They are plain siblings in a column now, so they have to be
+/// picked up from the widget tree directly or they serialize to nothing.
+String serializeBlockWidget(Widget widget) {
+  final serializer = MarkdownSerializer();
+  serializer._visitWidget(widget);
+  return serializer._buffer.toString().trim();
+}
 
 /// Serializes a Flutter span tree into a stable, comparable string format.
 ///
@@ -53,6 +64,20 @@ class MarkdownSerializer {
   }
 
   void _visitTextSpan(TextSpan span) {
+    // A link is a span now, not a `LinkButton` widget, so it is recognised
+    // here rather than in `_visitWidget`. The serialised shape is unchanged so
+    // existing expectations still read the same.
+    if (span is LinkTextSpan) {
+      // The url is finally available. `buildLinkSpan` never passed one to
+      // `LinkButton`, so the old branch could only ever write the label — the
+      // bug that test/bugs/link_url_not_stored_test.dart was written for, and
+      // the reason the format in test/README.md never matched reality. A
+      // `LinkTextSpan` carries it.
+      final label = span.toPlainText(includePlaceholders: false);
+      _write('LINK("${_escapeText(label)}", url="${_escapeText(span.url)}")');
+      return;
+    }
+
     // Handle text content
     if (span.text != null && span.text!.isNotEmpty) {
       final text = span.text!;

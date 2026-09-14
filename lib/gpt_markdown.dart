@@ -7,6 +7,7 @@ export 'package:gpt_markdown/custom_widgets/markdown_config.dart';
 
 // Inline `code` styling is configured by consumers.
 export 'package:gpt_markdown/custom_widgets/inline_code.dart';
+export 'package:gpt_markdown/custom_widgets/inline_tap.dart';
 
 // Reveal animation for streamed replies.
 export 'package:gpt_markdown/streaming/streaming_markdown.dart';
@@ -42,6 +43,7 @@ import 'dart:math';
 
 import 'custom_widgets/code_field.dart';
 import 'custom_widgets/inline_code.dart';
+import 'custom_widgets/inline_tap.dart';
 import 'dart:async';
 import 'dart:convert';
 
@@ -97,11 +99,15 @@ class GptMarkdown extends StatelessWidget {
     this.onLinkTap,
     this.latexBuilder,
     this.codeBuilder,
+    this.inlineSourceTagBuilder,
+    @Deprecated('Use inlineSourceTagBuilder. Will be removed in 2.0.0.')
     this.sourceTagBuilder,
     this.inlineDirectives,
     this.inlineCodeBuilder,
     @Deprecated('Use inlineCodeBuilder. Will be removed in 2.0.0.')
     this.highlightBuilder,
+    this.inlineLinkBuilder,
+    @Deprecated('Use inlineLinkBuilder. Will be removed in 2.0.0.')
     this.linkBuilder,
     this.maxLines,
     this.overflow,
@@ -169,7 +175,17 @@ class GptMarkdown extends StatelessWidget {
   /// The code builder.
   final CodeBlockBuilder? codeBuilder;
 
-  /// The source tag builder.
+  /// Builds the span for a `[1]` citation chip, replacing the default chip.
+  ///
+  /// Wins over [sourceTagBuilder] when both are set.
+  final InlineSourceTagBuilder? inlineSourceTagBuilder;
+
+  /// Builds a widget for a `[1]` citation chip.
+  ///
+  /// Used only when [inlineSourceTagBuilder] is null. The result is wrapped
+  /// in a [WidgetSpan], and it is handed an empty [TextStyle] rather than
+  /// the resolved one — both kept so 1.2.x code behaves unchanged.
+  @Deprecated('Use inlineSourceTagBuilder. Will be removed in 2.0.0.')
   final SourceTagBuilder? sourceTagBuilder;
 
   /// Host-defined inline regions the parser must not look inside.
@@ -201,7 +217,20 @@ class GptMarkdown extends StatelessWidget {
   /// depend on the code itself.
   final InlineCodeBuilder? inlineCodeBuilder;
 
-  /// The link builder.
+  /// Builds the span for a link, replacing the default rendering.
+  ///
+  /// Wins over [linkBuilder] when both are set. Returning a span rather
+  /// than a widget keeps the link on the text baseline, wrapping across
+  /// lines and selectable — none of which a [WidgetSpan] can do.
+  final InlineLinkBuilder? inlineLinkBuilder;
+
+  /// Builds a widget for a link.
+  ///
+  /// Used only when [inlineLinkBuilder] is null. The result is wrapped in a
+  /// [WidgetSpan], which is the shape that made this hook a problem —
+  /// prefer [inlineLinkBuilder], or [styleSheet]'s [LinkStyle] when you
+  /// only want to restyle.
+  @Deprecated('Use inlineLinkBuilder. Will be removed in 2.0.0.')
   final LinkBuilder? linkBuilder;
 
   /// The image builder.
@@ -543,11 +572,15 @@ class GptMarkdown extends StatelessWidget {
       codeBuilder: codeBuilder,
       maxLines: maxLines,
       overflow: overflow,
+      inlineSourceTagBuilder: inlineSourceTagBuilder,
+      // ignore: deprecated_member_use_from_same_package
       sourceTagBuilder: sourceTagBuilder,
       inlineDirectives: inlineDirectives,
       inlineCodeBuilder: inlineCodeBuilder,
       // ignore: deprecated_member_use_from_same_package
       highlightBuilder: highlightBuilder,
+      inlineLinkBuilder: inlineLinkBuilder,
+      // ignore: deprecated_member_use_from_same_package
       linkBuilder: linkBuilder,
       imageBuilder: imageBuilder,
       orderedListBuilder: orderedListBuilder,

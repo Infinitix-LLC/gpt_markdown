@@ -95,6 +95,9 @@ Widget headingWidget(
   required int level,
   required List<InlineSpan> Function(GptMarkdownConfig conf) buildChildren,
 }) {
+  // A heading lifted out of the paragraph has to scale itself, from the
+  // ambient MediaQuery; inside one, the paragraph already did it.
+  final ambient = config.blocksRenderDirectly;
   final theme = GptMarkdownTheme.of(context);
   final headingStyle = (resolvedStyleSheet(context, config).heading ??
           const HeadingStyle())
@@ -112,12 +115,16 @@ Widget headingWidget(
 
   final builder = config.headingBuilder;
   if (builder != null) {
-    final content = config.getRich(TextSpan(children: buildChildren(conf)));
+    final content = config.getRich(
+      TextSpan(children: buildChildren(conf)),
+      ambientScaling: ambient,
+    );
     return builder(context, level, content, headingStyle);
   }
 
   final dividerPadding = headingStyle.dividerPadding;
   final rich = config.getRich(
+    ambientScaling: ambient,
     TextSpan(
       children: [
         ...buildChildren(conf),
@@ -183,8 +190,7 @@ InlineSpan blockQuoteSpan(
 
   return TextSpan(
     children: [
-      scaledWidgetSpan(
-        config: config,
+      BlockWidgetSpan(
         alignment: PlaceholderAlignment.bottom,
         baseline: null,
         child: quote,
@@ -230,57 +236,107 @@ Widget defaultQuoteWidget(
   return Directionality(textDirection: direction, child: child);
 }
 
-/// A citation tag such as `[1]`, honouring [GptMarkdownConfig.sourceTagBuilder],
-/// [SourceTagStyle] and [GptMarkdownConfig.onSourceTagTap].
+/// A placeholder holding a *block* construct rather than an inline one.
+///
+/// The difference matters to whoever is laying the document out. A block owns
+/// its line and can be lifted out of the paragraph entirely — rendered as a
+/// sibling widget, skipping both the placeholder and the nested `Text.rich`
+/// inside it. An inline image or equation cannot: it is positioned against a
+/// text baseline that would no longer exist.
+///
+/// Marked explicitly because the two are indistinguishable by shape — an image
+/// and a block quote are both a lone bottom-aligned `WidgetSpan`, and telling
+/// them apart by looking silently swallowed every image in the document.
+class BlockWidgetSpan extends WidgetSpan {
+  /// Wraps a block-level [child].
+  const BlockWidgetSpan({
+    required super.child,
+    super.alignment,
+    super.baseline,
+    super.style,
+  });
+}
+
+/// A citation tag such as `[1]`, honouring
+/// [GptMarkdownConfig.inlineSourceTagBuilder], [SourceTagStyle] and
+/// [GptMarkdownConfig.onSourceTagTap].
 InlineSpan sourceTagSpan(
   BuildContext context,
   String id,
   GptMarkdownConfig config,
 ) {
-  final style = (resolvedStyleSheet(context, config).sourceTag ??
+  final tagStyle = (resolvedStyleSheet(context, config).sourceTag ??
           const SourceTagStyle())
       .resolve(Theme.of(context).colorScheme);
-  final size = style.size ?? 20;
-  Widget chip =
-      config.sourceTagBuilder?.call(
-        context,
-        id,
-        style.textStyle ?? const TextStyle(),
-      ) ??
-      SizedBox(
-        width: size,
-        height: size,
-        child: Material(
-          color:
-              style.backgroundColor ??
-              Theme.of(context).colorScheme.onInverseSurface,
-          shape:
-              style.shape == BoxShape.rectangle
-                  ? const RoundedRectangleBorder()
-                  : const OvalBorder(),
-          child: FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Text(
-              id,
-              style: style.textStyle,
-              textDirection: config.textDirection,
-            ),
-          ),
-        ),
-      );
+  final onSourceTagTap = config.onSourceTagTap;
+  final onTap = onSourceTagTap == null ? null : () => onSourceTagTap(id);
 
-  final onTap = config.onSourceTagTap;
-  if (onTap != null) {
-    chip = GestureDetector(onTap: () => onTap(id), child: chip);
+  final details = SourceTagBuildDetails(
+    context: context,
+    config: config,
+    // The resolved style, not `const TextStyle()`. `SourceTagStyle.textStyle`
+    // documents itself as defaulting to the surrounding style; now it does.
+    style: tagStyle.textStyle ?? config.style ?? const TextStyle(),
+    id: id,
+    sourceTagStyle: tagStyle,
+    onTap: onTap,
+  );
+
+  final builder = config.inlineSourceTagBuilder;
+  if (builder != null) {
+    final span = builder(details);
+    assert(
+      onTap == null ||
+          span.toPlainText(includePlaceholders: false).isEmpty ||
+          _hasReachableTap(span),
+      'inlineSourceTagBuilder returned a span with nothing that can be tapped '
+      'for "$id". Return details.defaultSpan(), a TappableTextSpan, or '
+      'details.asWidgetSpan() for a widget.',
+    );
+    return span;
   }
 
-  return scaledWidgetSpan(
-    config: config,
-    alignment: PlaceholderAlignment.middle,
-    baseline: null,
-    child: Padding(
-      padding: style.padding ?? const EdgeInsets.all(2),
-      child: chip,
+  // ignore: deprecated_member_use_from_same_package
+  final legacyBuilder = config.sourceTagBuilder;
+  if (legacyBuilder != null) {
+    // Kept so 1.2.x code compiles, including the empty TextStyle it has always
+    // been handed — that is what existing builders were written against.
+    return details.asWidgetSpan(
+      legacyBuilder(context, id, tagStyle.textStyle ?? const TextStyle()),
+    );
+  }
+
+  return defaultSourceTagSpan(details);
+}
+
+/// The stock `[1]` chip: a filled circle with the number scaled to fit.
+///
+/// Split out so [SourceTagBuildDetails.defaultSpan] can return it, and so a
+/// builder that only wants to wrap the stock chip does not have to restate it.
+InlineSpan defaultSourceTagSpan(SourceTagBuildDetails details) {
+  final style = details.sourceTagStyle;
+  final size = style.size ?? 20;
+  return details.asWidgetSpan(
+    SizedBox(
+      width: size,
+      height: size,
+      child: Material(
+        color:
+            style.backgroundColor ??
+            Theme.of(details.context).colorScheme.onInverseSurface,
+        shape:
+            style.shape == BoxShape.rectangle
+                ? const RoundedRectangleBorder()
+                : const OvalBorder(),
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            details.id,
+            style: style.textStyle,
+            textDirection: details.config.textDirection,
+          ),
+        ),
+      ),
     ),
   );
 }

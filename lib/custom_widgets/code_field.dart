@@ -360,47 +360,52 @@ class _CodeFieldState extends State<CodeField> {
                     if (showLabel && showCopy) const SizedBox(width: 8),
                     if (!showLabel) const Spacer(),
                     if (showCopy)
-                      IgnorePointer(
-                        ignoring: _copying || _copied,
-                        child: IconButton(
-                          tooltip:
-                              _copied
-                                  ? (widget.style.copiedLabel ?? 'Copied!')
-                                  : (widget.style.copyLabel ?? 'Copy code'),
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                          iconSize: 17,
-                          visualDensity: VisualDensity.compact,
-                          constraints: const BoxConstraints.tightFor(
-                            width: 32,
-                            height: 32,
-                          ),
-                          padding: EdgeInsets.zero,
-                          style: IconButton.styleFrom(
-                            backgroundColor:
-                                Theme.of(
-                                  context,
-                                ).colorScheme.surfaceContainerHighest,
-                            hoverColor: Theme.of(
-                              context,
-                            ).colorScheme.onSurface.withValues(alpha: 0.08),
-                            highlightColor: Theme.of(
-                              context,
-                            ).colorScheme.onSurface.withValues(alpha: 0.12),
-                          ),
-                          onPressed: _copyCode,
-                          icon: AnimatedSwitcher(
-                            duration: const Duration(milliseconds: 160),
-                            transitionBuilder:
-                                (child, animation) => ScaleTransition(
-                                  scale: animation,
-                                  child: child,
-                                ),
-                            child: Icon(
-                              _copied
-                                  ? Icons.check_rounded
-                                  : Icons.content_copy_rounded,
-                              key: ValueKey(_copied),
-                            ),
+                      // Deliberately always enabled. Disabling it — with
+                      // `IgnorePointer` or `AbsorbPointer` — does not stop the
+                      // tap reaching an ancestor, because an ancestor is
+                      // already on the hit-test path; it only stops the button
+                      // claiming the gesture, so the tap fell through to
+                      // whatever wraps the code block (a tap-to-collapse, in a
+                      // chat UI). The duplicate-clipboard guard lives in
+                      // `_copyCode`.
+                      IconButton(
+                        tooltip:
+                            _copied
+                                ? (widget.style.copiedLabel ?? 'Copied!')
+                                : (widget.style.copyLabel ?? 'Copy code'),
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        iconSize: 17,
+                        visualDensity: VisualDensity.compact,
+                        constraints: const BoxConstraints.tightFor(
+                          width: 32,
+                          height: 32,
+                        ),
+                        padding: EdgeInsets.zero,
+                        style: IconButton.styleFrom(
+                          backgroundColor:
+                              Theme.of(
+                                context,
+                              ).colorScheme.surfaceContainerHighest,
+                          hoverColor: Theme.of(
+                            context,
+                          ).colorScheme.onSurface.withValues(alpha: 0.08),
+                          highlightColor: Theme.of(
+                            context,
+                          ).colorScheme.onSurface.withValues(alpha: 0.12),
+                        ),
+                        onPressed: _copyCode,
+                        icon: AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 160),
+                          transitionBuilder:
+                              (child, animation) => ScaleTransition(
+                                scale: animation,
+                                child: child,
+                              ),
+                          child: Icon(
+                            _copied
+                                ? Icons.check_rounded
+                                : Icons.content_copy_rounded,
+                            key: ValueKey(_copied),
                           ),
                         ),
                       ),

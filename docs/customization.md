@@ -556,9 +556,11 @@ default or restate a theme colour.
 | `tableBuilder` | `(context, rows, TextStyle style, GptMarkdownConfig config)` |
 | `imageBuilder` | `(context, String url, double? width, double? height)` |
 | `latexBuilder` | `(context, String tex, TextStyle style, bool inline)` |
-| `linkBuilder` | `(context, InlineSpan label, String url, TextStyle style)` |
+| `inlineLinkBuilder` | `(LinkBuildDetails details)` → `InlineSpan` |
+| `linkBuilder` | *Deprecated.* `(context, InlineSpan label, String url, TextStyle style)` |
 | `inlineCodeBuilder` | `(context, String code, TextStyle style, InlineCodeStyle codeStyle)` |
-| `sourceTagBuilder` | `(context, String content, TextStyle style)` |
+| `inlineSourceTagBuilder` | `(SourceTagBuildDetails details)` → `InlineSpan` |
+| `sourceTagBuilder` | *Deprecated.* `(context, String content, TextStyle style)` |
 | `orderedListBuilder` | `(context, String no, Widget child, GptMarkdownConfig config)` |
 | `unOrderedListBuilder` | `(context, Widget child, GptMarkdownConfig config)` |
 
@@ -579,16 +581,51 @@ blockQuoteBuilder: (context, content, style) => DecoratedBox(
 ),
 ```
 
-### inlineCodeBuilder returns a span, not a widget
+### The inline builders return a span, not a widget
 
-Deliberate. A `Widget` has to be wrapped in a `WidgetSpan`, which cannot wrap
-across lines, is skipped by text selection, and sits off the baseline.
+`inlineCodeBuilder`, `inlineLinkBuilder` and `inlineSourceTagBuilder` all
+return an `InlineSpan`. Deliberate. A `Widget` has to be wrapped in a
+`WidgetSpan`, which cannot wrap across lines, is skipped by text selection,
+sits off the baseline, and is one opaque character to the streaming reveal.
+
+Migrating a `linkBuilder`, term by term:
+
+| old positional argument | new |
+|---|---|
+| `context` | `details.context` |
+| `label` (one span) | `details.labelSpans` — already parsed, already styled |
+| `url` | `details.url` |
+| `style` | `details.style` — now the *resolved* link style |
+| — | `details.linkStyle`, the resolved `LinkStyle` |
+| — | `details.isAutolink` |
+| — | `details.onTap`, which calls `onLinkTap` for you |
+| — | `details.hoverStyle` |
+| — | `details.config` |
+
+Because a builder receives one details object rather than positional
+arguments, a later release adds a field here instead of a parameter — so
+nothing you write today stops compiling.
+
+```dart
+// keep the stock link, change one thing
+inlineLinkBuilder: (link) =>
+    link.defaultSpan(style: link.style.copyWith(fontWeight: FontWeight.bold)),
+```
+
+> A `GestureRecognizer` fires only on a `TextSpan` that carries its own `text`,
+> never on one that only has `children`. A parsed link label is the second
+> kind, so `TextSpan(children: link.labelSpans, recognizer: tap)` renders
+> correctly and is silently never tapped. Return `link.defaultSpan()`, a
+> `TappableTextSpan`, or `link.asWidgetSpan()`. A debug assert catches it.
 
 If you genuinely need a widget:
 
 ```dart
 inlineCodeBuilder: (context, code, style, codeStyle) =>
     baselineWidgetSpan(MyChip(code: code, style: style)),
+
+inlineLinkBuilder: (link) => link.asWidgetSpan(MyLinkChip(url: link.url)),
+inlineSourceTagBuilder: (tag) => tag.asWidgetSpan(MyChip(tag.id)),
 ```
 
 `baselineWidgetSpan` aligns it on the text baseline and handles text-scale
