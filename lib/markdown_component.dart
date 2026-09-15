@@ -272,10 +272,12 @@ class InlineDirectiveMd extends InlineMd {
       // the text it is, rather than being mistaken for a widget.
       return TextSpan(text: text, style: config.style);
     }
-    return directives[decoded.index].builder(
-      context,
-      decoded.payload,
-      config.style ?? const TextStyle(),
+    return _scaleInlineSpanWidgets(
+      directives[decoded.index].builder(
+        context,
+        decoded.payload,
+        config.style ?? const TextStyle(),
+      ),
     );
   }
 }
@@ -872,7 +874,11 @@ WidgetSpan scaledWidgetSpan({
   PlaceholderAlignment alignment = PlaceholderAlignment.baseline,
   TextBaseline? baseline = TextBaseline.alphabetic,
 }) {
-  return WidgetSpan(alignment: alignment, baseline: baseline, child: child);
+  return WidgetSpan(
+    alignment: alignment,
+    baseline: baseline,
+    child: MarkdownTextScaling.wrap(child, enabled: false),
+  );
 }
 
 /// Builds the span for a link, shared by [ATagMd] and [AutolinkMd].

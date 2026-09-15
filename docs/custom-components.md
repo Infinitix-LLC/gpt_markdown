@@ -293,3 +293,22 @@ await tester.pumpWidget(/* … '[!!loud!!](https://x.com)' … */);
 ```
 
 More in [testing](testing.md).
+
+
+### Text scaling for components
+
+The rendering pipeline owns scaling at the paragraph boundary. Standalone
+blocks inherit the document's `MediaQuery.textScaler`; a `WidgetSpan` child
+receives disabled ambient scaling because Flutter scales its entire box.
+This applies to built-in blocks, custom block renderers, inline patterns and
+inline directives. Nested blocks retain the same rule.
+
+Return `Text` with the original font size from custom builders. Do not capture
+the outer context's scaler and apply it again to a widget inside a paragraph.
+For custom painters or math engines that do not use `Text`, resolve glyph sizes
+at widget build time with `MarkdownTextScaling.fontSize(context, baseSize)`.
+That helper uses the effective scaler below the boundary and supports nonlinear
+scalers. Images and decorations are not text; fixed block padding, borders and
+control icon sizes need not grow with the font.
+
+The legacy parser and existing component constructors remain supported.

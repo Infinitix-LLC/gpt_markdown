@@ -199,10 +199,12 @@ List<InlineSpan> expandInlineDirectives(
       out.addAll(rest(text.substring(cursor, start)));
     }
     out.add(
-      directives[index].builder(
-        context,
-        utf8.decode(base64Decode(body.substring(colon + 1))),
-        style,
+      _scaleInlineSpanWidgets(
+        directives[index].builder(
+          context,
+          utf8.decode(base64Decode(body.substring(colon + 1))),
+          style,
+        ),
       ),
     );
     cursor = end + 1;
@@ -362,7 +364,7 @@ List<InlineSpan> expandInlinePatterns(
     if (match == null || !pattern.scopes.contains(config.scope)) {
       out.add(TextSpan(text: matched, style: config.style));
     } else {
-      out.add(pattern.builder(context, match, style));
+      out.add(_scaleInlineSpanWidgets(pattern.builder(context, match, style)));
     }
     cursor = end + 1;
   }

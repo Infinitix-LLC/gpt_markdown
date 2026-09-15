@@ -43,6 +43,8 @@ String serializeBlockWidget(Widget widget) {
 /// - `HR` - horizontal rules
 /// - `NEWLINE` - paragraph breaks
 class MarkdownSerializer {
+  MarkdownSerializer({this.builtChildren = const {}});
+  final Map<Widget, List<Widget>> builtChildren;
   final StringBuffer _buffer = StringBuffer();
   int _depth = 0;
 
@@ -144,6 +146,17 @@ class MarkdownSerializer {
   }
 
   void _visitWidget(Widget widget) {
+    // Scaling boundaries and deferred renderers build below MediaQuery.
+    if (widget is Builder) {
+      for (final child in builtChildren[widget] ?? const <Widget>[]) {
+        _visitWidget(child);
+      }
+      return;
+    }
+    if (widget is MediaQuery) {
+      _visitWidget(widget.child);
+      return;
+    }
     // Unwrap common wrapper widgets
     if (widget is Row) {
       for (final child in widget.children) {
@@ -465,6 +478,9 @@ class MarkdownSerializer {
 }
 
 /// Convenience function to serialize a span tree.
-String serializeMarkdown(InlineSpan span) {
-  return MarkdownSerializer().serialize(span);
+String serializeMarkdown(
+  InlineSpan span, {
+  Map<Widget, List<Widget>> builtChildren = const {},
+}) {
+  return MarkdownSerializer(builtChildren: builtChildren).serialize(span);
 }

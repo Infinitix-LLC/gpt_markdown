@@ -85,7 +85,9 @@ class PlusparseRenderer {
   static InlineSpan _blockSpan(Widget child) => BlockWidgetSpan(
     child: Row(
       mainAxisSize: MainAxisSize.min,
-      children: [Flexible(child: child)],
+      children: [
+        Flexible(child: MarkdownTextScaling.wrap(child, enabled: false)),
+      ],
     ),
     bare: child,
     alignment: PlaceholderAlignment.baseline,
@@ -199,7 +201,11 @@ class PlusparseRenderer {
                 (conf) => conf.getRich(
                   TextSpan(
                     children: transform(
-                      content ??= _blockSpans(context, children, conf),
+                      content ??= _blockSpans(
+                        context,
+                        children,
+                        conf.copyWith(blocksRenderDirectly: false),
+                      ),
                     ),
                   ),
                   ambientScaling: conf.blocksRenderDirectly,
@@ -290,7 +296,14 @@ class PlusparseRenderer {
           // block node (the checkbox) with no inline content at all, and an
           // unconditional break put it on the line below its own bullet.
           if (inline.isNotEmpty) TextSpan(text: "\n", style: conf.style),
-          ..._blockSpans(context, nested, conf, separator: "\n"),
+          // These blocks remain placeholders in the item paragraph; only
+          // the outer item was lifted into the widget tree.
+          ..._blockSpans(
+            context,
+            nested,
+            conf.copyWith(blocksRenderDirectly: false),
+            separator: "\n",
+          ),
         ],
       ];
 
@@ -441,6 +454,7 @@ class PlusparseRenderer {
                       tableStyle.cellPadding ??
                       const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   child: cellConfig.getRich(
+                    ambientScaling: config.blocksRenderDirectly,
                     TextSpan(
                       children: _inlineSpans(context, cell.content, cellConfig),
                     ),

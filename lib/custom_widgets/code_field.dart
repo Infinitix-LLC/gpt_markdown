@@ -1,3 +1,4 @@
+import 'markdown_text_scaling.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:highlight/highlight.dart' show Node, highlight;
@@ -24,7 +25,12 @@ class CodeField extends StatefulWidget {
     this.style = const CodeBlockStyle(),
     this.onCopy,
     this.highlightCode = true,
+    this.scalesItsOwnText = false,
   });
+
+  /// Whether this block scales from MediaQuery rather than an enclosing
+  /// paragraph. Leave false when embedded in a WidgetSpan.
+  final bool scalesItsOwnText;
 
   /// Whether to apply syntax highlighting to the current code.
   final bool highlightCode;
@@ -383,16 +389,12 @@ class _CodeFieldState extends State<CodeField> {
       fontSize: widget.style.fontSize,
       color: widget.style.textColor,
     );
-    // Rendered inside a `WidgetSpan`, and a paragraph lays inline children
-    // out in scaled space: it hands them `maxWidth / scale` and multiplies
-    // the reported size back. A child that also scales its own text is
-    // counted twice. The markers here build their own `Text`, so they opt
-    // out — the contract `config.getRich` already follows for nested
-    // paragraphs.
+    // Nested blocks are scaled by their enclosing paragraph. Standalone
+    // blocks must instead let the body and header inherit MediaQuery scaling.
     final panelRadius = BorderRadius.all(
       widget.style.borderRadius ?? const Radius.circular(12),
     );
-    return MediaQuery.withNoTextScaling(
+    final body = DefaultTextStyle.merge(
       // `DecoratedBox`, not `Material`. The pixels are the same — a rounded
       // rect, a border, a fill — but `Material` also installs an ink surface
       // and a shape painter, which measured ~78 us per block for a panel that
@@ -404,85 +406,88 @@ class _CodeFieldState extends State<CodeField> {
       // as defaulting to the surrounding size and colour — and that surrounding
       // *was* this `Material`. So the default is resolved explicitly here
       // instead; dropping it silently resized and recoloured every code block.
-      child: DefaultTextStyle.merge(
-        style: Theme.of(context).textTheme.bodyMedium,
-        child: ClipRRect(
-          borderRadius: panelRadius,
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              color:
-                  widget.style.backgroundColor ??
-                  Theme.of(context).colorScheme.surfaceContainer,
-              borderRadius: panelRadius,
-              border:
-                  borderColor == null
-                      ? null
-                      : Border.all(
-                        color: borderColor,
-                        width: widget.style.borderWidth ?? 1,
-                      ),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                if (showLabel || showCopy)
-                  Padding(
-                    padding:
-                        widget.style.headerPadding ??
-                        const EdgeInsets.fromLTRB(10, 8, 8, 2),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        if (showLabel)
-                          Flexible(
-                            child: Align(
-                              alignment: AlignmentDirectional.centerStart,
-                              child: DecoratedBox(
-                                decoration: BoxDecoration(
-                                  color:
-                                      Theme.of(
-                                        context,
-                                      ).colorScheme.surfaceContainerHighest,
-                                  borderRadius: BorderRadius.circular(7),
+      style: Theme.of(context).textTheme.bodyMedium,
+      child: ClipRRect(
+        borderRadius: panelRadius,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color:
+                widget.style.backgroundColor ??
+                Theme.of(context).colorScheme.surfaceContainer,
+            borderRadius: panelRadius,
+            border:
+                borderColor == null
+                    ? null
+                    : Border.all(
+                      color: borderColor,
+                      width: widget.style.borderWidth ?? 1,
+                    ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (showLabel || showCopy)
+                Padding(
+                  padding:
+                      widget.style.headerPadding ??
+                      const EdgeInsets.fromLTRB(10, 8, 8, 2),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      if (showLabel)
+                        Flexible(
+                          child: Align(
+                            alignment: AlignmentDirectional.centerStart,
+                            child: DecoratedBox(
+                              decoration: BoxDecoration(
+                                color:
+                                    Theme.of(
+                                      context,
+                                    ).colorScheme.surfaceContainerHighest,
+                                borderRadius: BorderRadius.circular(7),
+                              ),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 9,
+                                  vertical: 5,
                                 ),
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 9,
-                                    vertical: 5,
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(
-                                        Icons.terminal_rounded,
-                                        size: 13,
-                                        color:
-                                            Theme.of(
-                                              context,
-                                            ).colorScheme.onSurfaceVariant,
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.terminal_rounded,
+                                      size: 13,
+                                      color:
+                                          Theme.of(
+                                            context,
+                                          ).colorScheme.onSurfaceVariant,
+                                    ),
+                                    const SizedBox(width: 5),
+                                    Flexible(
+                                      child: Text(
+                                        displayName,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: widget.style.languageStyle,
                                       ),
-                                      const SizedBox(width: 5),
-                                      Flexible(
-                                        child: Text(
-                                          displayName,
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: widget.style.languageStyle,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ),
                           ),
-                        if (showLabel && showCopy) const SizedBox(width: 8),
-                        if (!showLabel) const Spacer(),
-                        if (showCopy) _copyButton(context),
-                      ],
-                    ),
+                        ),
+                      if (showLabel && showCopy) const SizedBox(width: 8),
+                      if (!showLabel) const Spacer(),
+                      if (showCopy) _copyButton(context),
+                    ],
                   ),
-                SingleChildScrollView(
+                ),
+              // Markdown blocks follow RTL, but source code and its
+              // horizontal scroll origin keep their LTR reading order.
+              Directionality(
+                textDirection: TextDirection.ltr,
+                child: SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   padding:
                       widget.style.padding ??
@@ -494,11 +499,12 @@ class _CodeFieldState extends State<CodeField> {
                     ),
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
     );
+    return MarkdownTextScaling.wrap(body, enabled: widget.scalesItsOwnText);
   }
 }

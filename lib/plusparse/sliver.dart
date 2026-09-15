@@ -96,12 +96,16 @@ class _SliverGptMarkdownState extends State<SliverGptMarkdown> {
         ),
       );
     }
+    final directed = Directionality(
+      textDirection: config.textDirection,
+      child: sliver,
+    );
     final scaler = config.textScaler;
     return scaler == null
-        ? sliver
+        ? directed
         : MediaQuery(
           data: MediaQuery.of(context).copyWith(textScaler: scaler),
-          child: sliver,
+          child: directed,
         );
   }
 }

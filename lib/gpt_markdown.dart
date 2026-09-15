@@ -1,3 +1,5 @@
+import 'custom_widgets/markdown_text_scaling.dart';
+export 'custom_widgets/markdown_text_scaling.dart';
 import 'package:flutter/material.dart';
 import 'package:gpt_markdown/custom_widgets/markdown_config.dart';
 
@@ -601,6 +603,9 @@ class GptMarkdown extends StatelessWidget {
     // `MediaQuery` keeps one source of truth.
     final scaler = textScaler;
     Widget wrap(Widget child) {
+      // Block Rows/Columns resolve start alignment from the inherited direction,
+      // independently of Text.rich's explicit textDirection. Keep both in sync.
+      child = Directionality(textDirection: textDirection, child: child);
       if (scaler == null) {
         return child;
       }

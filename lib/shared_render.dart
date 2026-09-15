@@ -48,6 +48,7 @@ Widget checkboxWidget(
     return builder(context, checked, label, style);
   }
   return CustomCb(
+    scalesItsOwnText: config.blocksRenderDirectly,
     value: checked,
     textDirection: config.textDirection,
     spacing: style.gapAfterBox ?? 5,
@@ -73,6 +74,7 @@ Widget radioWidget(
     return builder(context, selected, label, style);
   }
   return CustomRb(
+    scalesItsOwnText: config.blocksRenderDirectly,
     value: selected,
     textDirection: config.textDirection,
     spacing: style.gapAfterBox ?? 5,
@@ -193,7 +195,8 @@ InlineSpan blockQuoteSpan(
       BlockWidgetSpan(
         alignment: PlaceholderAlignment.bottom,
         baseline: null,
-        child: quote,
+        child: MarkdownTextScaling.wrap(quote, enabled: false),
+        bare: quote,
       ),
     ],
   );
@@ -366,6 +369,7 @@ Widget codeBlockWidget(
       .resolve(Theme.of(context).colorScheme);
   return config.codeBuilder?.call(context, name, code, closed) ??
       CodeField(
+        scalesItsOwnText: config.blocksRenderDirectly,
         name: name,
         codes: code,
         highlightCode: closed || (style.highlightWhileStreaming ?? true),
@@ -528,9 +532,12 @@ Widget latexWidget(
                 color:
                     config.style?.color ??
                     Theme.of(context).colorScheme.onSurface,
-                fontSize:
-                    config.style?.fontSize ??
-                    Theme.of(context).textTheme.bodyMedium?.fontSize,
+                fontSize: MarkdownTextScaling.fontSize(
+                  context,
+                  textStyle.fontSize ??
+                      Theme.of(context).textTheme.bodyMedium?.fontSize ??
+                      14,
+                ),
                 mathFontOptions: FontOptions(
                   fontFamily: "Main",
                   fontWeight: config.style?.fontWeight ?? FontWeight.normal,
@@ -562,11 +569,19 @@ Widget latexWidget(
       .resolve(Theme.of(context).colorScheme);
   final override = latexStyle.textStyle;
   final base = config.style ?? const TextStyle();
-  Widget maths = builder(
-    context,
-    workaround(tex),
-    override == null ? base : base.merge(override),
-    inline,
+  // Build below the boundary so custom builders and the math engine read the
+  // effective scaler, including when this formula is nested inside a block.
+  Widget maths = MarkdownTextScaling.wrap(
+    Builder(
+      builder:
+          (mathContext) => builder(
+            mathContext,
+            workaround(tex),
+            override == null ? base : base.merge(override),
+            inline,
+          ),
+    ),
+    enabled: !inline && config.blocksRenderDirectly,
   );
   if (inline) {
     return maths;

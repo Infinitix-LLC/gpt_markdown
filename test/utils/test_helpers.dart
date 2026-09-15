@@ -61,11 +61,25 @@ String getSerializedOutput(WidgetTester tester) {
   //  * a *wrapper* block, which contributes a marker and still has to be
   //    descended into, because its content is a paragraph further down.
   final parts = <String>[];
+  final builtChildren = <Widget, List<Widget>>{};
+  void collect(Element element) {
+    final children = <Widget>[];
+    element.visitChildren((child) {
+      children.add(child.widget);
+      collect(child);
+    });
+    if (element.widget is Builder) builtChildren[element.widget] = children;
+  }
+
+  tester.binding.rootElement?.visitChildren(collect);
 
   void walk(Element element, List<String> out) {
     final widget = element.widget;
     if (widget is RichText) {
-      final rendered = serializeMarkdown(widget.text);
+      final rendered = serializeMarkdown(
+        widget.text,
+        builtChildren: builtChildren,
+      );
       if (rendered.isNotEmpty) {
         out.add(rendered);
       }

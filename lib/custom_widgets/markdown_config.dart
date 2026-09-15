@@ -834,9 +834,8 @@ class GptMarkdownConfig {
     // [ambientScaling] is the third case: a block lifted out of the paragraph
     // entirely. It has to scale, so it cannot opt out — but it must scale from
     // the ambient `MediaQuery`, which `GptMarkdown` has already set from
-    // `textScaler`. Handing it the scaler *again* applies it twice: once to
-    // the glyphs and once to the width the block wraps into, which measured 4x
-    // the correct height on a bullet list.
+    // `textScaler`. Descendant blocks inside this paragraph must switch
+    // blocksRenderDirectly off: their placeholder already supplies scaling.
     final scaleFromAmbient = ambientScaling && !isRoot;
     final effectiveScaler =
         scaleFromAmbient ? null : (isRoot ? textScaler : TextScaler.noScaling);
@@ -860,7 +859,7 @@ class GptMarkdownConfig {
       if (isRoot || scaleFromAmbient) {
         return child;
       }
-      return MediaQuery.withNoTextScaling(child: child);
+      return MarkdownTextScaling.wrap(child, enabled: false);
     }
     final child = BidiText(
       span,
@@ -876,7 +875,7 @@ class GptMarkdownConfig {
     if (isRoot || scaleFromAmbient) {
       return child;
     }
-    return MediaQuery.withNoTextScaling(child: child);
+    return MarkdownTextScaling.wrap(child, enabled: false);
   }
 
   /// A method to check if the configuration is the same.

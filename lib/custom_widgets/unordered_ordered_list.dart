@@ -1,3 +1,4 @@
+import 'markdown_text_scaling.dart';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -60,13 +61,12 @@ class UnorderedListView extends StatelessWidget {
         leading: padding,
         trailing: spacing,
         textDirection: textDirection,
-        metrics: _BulletMetrics.of(DefaultTextStyle.of(context).style),
         dotSize: bulletSize,
         dotColor: bulletColor,
         child: child,
       ),
     );
-    return scalesItsOwnText ? body : MediaQuery.withNoTextScaling(child: body);
+    return MarkdownTextScaling.wrap(body, enabled: scalesItsOwnText);
   }
 }
 
@@ -119,7 +119,6 @@ class OrderedListView extends StatelessWidget {
         leading: padding,
         trailing: spacing,
         textDirection: textDirection,
-        metrics: _BulletMetrics.of(base),
         markerSpan: TextSpan(
           text: no,
           style: _style == null ? base : base.merge(_style),
@@ -127,7 +126,7 @@ class OrderedListView extends StatelessWidget {
         child: child,
       ),
     );
-    return scalesItsOwnText ? body : MediaQuery.withNoTextScaling(child: body);
+    return MarkdownTextScaling.wrap(body, enabled: scalesItsOwnText);
   }
 }
 
@@ -154,17 +153,19 @@ class _BulletMetrics {
   /// diameter, which quietly tightened every list by a pixel or so per row.
   final double lineHeight;
 
-  static final Map<TextStyle, _BulletMetrics> _cache =
-      <TextStyle, _BulletMetrics>{};
+  static final Map<(TextStyle, TextScaler), _BulletMetrics> _cache =
+      <(TextStyle, TextScaler), _BulletMetrics>{};
 
-  /// The metrics for [style], measuring at most once per distinct style.
-  static _BulletMetrics of(TextStyle style) {
-    final cached = _cache[style];
+  /// Cache metrics by style and scaler, shared by items in the document.
+  static _BulletMetrics of(TextStyle style, TextScaler scaler) {
+    final key = (style, scaler);
+    final cached = _cache[key];
     if (cached != null) {
       return cached;
     }
     final painter = TextPainter(
       text: TextSpan(text: 'x', style: style),
+      textScaler: scaler,
       textDirection: TextDirection.ltr,
     )..layout();
     final ascent = painter.computeDistanceToActualBaseline(
@@ -173,7 +174,8 @@ class _BulletMetrics {
     final lineHeight = painter.height;
     painter.dispose();
     final metrics = _BulletMetrics(ascent, lineHeight);
-    _cache[style] = metrics;
+    if (_cache.length >= 128) _cache.clear();
+    _cache[key] = metrics;
     return metrics;
   }
 }
@@ -197,7 +199,6 @@ class _HangingItem extends SingleChildRenderObjectWidget {
     required this.leading,
     required this.trailing,
     required this.textDirection,
-    required this.metrics,
     this.dotSize = 0,
     this.dotColor,
     this.markerSpan,
@@ -212,10 +213,6 @@ class _HangingItem extends SingleChildRenderObjectWidget {
 
   final TextDirection textDirection;
 
-  /// Baseline and line height of the surrounding text, measured once per
-  /// style rather than once per item.
-  final _BulletMetrics metrics;
-
   /// Diameter of the dot, for an unordered item. Zero draws no marker and
   /// keeps only the indent.
   final double dotSize;
@@ -225,13 +222,23 @@ class _HangingItem extends SingleChildRenderObjectWidget {
   /// The marker as text, for an ordered item. Wins over [dotSize].
   final InlineSpan? markerSpan;
 
+  double _scaledDot(BuildContext context) {
+    final size = DefaultTextStyle.of(context).style.fontSize ?? 14;
+    if (size <= 0) return dotSize;
+    return dotSize * MediaQuery.textScalerOf(context).scale(size) / size;
+  }
+
   @override
   RenderObject createRenderObject(BuildContext context) => _RenderHangingItem(
     leading: leading,
     trailing: trailing,
     textDirection: textDirection,
-    metrics: metrics,
-    dotSize: dotSize,
+    metrics: _BulletMetrics.of(
+      DefaultTextStyle.of(context).style,
+      MediaQuery.textScalerOf(context),
+    ),
+    textScaler: MediaQuery.textScalerOf(context),
+    dotSize: _scaledDot(context),
     dotColor: dotColor,
     markerSpan: markerSpan,
   );
@@ -242,8 +249,12 @@ class _HangingItem extends SingleChildRenderObjectWidget {
       ..leading = leading
       ..trailing = trailing
       ..textDirection = textDirection
-      ..metrics = metrics
-      ..dotSize = dotSize
+      ..metrics = _BulletMetrics.of(
+        DefaultTextStyle.of(context).style,
+        MediaQuery.textScalerOf(context),
+      )
+      ..textScaler = MediaQuery.textScalerOf(context)
+      ..dotSize = _scaledDot(context)
       ..dotColor = dotColor
       ..markerSpan = markerSpan;
   }
@@ -255,6 +266,7 @@ class _RenderHangingItem extends RenderShiftedBox {
     required double trailing,
     required TextDirection textDirection,
     required _BulletMetrics metrics,
+    required TextScaler textScaler,
     required double dotSize,
     required Color? dotColor,
     required InlineSpan? markerSpan,
@@ -262,6 +274,7 @@ class _RenderHangingItem extends RenderShiftedBox {
        _trailing = trailing,
        _textDirection = textDirection,
        _metrics = metrics,
+       _textScaler = textScaler,
        _dotSize = dotSize,
        _dotColor = dotColor,
        _markerSpan = markerSpan,
@@ -334,6 +347,15 @@ class _RenderHangingItem extends RenderShiftedBox {
     markNeedsLayout();
   }
 
+  TextScaler _textScaler;
+  set textScaler(TextScaler value) {
+    if (_textScaler == value) return;
+    _textScaler = value;
+    _painter?.dispose();
+    _painter = null;
+    markNeedsLayout();
+  }
+
   TextPainter? _painter;
 
   /// The laid-out marker text, or null for a dot or a bare indent.
@@ -342,8 +364,11 @@ class _RenderHangingItem extends RenderShiftedBox {
     if (span == null) {
       return null;
     }
-    return _painter ??= TextPainter(text: span, textDirection: _textDirection)
-      ..layout();
+    return _painter ??= TextPainter(
+      text: span,
+      textDirection: _textDirection,
+      textScaler: _textScaler,
+    )..layout();
   }
 
   /// Where the content starts, measured from the item's leading edge.

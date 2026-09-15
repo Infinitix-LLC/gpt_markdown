@@ -18,6 +18,24 @@
 
 ### Performance and fixes
 
+* Centralize the paragraph/widget text-scaling boundary, including custom
+  blocks and inline directives. Block LaTeX now scales its glyphs using the
+  effective text scaler; inline and nested equations continue to scale once.
+
+* Restore text scaling for standalone tables, radio/checkbox rows and code
+  blocks (including code headers), while keeping nested blocks scaled once.
+
+* Fix repeated text scaling in nested lists and quotes, scale list markers,
+  and apply inline-pattern widget scaling consistently in both parsers,
+  including widgets nested inside returned text spans.
+
+* Make configured text direction control block layout in both parsers and
+  `SliverGptMarkdown`, including inside a page with the opposite direction.
+  Lists, headings, quotes and other blocks now align to the correct leading
+  edge. Fenced code keeps its LTR reading order and scroll origin.
+* Add an RTL example page with one comprehensive Arabic showcase, nested
+  blocks, custom inline elements, renderer selection, direction switching
+  and text scaling.
 * The code block's copy button is a real button from the first build again. It
   had been drawn as a plain icon until a pointer reached it, which saved ~340 us
   per code block and broke three things: a keyboard user could never reach it
