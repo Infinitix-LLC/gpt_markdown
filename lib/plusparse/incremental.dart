@@ -357,12 +357,23 @@ class _IncrementalMdViewState extends State<_IncrementalMdView>
   /// `blocksRenderDirectly` tells the renderer that a block will be lifted out
   /// of its paragraph — see [_unwrapBlock] — so the block's own content has to
   /// scale itself rather than rely on a paragraph that is no longer there.
-  /// Gated on `maxLines`, because that is the one case a block still has to
-  /// stay inside a paragraph.
+  /// Gated on [_clamped], because a line budget is the one case a block still
+  /// has to stay inside a paragraph.
   GptMarkdownConfig get _renderConfig =>
-      widget.config.maxLines == null
-          ? widget.config.copyWith(blocksRenderDirectly: true)
-          : widget.config;
+      _clamped
+          ? widget.config
+          : widget.config.copyWith(blocksRenderDirectly: true);
+
+  /// Whether a line budget applies to this document.
+  ///
+  /// `maxLines` is the obvious one. `overflow: TextOverflow.ellipsis` is the
+  /// other, and it is easy to miss: Flutter truncates to a single line when an
+  /// ellipsis is asked for and no line count is given, so an ellipsis on its
+  /// own is a budget of one. Both have to keep the document in one paragraph —
+  /// a budget cannot be shared across a column of them.
+  bool get _clamped =>
+      widget.config.maxLines != null ||
+      widget.config.overflow == TextOverflow.ellipsis;
 
   List<InlineSpan> _spansFor(BuildContext context, String segment, int index) {
     return _spans[(index, segment)] ??= PlusparseRenderer.renderDocument(
@@ -464,10 +475,10 @@ class _IncrementalMdViewState extends State<_IncrementalMdView>
   }
 
   Widget _paragraph(List<InlineSpan> spans) {
-    // `maxLines` is the one thing a column of widgets cannot honour: N
-    // paragraphs cannot share one line budget, so a clamped preview would get
-    // N times its allowance. Keep the single-paragraph path for those.
-    if (widget.config.maxLines == null) {
+    // A line budget is the one thing a column of widgets cannot honour: N
+    // paragraphs cannot share one budget, so a clamped preview would get N
+    // times its allowance. Keep the single-paragraph path for those.
+    if (!_clamped) {
       final block = _unwrapBlock(spans);
       if (block != null) {
         return block;
@@ -688,10 +699,23 @@ class _IncrementalMdViewState extends State<_IncrementalMdView>
               patterns,
               blockRegistry: widget.config.blockRegistry,
             );
-    _segments = _visibleSegments(
-      source,
-      _segmentCache.update(source, blockRegistry: widget.config.blockRegistry),
-    );
+    // One segment when a line budget is in play — see [_clamped]. Splitting
+    // is what makes an append cheap, but every segment becomes its own
+    // paragraph and the budget is applied to each, so a two-line preview of a
+    // five paragraph reply rendered ten lines, silently, with no overflow mark
+    // and no error. A clamped preview is a static excerpt rather than a
+    // streaming reply, so it gives up incremental parsing to get its clamp
+    // back.
+    _segments =
+        !_clamped
+            ? _visibleSegments(
+              source,
+              _segmentCache.update(
+                source,
+                blockRegistry: widget.config.blockRegistry,
+              ),
+            )
+            : <String>[source];
     final live = _segments.toSet();
     _documents.removeWhere((key, _) => !live.contains(key));
     bool removed((int, String) key) =>

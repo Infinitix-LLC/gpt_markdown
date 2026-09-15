@@ -1,6 +1,23 @@
 # Migration guide
 
-## 1.2.x → next
+## 1.3.0 → next
+
+One thing here stops code compiling, and only for code that walks the AST
+directly: `MdNode` is sealed and the next release adds `MdCustomBlock` to it.
+A sealed hierarchy makes a switch exhaustive, so a `switch` over `MdNode` with
+no `default` clause has to gain an `MdCustomBlock` case before it builds again.
+Widget and legacy-component integrations still compile unchanged.
+
+Two things change without a compiler warning. Block layout now follows the
+configured text direction, so lists, headings and quotes align to the leading
+edge of a right-to-left document rather than the left one. Paragraph and widget
+text scaling is resolved at a single boundary, so content that scaled twice at
+raised system font settings no longer does, and standalone tables, checkbox
+rows and code blocks scale again.
+
+---
+
+## 1.2.x → 1.3.0
 
 Nothing here stops code compiling. Two builders are deprecated and keep
 working until 2.0.0.

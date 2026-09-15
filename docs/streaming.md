@@ -106,12 +106,19 @@ There are two separate improvements.
 The package benchmark compares the legacy recursive combined-regex parser with
 plusparse doing equivalent source-to-renderable-structure work:
 
-| Scenario | Recorded speedup |
+| Scenario | Measured speedup |
 |---|---:|
-| Dense inline syntax | about **20x** |
-| Typical AI reply | about **32x** |
-| Large 35 KB document | about **54x** |
-| Re-parsing streamed prefixes | about **69x** |
+| Dense inline syntax | about **15x** |
+| Typical AI reply | about **23x** |
+| Large 35 KB document | **14x to 36x** |
+| Re-parsing streamed prefixes | about **48x** |
+
+Measured over three runs on Flutter 3.44.2 / Dart 3.12.2, macOS 26.5.2. The
+figures first recorded here were higher — 20x, 32x, 54x and 69x — because the
+legacy parser has since started caching its anchored dispatch regexes instead
+of compiling one per match. A cheaper denominator shrinks every ratio, and
+none of it means plusparse became slower. The 35 KB row moves enough between
+runs that only its order of magnitude carries meaning.
 
 Run it locally:
 
@@ -121,9 +128,10 @@ flutter test test/plusparse/plusparse_benchmark_test.dart
 
 ### Streaming rebuild work
 
-The widget benchmark repeatedly appends 30 Markdown chunks. Segment caching
-recorded about **4.6x less total rebuild and layout work** than the single-text
-pipeline, while reusing every unchanged segment by identity:
+The widget benchmark repeatedly appends 30 Markdown chunks. Over three runs
+on Flutter 3.44.2 / Dart 3.12.2, segment caching recorded **5.6x to 6.1x**
+less total rebuild and layout work than the single-text pipeline, while
+reusing every unchanged segment by identity:
 
 ```bash
 flutter test test/plusparse/incremental_test.dart
@@ -238,6 +246,24 @@ that will never arrive.
 
 When `MediaQuery.disableAnimationsOf(context)` is true, content renders
 immediately and no reveal ticker runs. No additional configuration is needed.
+
+While text is still arriving, the incremental renderer publishes the document
+as one semantics node and excludes the blocks beneath it. The collapse does
+not depend on an assistive service being attached; only the label — the reply
+so far — does. A link does not report itself as a link mid-stream, and no
+heading or list item is separately navigable. The structure returns once the
+source has been quiet for 250 ms and any reveal in flight has landed, its head
+at the end of the text and its tail finished fading. Both have to hold: a
+reveal still catching up keeps the document collapsed past the quiet period.
+Otherwise every block on screen re-publishes its node on every frame, which is
+an announcement storm for anyone listening and, with an assistive service
+attached, about half the per-chunk cost of a long reply.
+
+The trigger is text observably arriving: a reveal in flight, or source that
+just grew by append. It is deliberately not `isStreaming`, which defaults to
+true and which hosts routinely leave on, and not the animation mode — the
+collapse happens with `animation: none` too. The legacy pipeline does not do
+this.
 
 Selection is not a stable interaction while a reveal is actively rebuilding
 its live spans. It is available normally once the reply settles. Links and

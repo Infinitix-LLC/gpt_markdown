@@ -112,7 +112,7 @@ Using the plain `GptMarkdown`, at 18 KB:
 |---|---|---|
 | **Code block** vs fmp | We run syntax highlighting and draw a language label and a working copy button. fmp draws one plain `RichText`, has **no built-in highlighting at all**, and no copy button. | No — it is the feature. About half the gap is the copy button (10.8 ms against 7.1 ms for ten blocks); the rest is highlighting, which fmp simply does not do. See below. |
 | **Code block** vs markdown_widget | Both highlight. Theirs uses `flutter_highlight`'s prebuilt themes and draws no language label or copy button. | Yes, by giving up the button: `CodeBlockStyle(showCopyButton: false)` halves what a code block costs. |
-| **Table** vs fmp | We size columns to their content, so every cell is laid out twice: once to measure, once for real. fmp splits the width equally and measures nothing. The cost is per cell, so it shows up worst on a *small* table, where it sits on top of fixed per-table overhead. | Reduced, not removed — see below. Also optional: set `TableStyle.columnWidth` to `FlexColumnWidth()`, which measures nothing and lands level with fmp or ahead of it. |
+| **Table** vs fmp | We size columns to their content, so every cell is laid out twice: once to measure, once for real. fmp splits the width equally and measures nothing. The cost is per cell, so it shows up worst on a *small* table, where it sits on top of fixed per-table overhead. | Reduced, not removed — see below. `TableStyle.columnWidth` is meant to be the opt-out, but see the correction under it: the numbers this table once carried for that route were measuring a collapsed table. |
 | **Streaming** vs flow_ui, plain `GptMarkdown` | The whole document sits in one `Column`. Measured per chunk: 2 segments rebuild, 2 re-lay-out — the cache is doing its job — but every block is still walked and painted. | Partly. Collapsing the semantics of a reply while it is still arriving cut this roughly in half (see below). For the rest, use `SliverGptMarkdown`. |
 
 **What the copy button costs, and why it is not one widget.** Measured through
@@ -189,6 +189,26 @@ save the next person the trip:
   changes the measured time by less than the noise. Kept anyway, because less
   work for the same result is still less work.
 
+**Correction: the flex-column measurements in an earlier draft were wrong.**
+This document previously reported that setting `TableStyle.columnWidth` to
+`FlexColumnWidth()` "measures nothing and lands level with fmp or ahead of it",
+with numbers to match. Those numbers were real but they were measuring nothing
+useful: a table sits inside a horizontal scroll view, so it is laid out against
+an unbounded width, and a flex column has no finite width to take a share of.
+The table collapses. Measured on a two-row table at 600 logical pixels:
+
+| `columnWidth` | table size |
+|---|---|
+| unset (content-sized) | 174.5 x 84.0 |
+| `FlexColumnWidth()` | **0.0 x 304.0** |
+| `IntrinsicColumnWidth()` | 174.5 x 84.0 |
+| `FixedColumnWidth(120)` | 240.0 x 84.0 |
+
+So a "faster" flex table was a table drawn zero pixels wide with every cell
+wrapped to one character per line. The lesson is the one this document keeps
+relearning: a performance number means nothing until you have checked that both
+sides rendered the same thing.
+
 And on the table, two things that were tried and did not help:
 
 - asking for intrinsic sizes instead of laying cells out — slower, because the
@@ -259,9 +279,10 @@ streaming reply use `SliverGptMarkdown`** — it is the fastest of the four per
 chunk. The plain widget is now within 2.7x of flow_ui rather than 5.1x, which
 is comfortably inside a frame for a normal-length message.
 
-Where you pay for it is code blocks and small tables, and both have a switch:
-`CodeBlockStyle(showCopyButton: false)` halves a code block, and
-`TableStyle.columnWidth: FlexColumnWidth()` drops content-sized columns. Leave
+Where you pay for it is code blocks and small tables.
+`CodeBlockStyle(showCopyButton: false)` halves a code block. For tables the
+opt-out is `TableStyle.columnWidth`, but pick the policy carefully — see the
+correction in §1c. Leave
 them on unless a profile says otherwise — a chat reply carries one or two code
 blocks, not the ten these benchmarks stack up.
 

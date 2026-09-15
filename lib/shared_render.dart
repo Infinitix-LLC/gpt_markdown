@@ -404,6 +404,7 @@ Widget unorderedListItem(
     padding: style.indent ?? 7,
     spacing: style.gapAfterMarker ?? 10,
     bulletSize: style.bulletSize ?? 0.3 * fontSize,
+    bulletShape: style.bulletShape ?? BoxShape.circle,
     textDirection: config.textDirection,
     child: child,
   );
@@ -449,6 +450,14 @@ InlineSpan imageSpan(
   double? width,
   double? height,
 }) {
+  // Resolved before the image is built, not after: `fit` decides how the
+  // bytes are drawn, so it has to be in hand at construction time. It used to
+  // be resolved below, purely for the border and padding, which is why `fit`,
+  // `maxWidth` and `maxHeight` were settable and inert.
+  final imageStyle = (resolvedStyleSheet(context, config).image ??
+          const ImageStyle())
+      .resolve(Theme.of(context).colorScheme);
+
   final builder = config.imageBuilder;
   final Widget image;
   if (builder != null) {
@@ -471,16 +480,27 @@ InlineSpan imageSpan(
                     : loadingProgress.cumulativeBytesLoaded / total,
           );
         },
-        fit: BoxFit.fill,
+        fit: imageStyle.fit ?? BoxFit.fill,
         errorBuilder: (context, error, stackTrace) => const CustomImageError(),
       ),
     );
   }
 
-  final imageStyle = (resolvedStyleSheet(context, config).image ??
-          const ImageStyle())
-      .resolve(Theme.of(context).colorScheme);
   Widget decorated = image;
+  // A ceiling, not a size: an image smaller than the bound keeps its own
+  // dimensions. Applied before the rounding and padding so the clip follows
+  // the constrained box rather than the original.
+  final maxWidth = imageStyle.maxWidth;
+  final maxHeight = imageStyle.maxHeight;
+  if (maxWidth != null || maxHeight != null) {
+    decorated = ConstrainedBox(
+      constraints: BoxConstraints(
+        maxWidth: maxWidth ?? double.infinity,
+        maxHeight: maxHeight ?? double.infinity,
+      ),
+      child: decorated,
+    );
+  }
   final imageRadius = imageStyle.borderRadius;
   if (imageRadius != null) {
     decorated = ClipRRect(

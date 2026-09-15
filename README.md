@@ -87,11 +87,12 @@ GptMarkdown(
 )
 ```
 
-The single-pass parser is 20x–69x faster than the legacy parser in the package
-benchmarks. Segment caching rebuilds only the changing tail, so append cost
-stays roughly flat as a reply grows. The reveal adapts when tokens arrive
-quickly, fast-forwards when generation finishes, avoids unsafe splits inside
-code fences and block math, and respects reduced-motion settings. See the
+The single-pass parser measures between about 15x and 50x faster than the
+legacy parser in the package benchmarks, depending on the document. Segment
+caching rebuilds only the changing tail, so append cost stays roughly flat as
+a reply grows. The reveal adapts when tokens arrive quickly, fast-forwards
+when generation finishes, avoids unsafe splits inside code fences and block
+math, and respects reduced-motion settings. See the
 [streaming and incremental rendering guide](docs/streaming.md) for every
 animation mode, compatibility rules and benchmark methodology.
 
@@ -207,7 +208,7 @@ For new block syntax on the cached pipeline, use `MarkdownBlockComponent` and
 use `SliverGptMarkdown` inside a `CustomScrollView`. See the
 [rendering architecture guide](docs/rendering-architecture.md).
 
-Legacy integrations remain supported through `MarkdownComponent`, `InlineMd`, and `BlockMd`. Components can declare support for `content`, `linkLabel`, `tableCell`, and `heading` scopes.
+Legacy integrations remain supported through `MarkdownComponent`, `InlineMd`, and `BlockMd`. Components can declare support for `content`, `linkLabel`, `tableCell`, and `heading` scopes. Passing `components` or `inlineComponents` — even an empty list — switches the widget to the legacy parser, which has no segment cache, no span-level reveal and no lazy sliver list, and `blockComponents` is ignored on that path.
 
 ## 🔗 Autolinks
 
@@ -219,7 +220,7 @@ GptMarkdown(
 )
 ```
 
-Autolinks follow GFM trimming rules, preserve balanced parentheses, and avoid leaking surrounding Markdown into the URL. Add app-specific schemes or turn bare autolinking off when needed:
+Autolinks follow GFM trimming rules, preserve balanced parentheses, and avoid leaking surrounding Markdown into the URL. Add app-specific schemes or turn autolinking off when needed:
 
 ```dart
 GptMarkdown(
@@ -229,23 +230,25 @@ GptMarkdown(
 )
 ```
 
-Explicit `[label](url)` links continue working when `autolink` is disabled.
+`autolink: false` stops every form above from linking, angle autolinks included, so `<https://gptmarkdown.com>` renders as text. Explicit `[label](url)` links continue working.
 
-## 🚀 New in 1.2.0
+## 🚀 Feature highlights
 
+- Single-pass parser with segment caching behind the default `incremental: true`
 - Adaptive streaming reveal with split-document caching
 - `GptMarkdownStyleSheet` and twelve per-component style classes
 - Builders and callbacks for every major output component
+- `inlineLinkBuilder` and `inlineSourceTagBuilder` for links and citations that wrap, select, and reveal like text
 - Selectable, wrapping, baseline-aligned inline-code chips
 - `InlinePattern` for product-specific inline syntax
 - `MarkdownScope` for safe nested rendering
 - GFM and CommonMark autolinking
 - Correct RTL inline-widget ordering
 - Proportional accessibility text scaling
-- Theme and runtime configuration rebuild fixes
-- Safer malformed-Markdown and component dispatch behavior
 
-Upgrading from 1.1.x? Read the [migration guide](MIGRATION.md).
+Upgrading? The [migration guide](MIGRATION.md) takes the releases one at a
+time, newest first, and says what moves without a compiler warning. The
+[changelog](CHANGELOG.md) has everything else.
 
 ## 📚 Documentation
 
@@ -257,7 +260,7 @@ Upgrading from 1.1.x? Read the [migration guide](MIGRATION.md).
 | [Inline syntax](docs/inline-syntax.md) | Autolinks, mentions, channels, and scopes |
 | [Custom components](docs/custom-components.md) | Block and inline extensions |
 | [`GptMarkdown` options](docs/api-options.md) | Every constructor option and default |
-| [Migration](MIGRATION.md) | Changes from 1.1.x to 1.2.0 |
+| [Migration](MIGRATION.md) | What each release changes, newest first |
 
 ## 💬 Community
 

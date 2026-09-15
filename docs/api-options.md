@@ -8,15 +8,18 @@ that needs more than a one-line description.
 | Option | Default | Purpose |
 |---|---|---|
 | `data` | required | Markdown source passed as the first positional argument |
-| `style` | inherited | Base `TextStyle`; headings, markers and inline code derive from it |
-| `textDirection` | `TextDirection.ltr` | Direction used by paragraphs and mixed inline widgets |
+| `style` | inherited | Base `TextStyle`; markers and inline code derive from it, heading sizes come from the theme |
+| `textDirection` | `TextDirection.ltr` | Direction used by paragraphs, inline widgets and block alignment |
 | `textAlign` | inherited | Paragraph alignment |
 | `textScaler` | `MediaQuery` | Explicit scaler propagated to text and inline widgets |
 | `maxLines` | unlimited | Maximum paragraph lines |
 | `overflow` | inherited | Overflow behavior when `maxLines` is reached |
 
 The widget sizes itself to its content and does not provide vertical scrolling.
-See [getting started](getting-started.md).
+`textDirection` wraps the whole document in a `Directionality`, so blocks and
+builder subtrees follow it instead of the ambient direction: a widget dropped
+into an RTL app lays its blocks out left to right until you pass the direction
+in. See [getting started](getting-started.md).
 
 ## Parsing and syntax
 
@@ -29,6 +32,7 @@ See [getting started](getting-started.md).
 | `autolinkSchemes` | empty set | Additional schemes accepted as bare links |
 | `inlineDirectives` | none | Protects delimited host data from Markdown parsing |
 | `inlinePatterns` | none | Adds consumer-defined inline tokens to both parser paths |
+| `blockComponents` | none | Adds new block syntax while staying on plusparse |
 | `components` | built-ins | Replaces the legacy block-component list |
 | `inlineComponents` | built-ins | Replaces the legacy inline-component list |
 
@@ -36,7 +40,12 @@ Custom `components` or `inlineComponents` select the legacy parser even when
 `incremental` is true. Passing a short list replaces the defaults rather than
 extending them. Build block lists on top of
 `MarkdownComponent.globalComponents` and inline lists on top of
-`MarkdownComponent.inlineComponents`. See
+`MarkdownComponent.inlineComponents`. `blockComponents` is the modern route:
+it supplements the built-in blocks and keeps plusparse and its segment cache.
+It is ignored whenever rendering falls back to the legacy parser — when a
+legacy list is also passed, and when `incremental: false` runs without a reveal
+animation to hold plusparse open. The registered syntax then renders as
+ordinary Markdown, with no warning. See
 [custom components](custom-components.md).
 
 ## Streaming and animation
@@ -62,10 +71,13 @@ character reveal is active. Block animation is an independent axis.
 |---|---|---|
 | `styleSheet` | themed defaults | Per-component visual overrides |
 | `inlineCodeStyle` | themed defaults | Convenience override for inline code only |
-| `followLinkColor` | `false` | Lets nested link-label content inherit the link color |
+| `followLinkColor` | `false` | Inert; `LinkStyle` decides how a link is painted |
 
 Use `GptMarkdownThemeData` for app-wide defaults and `styleSheet` for one
-widget. Widget fields win over theme fields one property at a time. See
+widget. Widget fields win over theme fields one property at a time.
+`followLinkColor` is plumbed as far as the render config and then read by
+nothing, so a link label paints the same whichever value you pass; set
+`LinkStyle` on the style sheet instead. See
 [customization](customization.md).
 
 ## Builders
@@ -86,6 +98,7 @@ Builders replace structure. All are optional:
 | `inlineLinkBuilder` | A Markdown or automatic link, as a span |
 | `linkBuilder` | *Deprecated.* A link, as a widget |
 | `inlineCodeBuilder` | The span for inline code |
+| `highlightBuilder` | *Deprecated.* Inline code, as a widget |
 | `inlineSourceTagBuilder` | A citation/source tag, as a span |
 | `sourceTagBuilder` | *Deprecated.* A citation/source tag, as a widget |
 | `orderedListBuilder` | An ordered-list item |
@@ -117,4 +130,5 @@ automatically.
 2. Use a style object for component appearance.
 3. Use `InlinePattern` for app-specific inline tokens.
 4. Use a builder when the component's structure must change.
-5. Use `MarkdownComponent` only for genuinely new grammar.
+5. Use `blockComponents` for genuinely new block grammar, and
+   `MarkdownComponent` only where the legacy parser is acceptable.

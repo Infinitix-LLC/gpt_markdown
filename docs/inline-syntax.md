@@ -98,8 +98,28 @@ GptMarkdown(
 )
 ```
 
-Patterns are matched **ahead of** the built-in components, so a pattern always
-wins over the default reading of the same text.
+Patterns are matched **ahead of** the built-in components, so a pattern beats
+the default reading of the same text — a pattern whose regex covers `**GH-1**`,
+asterisks and all, renders your chip rather than bold. Fenced code, registered
+custom blocks and multi-line block maths are deliberate exceptions: their
+content is not Markdown, and a pattern reaching inside would rewrite source the
+author asked to see verbatim. Block maths is protected only while its closing
+`\]` sits on a later line than the opening `\[`. Inside a one-line `\[ … \]` a
+pattern still matches, and since the match is lifted out before parsing, the
+maths renderer is handed the placeholder — the equation and the chip are both
+lost.
+
+On the legacy pipeline precedence is leftmost-match instead — a built-in whose
+match starts at an earlier offset swallows the text, and the pattern wins only
+when both start at the same offset.
+
+> [!WARNING]
+> A single-backtick code span is **not** one of those protected regions. On the
+> default pipeline the match is lifted out of the source before the parser sees
+> the backticks, so with a `GH-\d+` pattern `` `GH-123` `` renders neither the
+> chip nor the literal text — the code chip shows the internal placeholder. The
+> legacy pipeline gets this case right, because the code span starts first and
+> claims the whole thing.
 
 ### Prefixed tokens
 
@@ -272,8 +292,14 @@ link. A component declares where it applies.
 |---|---|
 | `content` | ordinary document and inline text |
 | `linkLabel` | inside the `label` of `[label](url)` |
-| `tableCell` | inside a table cell |
+| `tableCell` | inside a table cell — legacy pipeline only |
 | `heading` | inside a `#` heading |
+
+`linkLabel` and `heading` are set by both pipelines, `tableCell` by the legacy
+one alone. The default parser renders a cell with the scope the table inherited,
+which for a block-level table is `content` — so a pattern restricted to
+`{MarkdownScope.tableCell}` never fires there, and one restricted to
+`{MarkdownScope.content}` still does.
 
 `InlinePattern` defaults to `MarkdownComponent.allScopesExceptLinkLabel`.
 
@@ -308,6 +334,9 @@ Restrict further when a token only makes sense in prose:
 ```dart
 scopes: const {MarkdownScope.content},
 ```
+
+That keeps the pattern out of headings and link labels. It does not keep it out
+of table cells on the default pipeline, where a cell is `content` already.
 
 ---
 

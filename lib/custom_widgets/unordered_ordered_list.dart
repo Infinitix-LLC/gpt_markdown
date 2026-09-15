@@ -17,6 +17,7 @@ class UnorderedListView extends StatelessWidget {
     this.padding = 12,
     this.bulletColor,
     this.bulletSize = 4,
+    this.bulletShape = BoxShape.circle,
     this.textDirection = TextDirection.ltr,
     this.scalesItsOwnText = false,
     required this.child,
@@ -33,6 +34,9 @@ class UnorderedListView extends StatelessWidget {
 
   /// The size of the bullet point.
   final double bulletSize;
+
+  /// Whether the bullet is a dot or a square.
+  final BoxShape bulletShape;
 
   /// The spacing between items.
   final double spacing;
@@ -63,6 +67,7 @@ class UnorderedListView extends StatelessWidget {
         textDirection: textDirection,
         dotSize: bulletSize,
         dotColor: bulletColor,
+        dotShape: bulletShape,
         child: child,
       ),
     );
@@ -201,6 +206,7 @@ class _HangingItem extends SingleChildRenderObjectWidget {
     required this.textDirection,
     this.dotSize = 0,
     this.dotColor,
+    this.dotShape = BoxShape.circle,
     this.markerSpan,
     required Widget child,
   }) : super(child: child);
@@ -218,6 +224,9 @@ class _HangingItem extends SingleChildRenderObjectWidget {
   final double dotSize;
 
   final Color? dotColor;
+
+  /// Whether the dot is drawn round or square.
+  final BoxShape dotShape;
 
   /// The marker as text, for an ordered item. Wins over [dotSize].
   final InlineSpan? markerSpan;
@@ -240,6 +249,7 @@ class _HangingItem extends SingleChildRenderObjectWidget {
     textScaler: MediaQuery.textScalerOf(context),
     dotSize: _scaledDot(context),
     dotColor: dotColor,
+    dotShape: dotShape,
     markerSpan: markerSpan,
   );
 
@@ -256,6 +266,7 @@ class _HangingItem extends SingleChildRenderObjectWidget {
       ..textScaler = MediaQuery.textScalerOf(context)
       ..dotSize = _scaledDot(context)
       ..dotColor = dotColor
+      ..dotShape = dotShape
       ..markerSpan = markerSpan;
   }
 }
@@ -269,6 +280,7 @@ class _RenderHangingItem extends RenderShiftedBox {
     required TextScaler textScaler,
     required double dotSize,
     required Color? dotColor,
+    required BoxShape dotShape,
     required InlineSpan? markerSpan,
   }) : _leading = leading,
        _trailing = trailing,
@@ -277,6 +289,7 @@ class _RenderHangingItem extends RenderShiftedBox {
        _textScaler = textScaler,
        _dotSize = dotSize,
        _dotColor = dotColor,
+       _dotShape = dotShape,
        _markerSpan = markerSpan,
        super(null);
 
@@ -333,6 +346,17 @@ class _RenderHangingItem extends RenderShiftedBox {
       return;
     }
     _dotColor = value;
+    markNeedsPaint();
+  }
+
+  /// Circle or square. Geometry is identical either way — the square is
+  /// inscribed in the same box the dot occupies — so only paint is dirtied.
+  BoxShape _dotShape;
+  set dotShape(BoxShape value) {
+    if (_dotShape == value) {
+      return;
+    }
+    _dotShape = value;
     markNeedsPaint();
   }
 
@@ -460,10 +484,15 @@ class _RenderHangingItem extends RenderShiftedBox {
     }
     final radius = _dotSize / 2;
     final dx = ltr ? _leading + radius : size.width - _leading - radius;
-    context.canvas.drawCircle(
-      offset + Offset(dx, _markerTop + _markerHeight / 2),
-      radius,
-      Paint()..color = _dotColor ?? const Color(0xFF000000),
-    );
+    final centre = offset + Offset(dx, _markerTop + _markerHeight / 2);
+    final paint = Paint()..color = _dotColor ?? const Color(0xFF000000);
+    if (_dotShape == BoxShape.rectangle) {
+      context.canvas.drawRect(
+        Rect.fromCenter(center: centre, width: _dotSize, height: _dotSize),
+        paint,
+      );
+      return;
+    }
+    context.canvas.drawCircle(centre, radius, paint);
   }
 }

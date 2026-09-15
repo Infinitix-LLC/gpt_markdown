@@ -328,7 +328,7 @@ GptMarkdown(
 `backgroundColor` · `borderColor` · `borderWidth` · `borderRadius` · `padding` ·
 `headerPadding` · `fontFamily` · `fontFamilyPackage` · `fontSize` ·
 `textColor` · `showLanguageLabel` · `languageStyle` · `showCopyButton` ·
-`copyLabel` · `copiedLabel`
+`copyLabel` · `copiedLabel` · `highlightWhileStreaming`
 
 ```dart
 styleSheet: const GptMarkdownStyleSheet(
@@ -376,6 +376,12 @@ active light or dark brightness. Common fence aliases include `js`, `ts`,
 `py`, `python3`, `c++`, `sh` and `yml`. Unknown tags fall back to plain
 monospace code, and an omitted tag displays `Code` in the header.
 
+While a fence is still open the block is highlighted again on every source
+update. `highlightWhileStreaming: false` holds plain monospace until the closing
+fence arrives and highlights once, which is worth setting when replies stream
+long blocks. It defaults to true because that is what the package did before the
+field existed.
+
 No syntax-theme field is exposed. `CodeBlockStyle` controls the panel, font and
 base/fallback text appearance; the built-in token palette is automatic. When
 an application needs its own tokenizer or token colors, replace the complete
@@ -410,7 +416,7 @@ GptMarkdown(
 ## TableStyle
 
 `borderColor` · `borderWidth` · `borderRadius` · `cellPadding` ·
-`headerBackground` · `headerTextStyle` · `rowStripeColor`
+`headerBackground` · `headerTextStyle` · `rowStripeColor` · `columnWidth`
 
 ```dart
 styleSheet: const GptMarkdownStyleSheet(
@@ -425,7 +431,16 @@ styleSheet: const GptMarkdownStyleSheet(
 ),
 ```
 
-Tables already scroll horizontally when they exceed the available width.
+`columnWidth` sets one width policy for every column. Left unset, a column is
+sized to its content, which lays every cell out twice — once to measure, once
+for real. `columnWidth: FixedColumnWidth(120)` skips that measurement, which is
+the escape hatch for a large or streaming table.
+
+A flex policy is not. Tables already scroll horizontally when they exceed the
+available width, so the table is laid out against an unbounded width and a flex
+column has no finite width to take a share of: `FlexColumnWidth()` collapses
+the table to zero width and wraps every cell to one character a line.
+[comparison](comparison.md) has the measurements.
 
 ---
 
@@ -536,14 +551,27 @@ styleSheet: const GptMarkdownStyleSheet(
 > formula overflows on a phone. This is the single most common LaTeX
 > complaint.
 
-Maths still needs a renderer — see [getting started](getting-started.md#latex).
+The renderer itself is built in. `latexBuilder` replaces it — see
+[getting started](getting-started.md#latex).
 
 ---
 
 ## Builders
 
-Each builder receives the **fully resolved** style, so it never has to guess a
-default or restate a theme colour.
+Where a builder is handed a style-sheet object, it is the **fully resolved**
+one, so the builder never has to guess a default or restate a theme colour.
+Check the signature first, though: `codeBuilder`, `imageBuilder`,
+`tableBuilder`, `orderedListBuilder` and `unOrderedListBuilder` are handed no
+style-sheet object — they replace the component outright, and `CodeBlockStyle`,
+`ImageStyle`, `TableStyle` and `ListStyle` never reach them. The `TextStyle`
+`tableBuilder` does receive is the ambient body style, empty when the widget
+sets none.
+
+The two deprecated builders carry an unresolved style as well, kept that way
+because 1.2.x builders were written against it: `sourceTagBuilder` is handed an
+empty `TextStyle` whenever `SourceTagStyle.textStyle` is unset, and
+`linkBuilder` the ambient body style rather than the resolved link style its
+replacement is given.
 
 | Builder | Signature |
 |---|---|

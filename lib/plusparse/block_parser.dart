@@ -207,7 +207,14 @@ List<MdNode> parseBlocks(
       para.add(t);
       i += 1;
     }
-    out.add(MdParagraph(children: parseInline(para.join(' '), useDollar)));
+    // Joined on the newline, not on a space. CommonMark folds a single
+    // newline inside a paragraph into a space, and this package has never
+    // done that: a model writes a list of bullet glyphs, or a run of short
+    // lines, and folding them produced one long wrapped line. Folding also
+    // swallowed the two breaks CommonMark does define — two trailing spaces
+    // and a trailing backslash — because the newline they mark was gone
+    // before the inline parser ran.
+    out.add(MdParagraph(children: parseInline(para.join('\n'), useDollar)));
   }
 
   return out;

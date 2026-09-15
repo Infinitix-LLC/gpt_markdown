@@ -50,8 +50,9 @@ handle incomplete input, consume at least one line, and inspect only its consume
 region. An unfinished container should consume all remaining lines. Store any
 extra immutable parsed data in `node.data`; the builder consumes it without
 reparsing. Registrations must have unique types. Rules are tried in registration
-order before built-ins at block boundaries, gated by their opening prefixes.
-Built-in code-fence bodies remain opaque.
+order before built-ins, gated by their opening prefixes, and a match interrupts
+an open paragraph — no blank line is needed before `:::warning`. Built-in
+code-fence bodies remain opaque.
 
 The registry is intentionally for local block syntax. Cross-document rules such
 as a later definition changing earlier blocks need a different invalidation
@@ -165,14 +166,25 @@ class CalloutMd extends BlockMd {
         children: [
           Icon(kind == 'warning' ? Icons.warning : Icons.info),
           const SizedBox(width: 8),
-          // Render the body as Markdown too.
-          Flexible(child: GptMarkdown(body, style: config.style)),
+          // Render the body as Markdown too, in the host's direction.
+          Flexible(
+            child: GptMarkdown(
+              body,
+              style: config.style,
+              textDirection: config.textDirection,
+            ),
+          ),
         ],
       ),
     );
   }
 }
 ```
+
+A nested `GptMarkdown` installs a `Directionality` of its own around everything
+it renders, and `textDirection` defaults to `TextDirection.ltr`. Leave it out
+and the callout body flips back to LTR inside an RTL document. Pass
+`config.textDirection` down, as the built-in block components do.
 
 ---
 

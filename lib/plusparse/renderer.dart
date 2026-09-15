@@ -429,9 +429,13 @@ class PlusparseRenderer {
           ),
           children: List<TableRow>.generate(rows.length, (index) {
             final row = rows[index];
+            final isHeader = index == 0;
+            // Stripes count data rows, so the header never takes one and the
+            // first row under it is always unstriped.
+            final stripe = tableStyle.rowStripeColor;
             return TableRow(
               decoration:
-                  index == 0
+                  isHeader
                       ? BoxDecoration(
                         color:
                             tableStyle.headerBackground ??
@@ -439,6 +443,8 @@ class PlusparseRenderer {
                               context,
                             ).colorScheme.surfaceContainerHighest,
                       )
+                      : (stripe != null && index.isEven)
+                      ? BoxDecoration(color: stripe)
                       : null,
               children: List<Widget>.generate(maxCol, (col) {
                 final cell = col < row.cells.length ? row.cells[col] : null;
@@ -460,6 +466,18 @@ class PlusparseRenderer {
                     ),
                   ),
                 );
+                // Merged into the ambient style rather than replacing it, so
+                // setting only `fontWeight` keeps the document's family, size
+                // and colour. `getRich` renders the span as given and does not
+                // apply `config.style`, so the header style has to arrive as
+                // an inherited default rather than through the config.
+                final headerStyle = tableStyle.headerTextStyle;
+                if (isHeader && headerStyle != null) {
+                  content = DefaultTextStyle.merge(
+                    style: headerStyle,
+                    child: content,
+                  );
+                }
                 // Only a column that pulls its content off the leading edge
                 // needs an alignment box. A left-aligned cell is already
                 // flush left. The box is not free: content-sized columns lay

@@ -1,5 +1,33 @@
 ## Unreleased
 
+### Fixed
+
+* A line break inside a paragraph survives the new parser again. It gathered a
+  paragraph's lines and joined them with a space, so a run of short lines — a
+  pasted list using `•` glyphs rather than Markdown list syntax, say — collapsed
+  into one wrapped paragraph, and the two breaks CommonMark does define (two
+  trailing spaces, a trailing backslash) went with it, because both mark a
+  newline that no longer existed. The legacy parser always kept them, so the
+  two pipelines disagreed about the same source.
+* `maxLines` clamps the whole document again. The incremental renderer splits a
+  document at blank lines and gives each segment its own paragraph, and
+  `maxLines` is a property of a paragraph — so every segment took the full
+  allowance and a two-line preview of a five-paragraph reply rendered ten
+  lines, with no overflow mark and no error. A document rendered with a line
+  budget is now kept whole, giving up incremental parsing for that widget to
+  get its clamp back. `overflow: TextOverflow.ellipsis` counts as a budget for
+  this purpose: Flutter truncates to a single line when an ellipsis is asked
+  for and no line count is given, so an ellipsis on its own is a budget of one
+  — and the two parsers disagreed about it, one line against one line per
+  block.
+* Five style-sheet fields were declared, merged, lerped and documented with
+  worked samples, and read by no renderer — setting one compiled and changed
+  nothing. All five now reach the screen, in both parsers where both draw the
+  construct: `GptMarkdownStyleSheet.inlineCode` (inline code consulted the
+  widget argument and the theme, never the sheet), `TableStyle.headerTextStyle`,
+  `TableStyle.rowStripeColor`, `ListStyle.bulletShape`, and `ImageStyle.fit`,
+  `maxWidth` and `maxHeight`.
+
 ### Added
 
 * Modern `blockComponents` registration: pure-Dart block syntax, immutable

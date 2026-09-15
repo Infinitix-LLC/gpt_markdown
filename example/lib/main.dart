@@ -5,6 +5,7 @@ import 'autolink_demo.dart';
 import 'demo_theme.dart';
 import 'inline_code_demo.dart';
 import 'inline_patterns_demo.dart';
+import 'max_lines_demo.dart';
 import 'selection_demo.dart';
 import 'rtl_demo.dart';
 import 'streaming_demo.dart';
@@ -100,6 +101,152 @@ for epoch in range(100):
 
 > Visit [gptmarkdown.com](https://gptmarkdown.com) for the interactive playground.
 ''';
+String? _channelNameForId(Map<String, String> channels, String channelId) {
+  for (final entry in channels.entries) {
+    if (entry.value == channelId) return entry.key;
+  }
+  return null;
+}
+
+class _ChannelLinkMd extends InlineMd {
+  final Map<String, String> channelNames;
+  final void Function(String channelId)? onChannelTap;
+  late final RegExp _exp = _buildPrefixPattern(
+    prefix: '#',
+    knownNames: channelNames.keys,
+    genericTokenPattern: r'[A-Za-z0-9_][A-Za-z0-9_-]*',
+  );
+
+  _ChannelLinkMd({required this.channelNames, this.onChannelTap});
+
+  /// Excluded from link labels: this component renders a [WidgetSpan], and a
+  /// placeholder nested inside the link's own placeholder does not paint on
+  /// iOS — an authored `[#channel](url)` renders as nothing. Link resolution
+  /// wins over token detection inside a label.
+  @override
+  Set<MarkdownScope> get scopes => MarkdownComponent.allScopesExceptLinkLabel;
+
+  @override
+  RegExp get exp => _exp;
+
+  @override
+  InlineSpan span(
+    BuildContext context,
+    String text,
+    final GptMarkdownConfig config,
+  ) {
+    final raw = exp.firstMatch(text.trim())?.group(0);
+    if (raw == null) {
+      return TextSpan(text: text, style: config.style);
+    }
+
+    final channelId = channelNames[raw.substring(1).toLowerCase()];
+    final channelName = raw.substring(1);
+    final opensChannel = channelId != null && onChannelTap != null;
+    final child = _TokenPill(
+      icon: Icons.hail_sharp,
+      interactive: opensChannel,
+      semanticLabel:
+          opensChannel ? 'Open channel $channelName' : 'Channel $channelName',
+      text: channelName,
+      textStyle: config.style?.copyWith(fontWeight: FontWeight.w500),
+    );
+
+    return WidgetSpan(
+      alignment: PlaceholderAlignment.baseline,
+      baseline: TextBaseline.alphabetic,
+      child: opensChannel
+          ? GestureDetector(onTap: () => onChannelTap!(channelId), child: child)
+          : child,
+    );
+  }
+}
+
+class _TokenPill extends StatelessWidget {
+  final IconData? icon;
+  final bool interactive;
+  final String? semanticLabel;
+  final String text;
+  final TextStyle? textStyle;
+
+  const _TokenPill({
+    super.key,
+    this.icon,
+    this.interactive = false,
+    this.semanticLabel,
+    required this.text,
+    this.textStyle,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final style =
+        textStyle?.copyWith(color: Theme.of(context).colorScheme.primary) ??
+            Theme.of(context)
+                .textTheme
+                .bodyMedium
+                ?.copyWith(color: Theme.of(context).colorScheme.primary);
+    final fontSize = style?.fontSize ?? 16;
+    final pill = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          if (icon != null) ...[
+            Icon(icon,
+                size: fontSize * 0.95,
+                color: Theme.of(context).colorScheme.primary),
+            const SizedBox(width: 12 + 1),
+          ],
+          Text(text, style: style),
+        ],
+      ),
+    );
+    if (semanticLabel == null) return pill;
+    return Semantics(
+      label: semanticLabel,
+      button: interactive,
+      child: ExcludeSemantics(child: pill),
+    );
+  }
+}
+
+RegExp _buildPrefixPattern({
+  required String prefix,
+  required Iterable<String> knownNames,
+  required String genericTokenPattern,
+}) {
+  final names = knownNames
+      .map((name) => name.trim())
+      .where((name) => name.isNotEmpty)
+      .toSet()
+      .toList()
+    ..sort((a, b) => b.length.compareTo(a.length));
+
+  final escapedPrefix = RegExp.escape(prefix);
+  const leadingBoundary = r'(?<![\w./:-])';
+  const trailingBoundary = r'(?=$|[\s,;.!?:)\]}])';
+
+  if (names.isEmpty) {
+    return RegExp(
+      '$leadingBoundary$escapedPrefix(?:$genericTokenPattern)$trailingBoundary',
+      caseSensitive: false,
+      multiLine: true,
+    );
+  }
+
+  final knownAlternatives = names.map(RegExp.escape).join('|');
+  return RegExp(
+    '$leadingBoundary$escapedPrefix(?:(?:$knownAlternatives)$trailingBoundary|(?:$genericTokenPattern)$trailingBoundary)',
+    caseSensitive: false,
+    multiLine: true,
+  );
+}
 
 class ExamplePage extends StatefulWidget {
   const ExamplePage({super.key, this.onToggleTheme});
@@ -165,6 +312,13 @@ class _ExamplePageState extends State<ExamplePage> {
             // input; see the "Parser" switch in the toolbar.
             textDirection: _textDirection,
             incremental: _incremental,
+            // inlineComponents: [
+            //   _ChannelLinkMd(
+            //     channelNames: {},
+            //     onChannelTap: (_) {},
+            //   ),
+            //   ...MarkdownComponent.inlineComponents,
+            // ],
             useDollarSignsForLatex: _useDollar,
             onLinkTap: (url, title) => debugPrint('Link tapped: $url'),
           ),
@@ -235,6 +389,13 @@ class _ExamplePageState extends State<ExamplePage> {
             icon: const Icon(Icons.format_textdirection_r_to_l),
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute<void>(builder: (_) => const RtlPage()),
+            ),
+          ),
+          IconButton(
+            tooltip: 'maxLines demo',
+            icon: const Icon(Icons.short_text_rounded),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => const MaxLinesPage()),
             ),
           ),
           IconButton(

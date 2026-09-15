@@ -562,7 +562,18 @@ InlineSpan inlineCodeSpan(
   // it — see `custom_widgets/inline_code.dart`. Keeping it out of a
   // WidgetSpan is what lets inline code wrap across lines, stay selectable,
   // sit on the surrounding baseline, and appear inside a link label.
+  // Three sources, narrowest first: the widget's own `inlineCodeStyle`, then
+  // the style sheet (widget sheet over theme sheet, already merged by
+  // `resolvedStyleSheet`), then the theme's standalone `inlineCode`. The sheet
+  // used to be skipped entirely, so `GptMarkdownStyleSheet(inlineCode: ...)`
+  // merged, lerped and compared like every other style and then changed
+  // nothing on screen.
+  // Whole objects, narrowest first — not a field-by-field merge. Merging would
+  // pull the theme's `fontFamilyPackage` in behind a caller's own
+  // `fontFamily`, and the package prefix would then be applied to a family
+  // that does not ship here. Unset fields are filled by `resolve` below.
   final codeStyle = (config.inlineCodeStyle ??
+          resolvedStyleSheet(context, config).inlineCode ??
           GptMarkdownTheme.of(context).inlineCode)
       .resolve(Theme.of(context).colorScheme);
   final textStyle = codeStyle.applyTo(config.style ?? const TextStyle());
@@ -1242,10 +1253,18 @@ class TableMd extends BlockMd {
                   }
                   return true;
                 })
-                .map<TableRow>(
-                  (entry) => TableRow(
+                .map<TableRow>((entry) {
+                  final isHeader = hasHeader && entry.key == 0;
+                  // Stripes count data rows, so the header never takes one
+                  // and the first row under it is always unstriped. The
+                  // separator row is already filtered out above, so the key
+                  // is the source row index: data rows start at 2 with a
+                  // header and at 0 without.
+                  final stripe = tableStyle.rowStripeColor;
+                  final dataIndex = hasHeader ? entry.key - 2 : entry.key;
+                  return TableRow(
                     decoration:
-                        (hasHeader && entry.key == 0)
+                        isHeader
                             ? BoxDecoration(
                               color:
                                   tableStyle.headerBackground ??
@@ -1253,6 +1272,8 @@ class TableMd extends BlockMd {
                                     context,
                                   ).colorScheme.surfaceContainerHighest,
                             )
+                            : (stripe != null && dataIndex.isOdd)
+                            ? BoxDecoration(color: stripe)
                             : null,
                     children: List.generate(maxCol, (index) {
                       var e = entry.value;
@@ -1279,6 +1300,16 @@ class TableMd extends BlockMd {
                           ),
                         ),
                       );
+                      // Merged into the ambient style rather than replacing
+                      // it, so setting only `fontWeight` keeps the document's
+                      // family, size and colour.
+                      final headerStyle = tableStyle.headerTextStyle;
+                      if (isHeader && headerStyle != null) {
+                        content = DefaultTextStyle.merge(
+                          style: headerStyle,
+                          child: content,
+                        );
+                      }
 
                       // Only a column that pulls its content off the leading
                       // edge needs an alignment box. A left-aligned cell is
@@ -1304,8 +1335,8 @@ class TableMd extends BlockMd {
 
                       return content;
                     }),
-                  ),
-                )
+                  );
+                })
                 .toList(),
       ),
     );
