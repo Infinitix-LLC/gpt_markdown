@@ -318,3 +318,150 @@ and per-chunk cost grows faster than any other package here.
   were in fact behind.
 - `flow_ui` is a chat kit. Comparing only its renderer is fair for this document
   and unfair to the package.
+
+---
+
+## 5. Against our own 1.2.1
+
+The tables above compare this package with other packages. This one compares it
+with itself: tag `v1.2.1`, the last release, against the working tree — and the
+two widgets the working tree offers, `GptMarkdown` and `SliverGptMarkdown`.
+
+**Mostly end-to-end renders.** Every figure in §5a and §5b is a real frame —
+parse, build, layout and paint — with each iteration mounting the widget,
+settling it, tearing the tree down and mounting it again cold. §5c splits that
+apart, reporting the parse stage on its own beside the whole frame, because
+"how much faster is the parser" and "how much faster is a render" have very
+different answers.
+
+**How it was measured.** All three renderers in **one process**. v1.2.1 was
+extracted from the tag into a second package under a different name so a single
+test can mount both versions at once — cross-process comparison drifts about
+20% on this machine, which is larger than several of the effects reported here,
+and an earlier draft of §1 got two rows wrong exactly that way. Order is
+counterbalanced, each figure is the minimum of several rounds, and an empty
+harness is subtracted. Every run also mounts `GptMarkdown` a second time as a
+**duplicate control**: two byte-identical variants that disagree by more than a
+few percent mean the run is noise, and rows where that happened are marked †.
+
+**The viewport is 800x600, and it matters.** All three sit in an identically
+sized viewport — the two box renderers in a `SingleChildScrollView`, the sliver
+in a `CustomScrollView`. The sliver's entire claim is that it builds only what
+is on screen, so its numbers are a function of that size. A taller viewport
+moves them.
+
+### 5a. Cold mount, by document length
+
+Time above the harness floor. One unit is a heading, a wrapping
+paragraph with bold, inline code and a link, and a two-item list — about a
+third of a screen.
+
+| document | 1.2.1 | `GptMarkdown` | vs 1.2.1 | `SliverGptMarkdown` | vs 1.2.1 | sliver vs `GptMarkdown` |
+|---|---:|---:|---|---:|---|---|
+| 1 unit † | 2.14 ms | 1.39 ms | **1.5x faster** | 1.38 ms | **1.6x faster** | level (1.0x) |
+| 4 units | 4.13 ms | **1.88 ms** | **2.2x faster** | 3.07 ms | 1.3x faster | **1.6x slower** |
+| 20 units | 16.82 ms | 4.97 ms | **3.4x faster** | **2.33 ms** | **7.2x faster** | **2.1x faster** |
+| 60 units | 54.90 ms | 13.45 ms | **4.1x faster** | **2.09 ms** | **26x faster** | **6.4x faster** |
+
+**Read:** `GptMarkdown` is faster than 1.2.1 at every length, and the gap widens
+with the document because 1.2.1 grows faster than linearly. The sliver is the
+more interesting column: at **4 units it is 1.6x *slower* than the plain
+widget**, because a `CustomScrollView` and a lazy sliver cost more to set up
+than a four-screen document costs to draw. It overtakes at around 20 units and
+then flattens — 60 units costs it barely more than 20, because everything past
+the first screen is never built.
+
+### 5b. Streaming, by reply length
+
+Cost of one more chunk as the reply grows. Same viewport.
+
+Run twice, because the headline numbers here are large enough to deserve it.
+Both runs are shown as a range, and each ratio is the **more conservative of
+the two**.
+
+| reply so far | 1.2.1 | `GptMarkdown` | vs 1.2.1 | `SliverGptMarkdown` | vs 1.2.1 | sliver vs `GptMarkdown` |
+|---|---:|---:|---|---:|---|---|
+| 2 KB † | 5.3-7.5 ms | 0.7-2.0 ms | 3.8x faster | 0.69-0.95 ms | **7.6x faster** | **2.1x faster** |
+| 6 KB | 14.1-17.1 ms | 0.80-1.09 ms | **16x faster** | **0.49-0.75 ms** | **23x faster** | **1.5x faster** |
+| 12 KB | 32.0-38.4 ms | 1.01-1.24 ms | **31x faster** | **0.42-0.52 ms** | **74x faster** | **2.4x faster** |
+
+**Read:** against 1.2.1 this is not a ratio, it is a different shape. 1.2.1
+re-parses and re-renders the whole reply on every chunk, so its cost climbs
+without limit — 5 ms to 38 ms and still rising. Both current widgets stay flat,
+and the sliver's cost *falls* as the reply grows past a screenful, because the
+share of it that is on screen keeps shrinking.
+
+The 31x at 12 KB reproduced closely across both runs (31.0x and 31.6x). The
+2 KB row did not — 7.4x and 3.8x, with a duplicate control 62% apart in the
+second run — so it is marked and reported at its worst. At 2 KB the per-chunk
+cost is near the harness floor, which is where this method stops resolving.
+
+**Both sides were checked for rendering the same document**, because a
+"faster" variant that quietly draws less is the failure mode this document has
+already hit once. At 12 KB the two trees differ in shape — 547 `RichText`s
+against 364, and 1181 more characters on the 1.2.1 side — but that difference is
+entirely `U+FFFC` placeholders: 1.2.1 wraps blocks and links in widget spans, so
+its text lives in nested paragraphs and reads back out of order. Rendered height
+agrees within 2.5%, the visible words are identical, and neither renderer defers
+work past the frame the clock stops in.
+
+### 5c. Parse stage and whole frame, separately
+
+Two different questions, so two measurements. **Parse** is source to
+`List<InlineSpan>` — both versions expose one call taking a `BuildContext`, a
+string and a config and returning spans, so this is like for like: parsing plus
+inline span construction, no layout, no paint. **Whole frame** is a real cold
+mount: parse, build, layout and paint, torn down and remounted each iteration.
+
+Documents are shaped like things people send. A document of N copies of one
+construct measures block count, which is the dominant term for the new
+pipeline, so repetition would answer the wrong question.
+
+| document | parse 1.2.1 | parse now | | whole frame 1.2.1 | whole frame now | |
+|---|---:|---:|---|---:|---:|---|
+| short reply | 0.49 ms | 0.23 ms | **2.1x faster** | 7.57 ms | 5.45 ms | **1.4x faster** |
+| long reply (5x) | 1.75 ms | 0.64 ms | **2.7x faster** | 25.80 ms | 13.22 ms | **2.0x faster** |
+| document (20x) | 6.63 ms | 2.21 ms | **3.0x faster** | 94.34 ms | 54.73 ms | **1.7x faster** |
+| prose reply † | 1.38 ms | 0.47 ms | **2.9x faster** | 1.54 ms | 0.89 ms | **1.7x faster** |
+| prose, long form | 6.20 ms | 2.27 ms | **2.7x faster** | 9.47 ms | 5.23 ms | **1.8x faster** |
+
+**Read:** faster in both stages on every document — parsing 2.1x to 3.0x,
+whole frames 1.4x to 2.0x. The duplicate control sat at 0-5% on every row but
+one (the prose reply's frame, 18%, where the document is small enough that the
+numbers approach the harness floor).
+
+The frame ratio is lower than the parse ratio because parsing is not where the
+time goes. On a reply with structure in it — headings, lists, a table, a fence —
+the parse is about **4%** of the frame; the other 96% is building widgets,
+laying them out and painting them. Making the parser three times faster moves
+a twenty-fifth of the work, which is why the frame numbers are 1.4x-2.0x and not
+3x.
+
+On plain prose the split is different: parse is 43-53% of the frame, because
+there is almost nothing to lay out. That is the one shape where parser work
+dominates, and it is also the shape with the least total work to do.
+
+### 5d. Which widget, given the above
+
+- **A chat message, a card, anything up to a few screens** — `GptMarkdown`. The
+  sliver costs more than it saves below about 20 units, and it has to live in a
+  `CustomScrollView`.
+- **A long reply, a document, anything well past a screenful** — 
+  `SliverGptMarkdown`. It is 6x the plain widget at 60 units and its streaming
+  cost falls rather than rises.
+- **Upgrading from 1.2.1 and changing nothing** — everything gets faster, in
+  both stages, on every document shape measured here.
+
+### 5e. Caveats particular to this comparison
+
+- v1.2.1 is measured under a renamed package. Its Dart source is byte-identical
+  to the tag; only the package name and its own internal imports were rewritten
+  so both versions could be loaded at once.
+- Both versions resolve the same bundled monospace font, so the code rows are
+  not measuring a font substitution.
+- † marks a row whose duplicate control disagreed by more than about 15%: the
+  1-unit row in §5a (34%) and the prose reply's frame in §5c (18%). Both are
+  small documents, where the measurement approaches the harness floor. Read them
+  as directional. Every other row sat at 0-13%.
+- Debug VM, macOS, one machine, and `flutter test` always runs the accessibility
+  pipeline — see §4. Ratios travel; microseconds do not.
