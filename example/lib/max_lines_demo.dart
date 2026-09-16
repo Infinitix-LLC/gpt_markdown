@@ -154,6 +154,7 @@ class _MaxLinesPageState extends State<MaxLinesPage> {
                       'incremental: true (default)',
                       _incrementalKey,
                       source,
+                      // ignore: deprecated_member_use
                       incremental: true,
                       height: _incrementalHeight,
                     ),
@@ -164,6 +165,7 @@ class _MaxLinesPageState extends State<MaxLinesPage> {
                       'incremental: false',
                       _legacyKey,
                       source,
+                      // ignore: deprecated_member_use
                       incremental: false,
                       height: _legacyHeight,
                     ),
@@ -285,6 +287,7 @@ class _MaxLinesPageState extends State<MaxLinesPage> {
             child: GptMarkdown(
               source,
               key: key,
+              // ignore: deprecated_member_use
               incremental: incremental,
               maxLines: _maxLines,
               overflow: _ellipsis ? TextOverflow.ellipsis : TextOverflow.clip,

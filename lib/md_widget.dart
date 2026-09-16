@@ -1,6 +1,38 @@
 part of 'gpt_markdown.dart';
 
 /// It creates a markdown widget closed to each other.
+///
+/// Deprecated because it is the renderer for the legacy regex pipeline, which
+/// [GptMarkdown] no longer selects by default. Building it directly costs the
+/// three things the plusparse path provides: there is no incremental segment
+/// cache, so the whole source is re-split and re-parsed on every text change;
+/// there is no span-level reveal, because a reveal here falls back to
+/// [StreamingMarkdown] re-slicing the source instead of restyling spans that
+/// already exist; and there is no viewport laziness, because inside
+/// [SliverGptMarkdown] this path becomes one `SliverToBoxAdapter` holding the
+/// entire document.
+///
+/// It remains what the legacy path builds internally — [GptMarkdown] reaches
+/// it whenever `components`, `inlineComponents` or `incremental: false` is
+/// passed — so it keeps working unchanged until it is removed.
+///
+/// Before:
+///
+/// ```dart
+/// MdWidget(
+///   context,
+///   '# Title',
+///   true,
+///   config: GptMarkdownConfig(style: Theme.of(context).textTheme.bodyMedium),
+/// )
+/// ```
+///
+/// After:
+///
+/// ```dart
+/// GptMarkdown('# Title', style: Theme.of(context).textTheme.bodyMedium)
+/// ```
+@Deprecated('Use GptMarkdown instead. Will be removed in 2.0.0.')
 class MdWidget extends StatefulWidget {
   const MdWidget(
     this.context,

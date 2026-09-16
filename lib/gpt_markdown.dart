@@ -84,6 +84,7 @@ part 'markdown_component.dart';
 part 'shared_render.dart';
 part 'md_widget.dart';
 part 'inline_directive.dart';
+part 'plusparse/autolink_scan.dart';
 part 'plusparse/renderer.dart';
 part 'plusparse/incremental.dart';
 part 'plusparse/sliver.dart';
@@ -118,7 +119,11 @@ class GptMarkdown extends StatelessWidget {
     this.orderedListBuilder,
     this.unOrderedListBuilder,
     this.tableBuilder,
+    @Deprecated('Use blockComponents. Will be removed in 2.0.0.')
     this.components,
+    @Deprecated(
+      'Use inlinePatterns or inlineDirectives. Will be removed in 2.0.0.',
+    )
     this.inlineComponents,
     this.inlinePatterns,
     this.blockComponents,
@@ -143,6 +148,10 @@ class GptMarkdown extends StatelessWidget {
     this.blockAnimationDuration = const Duration(milliseconds: 200),
     this.blockAnimationCurve = Curves.easeOut,
     this.useDollarSignsForLatex = false,
+    @Deprecated(
+      'Remove this argument; plusparse is the default. '
+      'Will be removed in 2.0.0.',
+    )
     this.incremental = true,
   });
 
@@ -253,56 +262,105 @@ class GptMarkdown extends StatelessWidget {
   /// Incremental rendering for streaming content: the document is split into
   /// top-level segments, each rendered as its own cached widget, so appending
   /// text only rebuilds and re-lays-out the tail segment instead of the whole
-  /// message. Recommended for chat UIs that re-render while a reply streams.
-  /// Ignored when custom [components]/[inlineComponents] are provided (those
-  /// force the legacy single-text pipeline).
+  /// message.
+  ///
+  /// Deprecated because plusparse is now always the default, and
+  /// `incremental: false` is the only remaining way to opt back into the
+  /// legacy regex parser. Passing `false` still works, at the cost of the
+  /// segment cache — each text change re-parses and re-lays-out the whole
+  /// message rather than its tail segment — and of [blockComponents], which
+  /// only the plusparse path parses and renders. An animating [animation]
+  /// overrides it, since the span-level streaming reveal exists only on that
+  /// path. The migration is to delete the argument.
+  ///
+  /// ```dart
+  /// // Before
+  /// GptMarkdown(text, incremental: true)
+  ///
+  /// // After
+  /// GptMarkdown(text)
+  /// ```
+  ///
+  /// Ignored when [components] or [inlineComponents] are given, since those
+  /// select the legacy pipeline on their own.
+  @Deprecated(
+    'Remove this argument; plusparse is the default. '
+    'Will be removed in 2.0.0.',
+  )
   final bool incremental;
 
   /// The table builder.
   final TableBuilder? tableBuilder;
 
-  /// The list of components.
-  ///  ```dart
-  /// List<MarkdownComponent> components = [
-  ///   CodeBlockMd(),
-  ///   NewLines(),
-  ///   BlockQuote(),
-  ///   ImageMd(),
-  ///   ATagMd(),
-  ///   TableMd(),
-  ///   HTag(),
-  ///   UnOrderedList(),
-  ///   OrderedList(),
-  ///   RadioButtonMd(),
-  ///   CheckBoxMd(),
-  ///   HrLine(),
-  ///   StrikeMd(),
-  ///   BoldMd(),
-  ///   ItalicMd(),
-  ///   LatexMath(),
-  ///   LatexMathMultiLine(),
-  ///   HighlightedText(),
-  ///   SourceTag(),
-  ///   IndentMd(),
-  /// ];
+  /// The list of block-level components for the legacy regex pipeline.
+  ///
+  /// Deprecated because passing this list — even an empty one — silently
+  /// switches the whole widget to the legacy regex parser: [blockComponents]
+  /// is ignored, and the incremental segment cache, the span-level streaming
+  /// reveal and lazy sliver rendering are all disabled, so each text change
+  /// re-parses and re-lays-out the whole message, an animating [animation]
+  /// falls back to re-slicing the source text, and [SliverGptMarkdown] puts
+  /// the document in one `SliverToBoxAdapter`.
+  ///
+  /// ```dart
+  /// // Before
+  /// GptMarkdown(
+  ///   text,
+  ///   components: [CalloutMd(), ...MarkdownComponent.globalComponents],
+  /// )
+  ///
+  /// // After
+  /// GptMarkdown(
+  ///   text,
+  ///   blockComponents: [
+  ///     MarkdownBlockComponent(
+  ///       syntax: const FencedBlockSyntax(
+  ///         type: 'callout',
+  ///         opening: ':::callout',
+  ///       ),
+  ///       builder: (context, node, config) => CalloutBox(body: node.body),
+  ///     ),
+  ///   ],
+  /// )
   /// ```
+  ///
+  /// Inline syntaxes move to [inlinePatterns] or [inlineDirectives], both of
+  /// which work on either pipeline.
+  @Deprecated('Use blockComponents. Will be removed in 2.0.0.')
   final List<MarkdownComponent>? components;
 
-  /// The list of inline components.
-  ///  ```dart
-  /// List<MarkdownComponent> inlineComponents = [
-  ///   ImageMd(),
-  ///   ATagMd(),
-  ///   TableMd(),
-  ///   StrikeMd(),
-  ///   BoldMd(),
-  ///   ItalicMd(),
-  ///   LatexMath(),
-  ///   LatexMathMultiLine(),
-  ///   HighlightedText(),
-  ///   SourceTag(),
-  /// ];
+  /// The list of inline components for the legacy regex pipeline.
+  ///
+  /// Deprecated for the same reason as [components]: passing this list — even
+  /// an empty one — silently switches the whole widget to the legacy regex
+  /// parser, which ignores [blockComponents] and has no incremental segment
+  /// cache, no span-level streaming reveal and no lazy sliver rendering.
+  ///
+  /// ```dart
+  /// // Before
+  /// GptMarkdown(
+  ///   text,
+  ///   inlineComponents: [MentionMd(), ...MarkdownComponent.inlineComponents],
+  /// )
+  ///
+  /// // After
+  /// GptMarkdown(
+  ///   text,
+  ///   inlinePatterns: [
+  ///     InlinePattern(
+  ///       pattern: RegExp(r'@[A-Za-z0-9_]+'),
+  ///       builder: (context, match, style) =>
+  ///           TextSpan(text: match.group(0), style: style),
+  ///     ),
+  ///   ],
+  /// )
   /// ```
+  ///
+  /// Use [inlineDirectives] where the host has already wrapped the region in
+  /// sentinels and the parser must not look inside it.
+  @Deprecated(
+    'Use inlinePatterns or inlineDirectives. Will be removed in 2.0.0.',
+  )
   final List<MarkdownComponent>? inlineComponents;
 
   /// App-specific inline syntaxes rendered alongside Markdown.

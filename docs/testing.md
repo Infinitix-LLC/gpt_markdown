@@ -203,6 +203,12 @@ asserting on that label has to set `accessibleNavigation` itself.
 
 ### Check both parser paths when extending grammar
 
+`incremental` is deprecated in 1.3.0 — deleting it from application code is the
+migration. It stays useful in *tests*, which is why this recipe keeps it: it is
+the only way to drive both parsers over the same source. Expect a deprecation
+warning, and silence it with
+`// ignore: deprecated_member_use_from_same_package`.
+
 `incremental: true` is the default plusparse path; `false` selects the legacy
 renderer unless an animation forces span reveal. Parser or Markdown-syntax
 changes should have parity coverage:

@@ -42,3 +42,6 @@ attached_assets/
 # them out of the published archive. `docs/performance-baseline.md` records the
 # numbers they produce, and carries the harness inline so it can be recreated.
 /benchmark/
+
+# Golden comparison artefacts. Written on a failing run, never input.
+test/**/failures/

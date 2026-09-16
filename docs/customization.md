@@ -567,11 +567,12 @@ style-sheet object — they replace the component outright, and `CodeBlockStyle`
 `tableBuilder` does receive is the ambient body style, empty when the widget
 sets none.
 
-The two deprecated builders carry an unresolved style as well, kept that way
-because 1.2.x builders were written against it: `sourceTagBuilder` is handed an
-empty `TextStyle` whenever `SourceTagStyle.textStyle` is unset, and
+The three deprecated builders carry an unresolved style as well, kept that way
+because the builders written against them expect it: `sourceTagBuilder` is
+handed an empty `TextStyle` whenever `SourceTagStyle.textStyle` is unset,
 `linkBuilder` the ambient body style rather than the resolved link style its
-replacement is given.
+replacement is given, and `highlightBuilder` the ambient body style — the
+resolved code style reaches it only where the surrounding style is null.
 
 | Builder | Signature |
 |---|---|
@@ -587,6 +588,7 @@ replacement is given.
 | `inlineLinkBuilder` | `(LinkBuildDetails details)` → `InlineSpan` |
 | `linkBuilder` | *Deprecated.* `(context, InlineSpan label, String url, TextStyle style)` |
 | `inlineCodeBuilder` | `(context, String code, TextStyle style, InlineCodeStyle codeStyle)` |
+| `highlightBuilder` | *Deprecated.* `(context, String text, TextStyle style)` |
 | `inlineSourceTagBuilder` | `(SourceTagBuildDetails details)` → `InlineSpan` |
 | `sourceTagBuilder` | *Deprecated.* `(context, String content, TextStyle style)` |
 | `orderedListBuilder` | `(context, String no, Widget child, GptMarkdownConfig config)` |
@@ -661,6 +663,33 @@ compensation. A bare `WidgetSpan` does neither.
 
 ---
 
+## Beyond styles and builders
+
+A style changes appearance and a builder replaces a widget. Neither teaches the
+parser a syntax it does not already know, which is what an extension is for:
+
+| What you are adding | Use |
+|---|---|
+| A block syntax such as `:::warning` | `blockComponents` |
+| An inline token such as `@name` | `inlinePatterns` |
+| A payload that must not be parsed at all | `inlineDirectives` |
+
+> [!WARNING]
+> The older extension arguments, `components` and `inlineComponents`, are
+> deprecated in 1.3.0 and scheduled for removal in 2.0.0. They still work, but
+> passing either — even an empty list — switches the widget to the legacy regex
+> parser, which ignores `blockComponents` and loses the incremental segment
+> cache, the span-level streaming reveal and lazy sliver rendering.
+> `incremental: false` does the same.
+
+Nothing else on this page is affected by that choice: the style objects and
+builders above are honoured on both parsers.
+
+[Custom components](custom-components.md) has the detail, and
+[migration](../MIGRATION.md) the before and after.
+
+---
+
 ## Callbacks
 
 ```dart
@@ -693,7 +722,8 @@ configure; it follows `ThemeData` like any other extension.
 > every build, so comparing them would defeat the cache entirely.
 >
 > Give the widget a `key` that changes with the builder, or set it once.
-> Styles, patterns and component lists *are* compared and do update live.
+> Styles, `inlinePatterns`, `blockComponents` and the deprecated component
+> lists *are* compared and do update live.
 
 > [!WARNING]
 > **A raw `WidgetSpan` scales twice.**

@@ -1,7 +1,8 @@
 # Rendering architecture and performance
 
 The legacy regex parser remains supported. Existing `components`,
-`inlineComponents`, and `incremental: false` retain their routing. There is no
+`inlineComponents`, and `incremental: false` retain their routing, though all
+three are deprecated in 1.3.0 and removed in 2.0.0. There is no
 required migration for widget/legacy-component integrations and no new runtime
 dependency. Direct AST consumers using exhaustive switches over sealed MdNode
 must add a case for the new MdCustomBlock variant.

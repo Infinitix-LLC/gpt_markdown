@@ -63,10 +63,9 @@ Removing it is the better fix. A pre-processor works on raw Markdown and has to
 guess where the syntax ends and the URL begins — which is how
 `**https://x.com**` becomes a link whose href ends in `**`.
 
-A component runs *after* the surrounding syntax is consumed: `BoldMd` matches
-first, strips the `**`, and the autolinker only ever sees a clean URL. That
-class of bug cannot happen. The same holds for backticked URLs, headings and
-table cells.
+Autolinking runs *after* the surrounding syntax is consumed: the parser claims
+the `**` first and hands the autolinker a clean URL. That class of bug cannot
+happen. The same holds for backticked URLs, headings and table cells.
 
 ---
 
@@ -75,6 +74,15 @@ table cells.
 Chat apps layer their own inline syntax on top of Markdown. `#2959` is a
 channel in one product, a topic in another, an issue in a third — so the
 package supplies the mechanism and you supply the meaning.
+
+> [!IMPORTANT]
+> `InlinePattern` and `InlineDirective` are the current route, and they work on
+> both parsers. The older route — an `InlineMd` subclass passed to
+> `inlineComponents` — is deprecated in 1.3.0 and scheduled for removal in
+> 2.0.0. It still works, but passing `inlineComponents` switches the whole
+> widget to the legacy regex parser. See
+> [custom components](custom-components.md#legacy-extension-points-deprecated-in-130)
+> and [migration](../MIGRATION.md).
 
 ### A simple pattern
 
@@ -109,9 +117,9 @@ pattern still matches, and since the match is lifted out before parsing, the
 maths renderer is handed the placeholder — the equation and the chip are both
 lost.
 
-On the legacy pipeline precedence is leftmost-match instead — a built-in whose
-match starts at an earlier offset swallows the text, and the pattern wins only
-when both start at the same offset.
+On the deprecated legacy pipeline precedence is leftmost-match instead — a
+built-in whose match starts at an earlier offset swallows the text, and the
+pattern wins only when both start at the same offset.
 
 > [!WARNING]
 > A single-backtick code span is **not** one of those protected regions. On the
@@ -275,8 +283,9 @@ the markers after generation.
 
 During streaming, a directive is built only after its closing delimiter
 arrives. An incomplete directive stays literal rather than producing a
-half-built widget. Directives work with `incremental: true` and do not require
-custom `MarkdownComponent` lists.
+half-built widget. Directives are read on both parsers and never require you to
+pass a component list, so they do not force the legacy parser the way
+`inlineComponents` does.
 
 Do not use a directive for mentions, channels, emoji, or syntax that should
 participate in Markdown nesting. Those belong in `InlinePattern`.

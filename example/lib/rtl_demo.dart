@@ -121,6 +121,7 @@ class _RtlPageState extends State<RtlPage> {
                             child: GptMarkdown(
                               source,
                               textDirection: _direction,
+                              // ignore: deprecated_member_use
                               incremental: _renderer == 'Plusparse',
                               style: style,
                               textScaler: scaler,

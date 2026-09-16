@@ -20,6 +20,7 @@ void main() {
                     rtlShowcaseMarkdown,
                     textDirection: direction,
                     style: const TextStyle(fontSize: 16),
+                    // ignore: deprecated_member_use
                     incremental: incremental,
                     inlinePatterns: rtlInlinePatterns,
                     inlineDirectives: rtlInlineDirectives,
@@ -88,7 +89,9 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Legacy regex').last);
     await tester.pumpAndSettle();
-    expect(tester.widget<GptMarkdown>(find.byType(GptMarkdown)).incremental,
+    expect(
+        // ignore: deprecated_member_use
+        tester.widget<GptMarkdown>(find.byType(GptMarkdown)).incremental,
         isFalse);
     await tester.tap(find.byKey(const ValueKey('rtl-renderer')));
     await tester.pumpAndSettle();

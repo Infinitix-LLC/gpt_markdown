@@ -256,9 +256,9 @@ SelectionArea(child: GptMarkdown(reply))
 
 > [!TIP]
 > **Rendering a reply while it generates?** Rebuild only the active message
-> with the complete text received so far. The default `incremental: true`
-> renderer caches settled segments, so append cost stays roughly flat as the
-> reply grows. See [streaming and performance](streaming.md#performance).
+> with the complete text received so far. The renderer caches the segments that
+> have settled, so append cost stays roughly flat as the reply grows. See
+> [streaming and performance](streaming.md#performance).
 
 ---
 

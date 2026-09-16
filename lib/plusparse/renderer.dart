@@ -525,10 +525,11 @@ class PlusparseRenderer {
   /// Runs a run of plain text through the consumer-facing inline syntaxes:
   /// [GptMarkdownConfig.inlinePatterns] first, then autolinking.
   ///
-  /// Both are regex components, so they are dispatched by
+  /// Patterns are regex components, so they are dispatched by
   /// [MarkdownComponent.generate] with a component list holding nothing else —
   /// which is what keeps their scope filtering, boundary rules and precedence
-  /// identical to the regex pipeline instead of reimplemented here.
+  /// identical to the regex pipeline instead of reimplemented here. Autolinks
+  /// used to go the same way and no longer do; see [_plainTextSpans].
   static List<InlineSpan> _textSpans(
     BuildContext context,
     String text,
@@ -566,22 +567,47 @@ class PlusparseRenderer {
     return withPatterns(text);
   }
 
+  /// Autolinks one run of plain text.
+  ///
+  /// Patterns have already been expanded by the caller, so the only
+  /// consumer-facing syntax left here is autolinking.
+  ///
+  /// This was the last thing on the plusparse path that ran the legacy
+  /// combined regex, and it was the most expensive: the autolink pattern is a
+  /// six-way alternation, so proving that a paragraph of ordinary prose holds
+  /// no link meant backtracking at every word. [autolinkSpans] finds the same
+  /// candidates with a character scan and hands each one to the same
+  /// [AutolinkMd] resolution code; `test/regression/autolink_parity_test.dart`
+  /// holds the two paths against each other.
   static List<InlineSpan> _plainTextSpans(
     BuildContext context,
     String text,
     GptMarkdownConfig config,
   ) {
-    // Patterns have already been expanded by the caller, so the only
-    // consumer-facing syntax left here is autolinking.
     if (!config.autolink) {
       return [TextSpan(text: text, style: config.style)];
     }
-    return MarkdownComponent.generate(
-      context,
-      text,
-      config.copyWith(inlineComponents: [if (config.autolink) AutolinkMd()]),
-      false,
-    );
+    final patterns = config.inlinePatterns;
+    if (patterns != null && patterns.isNotEmpty) {
+      // Not the scanner: a pattern and an autolink decide precedence between
+      // them through one combined regex — patterns are listed first, so the
+      // earliest match wins and a tie goes to the pattern — and splitting the
+      // dispatch in two would decide it by which half ran first instead.
+      //
+      // This is also the only place a pattern can still be claimed at all.
+      // Masking lifts pattern matches out of the *source* before parsing, but
+      // a run is not always a substring of it: `RegExp(r'^b$')` matches the
+      // `b` that `a**b**c` parses to and never matches the source, so this
+      // dispatch is what renders it. `test/regression/autolink_parity_test`
+      // pins that case.
+      return MarkdownComponent.generate(
+        context,
+        text,
+        config.copyWith(inlineComponents: [AutolinkMd()]),
+        false,
+      );
+    }
+    return autolinkSpans(context, text, config);
   }
 
   static InlineSpan _inline(

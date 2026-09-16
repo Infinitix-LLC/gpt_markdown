@@ -25,7 +25,6 @@ in. See [getting started](getting-started.md).
 
 | Option | Default | Purpose |
 |---|---|---|
-| `incremental` | `true` | Uses plusparse and caches unchanged top-level segments |
 | `useDollarSignsForLatex` | `false` | Enables `$…$` and `$$…$$` maths parsing |
 | `latexWorkaround` | none | Transforms TeX immediately before rendering |
 | `autolink` | `true` | Enables bare URL, host and email autolinking |
@@ -33,19 +32,28 @@ in. See [getting started](getting-started.md).
 | `inlineDirectives` | none | Protects delimited host data from Markdown parsing |
 | `inlinePatterns` | none | Adds consumer-defined inline tokens to both parser paths |
 | `blockComponents` | none | Adds new block syntax while staying on plusparse |
-| `components` | built-ins | Replaces the legacy block-component list |
-| `inlineComponents` | built-ins | Replaces the legacy inline-component list |
+| `incremental` | `true` | *Deprecated.* Delete the argument; plusparse is the default, and `false` opts back into the legacy parser |
+| `components` | built-ins | *Deprecated.* Replaces the legacy block-component list; use `blockComponents` |
+| `inlineComponents` | built-ins | *Deprecated.* Replaces the legacy inline-component list; use `inlinePatterns` or `inlineDirectives` |
 
-Custom `components` or `inlineComponents` select the legacy parser even when
-`incremental` is true. Passing a short list replaces the defaults rather than
-extending them. Build block lists on top of
-`MarkdownComponent.globalComponents` and inline lists on top of
-`MarkdownComponent.inlineComponents`. `blockComponents` is the modern route:
-it supplements the built-in blocks and keeps plusparse and its segment cache.
-It is ignored whenever rendering falls back to the legacy parser — when a
-legacy list is also passed, and when `incremental: false` runs without a reveal
-animation to hold plusparse open. The registered syntax then renders as
-ordinary Markdown, with no warning. See
+`blockComponents` is the modern route for new block grammar: it supplements the
+built-in blocks and keeps plusparse, its segment cache, the span-level
+streaming reveal and lazy sliver rendering. Inline syntax goes to
+`inlinePatterns`, or to `inlineDirectives` where the host has already wrapped
+the region in sentinels.
+
+`incremental`, `components` and `inlineComponents` are deprecated, with removal
+slated for 2.0.0; until then they behave as they always have. All three lead to
+the legacy regex parser. Passing `components` or `inlineComponents` — even an
+empty list — selects it outright, and `incremental: false` selects it unless an
+animating `animation` holds plusparse open, since the span-level reveal exists
+only on that path. The legacy parser ignores `blockComponents`, so a registered
+block syntax renders as ordinary Markdown with no warning, and it has no
+incremental segment cache, so each text change re-parses and re-lays-out the
+whole message rather than its tail segment. A legacy list also replaces the
+built-ins rather than extending them, which is why existing code spreads the
+equally deprecated `MarkdownComponent.globalComponents` or
+`MarkdownComponent.inlineComponents` into its own list. See
 [custom components](custom-components.md).
 
 ## Streaming and animation
@@ -62,7 +70,8 @@ ordinary Markdown, with no warning. See
 
 `isStreaming`, `charactersPerSecond` and `revealFadeSeconds` matter only when a
 character reveal is active. Block animation is an independent axis.
-`incremental` remains useful with `animation: none`. See
+The incremental segment cache applies with `animation: none` as well;
+`incremental: false` gives it up along with the rest of plusparse. See
 [streaming and incremental rendering](streaming.md).
 
 ## Appearance
@@ -107,8 +116,11 @@ Builders replace structure. All are optional:
 `highlightBuilder`, `linkBuilder` and `sourceTagBuilder` are deprecated; use
 `inlineCodeBuilder`, `inlineLinkBuilder` and `inlineSourceTagBuilder`. Each
 returns an `InlineSpan` instead of a `Widget`, which keeps the content on the
-text baseline, wrapping across lines and selectable. Builder signatures
-and resolved styles are listed in [customization](customization.md#builders).
+text baseline, wrapping across lines and selectable. Together with
+`incremental`, `components` and `inlineComponents` they are the whole
+deprecated surface of the constructor; every one of them still works and is
+slated for removal in 2.0.0. Builder signatures and resolved styles are listed
+in [customization](customization.md#builders).
 
 ## Callbacks
 
@@ -128,7 +140,10 @@ automatically.
 
 1. Use `style` for surrounding typography.
 2. Use a style object for component appearance.
-3. Use `InlinePattern` for app-specific inline tokens.
+3. Use `InlinePattern` for app-specific inline tokens, or `InlineDirective`
+   for a delimited payload the parser must not read.
 4. Use a builder when the component's structure must change.
-5. Use `blockComponents` for genuinely new block grammar, and
-   `MarkdownComponent` only where the legacy parser is acceptable.
+5. Use `blockComponents` for genuinely new block grammar.
+6. Reach for the `MarkdownComponent` route — a `BlockMd` or `InlineMd`
+   subclass passed through `components` or `inlineComponents` — only where
+   the legacy parser is acceptable; all four are deprecated and go in 2.0.0.

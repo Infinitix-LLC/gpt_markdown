@@ -79,7 +79,6 @@ Rebuild `GptMarkdown` with the complete text received so far. The settled prefix
 ```dart
 GptMarkdown(
   streamedReply,
-  incremental: true, // default: caches every unchanged top-level segment
   animation: GptMarkdownAnimation.fade,
   blockAnimation: GptMarkdownBlockAnimation.fadeIn,
   isStreaming: stillGenerating,
@@ -203,12 +202,16 @@ GptMarkdown(
 
 Known names are matched longest-first, and patterns do not claim link labels by default. This prevents ambiguous tokens such as `#2959` from becoming channels, and keeps a pattern out of a label that is itself a widget — a placeholder nested inside a placeholder does not paint on iOS. The default link is a text span, so only a link built as a widget (the deprecated `linkBuilder`, or `details.asWidgetSpan(...)`) is affected.
 
-For new block syntax on the cached pipeline, use `MarkdownBlockComponent` and
-`MarkdownBlockSyntax` (or the ready-made `FencedBlockSyntax`). For long documents,
-use `SliverGptMarkdown` inside a `CustomScrollView`. See the
+For new block syntax, pair a `MarkdownBlockSyntax` — or the ready-made
+`FencedBlockSyntax` — with a builder in a `MarkdownBlockComponent`, and pass it to
+`blockComponents`. New inline syntax goes to `inlinePatterns`, or to
+`inlineDirectives` when the payload is not Markdown and the parser must not look
+inside it. A pattern declares the scopes it applies in: `content`, `linkLabel`,
+`tableCell`, and `heading`. For long documents, use `SliverGptMarkdown` inside a
+`CustomScrollView`. See the
 [rendering architecture guide](docs/rendering-architecture.md).
 
-Legacy integrations remain supported through `MarkdownComponent`, `InlineMd`, and `BlockMd`. Components can declare support for `content`, `linkLabel`, `tableCell`, and `heading` scopes. Passing `components` or `inlineComponents` — even an empty list — switches the widget to the legacy parser, which has no segment cache, no span-level reveal and no lazy sliver list, and `blockComponents` is ignored on that path.
+The older `components` and `inlineComponents` arguments, and the `InlineMd` and `BlockMd` base classes behind them, are deprecated and removed in 2.0.0 — passing either list, even an empty one, switches the widget to the legacy parser, which ignores `blockComponents` and has no segment cache, no span-level reveal and no lazy sliver list; the [migration guide](MIGRATION.md) has the replacements.
 
 ## 🔗 Autolinks
 
@@ -234,7 +237,7 @@ GptMarkdown(
 
 ## 🚀 Feature highlights
 
-- Single-pass parser with segment caching behind the default `incremental: true`
+- Single-pass parser with segment caching, on by default
 - Adaptive streaming reveal with split-document caching
 - `GptMarkdownStyleSheet` and twelve per-component style classes
 - Builders and callbacks for every major output component

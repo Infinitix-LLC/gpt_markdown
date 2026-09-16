@@ -78,9 +78,16 @@ GptMarkdown(
 ```
 
 Builders exist for every component: `headingBuilder`, `checkboxBuilder`,
-`radioOptionBuilder`, `hrBuilder`, `tableBuilder`, `linkBuilder`,
-`sourceTagBuilder`, `orderedListBuilder`, `unOrderedListBuilder` and
-`inlineCodeBuilder`.
+`radioOptionBuilder`, `hrBuilder`, `tableBuilder`, `orderedListBuilder`,
+`unOrderedListBuilder`, `inlineCodeBuilder`, `inlineLinkBuilder` and
+`inlineSourceTagBuilder`.
+
+The three that return a `Widget` — `linkBuilder`, `sourceTagBuilder` and
+`highlightBuilder` — are deprecated in 1.3.0 and removed in 2.0.0. A widget has
+to sit in a `WidgetSpan`, which puts it off the text baseline, stops it
+wrapping across lines and hides it from text selection. Their replacements
+(`inlineLinkBuilder`, `inlineSourceTagBuilder`, `inlineCodeBuilder`) return an
+`InlineSpan` instead. See [MIGRATION.md](../MIGRATION.md).
 
 ---
 

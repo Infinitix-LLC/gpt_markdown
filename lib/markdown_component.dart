@@ -1,3 +1,7 @@
+// This file defines the legacy regex pipeline's component types and its
+// built-in components. They are deprecated as a group, and they refer to one
+// another throughout, so the ignore is applied once for the whole file.
+// ignore_for_file: deprecated_member_use_from_same_package
 part of 'gpt_markdown.dart';
 
 /// The nesting context a [MarkdownComponent] is being rendered in.
@@ -54,6 +58,18 @@ abstract class MarkdownComponent {
   /// [allScopesExceptLinkLabel].
   Set<MarkdownScope> get scopes => allScopes;
 
+  /// The built-in block components of the legacy regex pipeline.
+  ///
+  /// This list exists to be spread into a custom `components` list, and
+  /// passing `components` selects the legacy pipeline: the document is
+  /// rendered as one text tree, with no incremental segment cache, no
+  /// span-level streaming reveal and no lazy sliver. A custom list also
+  /// replaces the built-ins wholesale — every component left out of it stops
+  /// rendering, which is why callers spread this list into their own.
+  ///
+  /// Register custom blocks with `blockComponents` instead, which keeps the
+  /// modern pipeline.
+  @Deprecated('Use blockComponents instead. Will be removed in 2.0.0.')
   static List<MarkdownComponent> get globalComponents => [
     CodeBlockMd(),
     LatexMathMultiLine(),
@@ -69,6 +85,19 @@ abstract class MarkdownComponent {
     IndentMd(),
   ];
 
+  /// The built-in inline components of the legacy regex pipeline.
+  ///
+  /// This list exists to be spread into a custom `inlineComponents` list, and
+  /// passing `inlineComponents` selects the legacy pipeline: the document is
+  /// rendered as one text tree, with no incremental segment cache, no
+  /// span-level streaming reveal and no lazy sliver. A custom list also
+  /// replaces the built-ins wholesale — every component left out of it stops
+  /// rendering, which is why callers spread this list into their own.
+  ///
+  /// Register custom inline syntax with `inlinePatterns`, or with
+  /// `inlineDirectives` for a delimited payload, instead; both keep the
+  /// modern pipeline.
+  @Deprecated('Use inlinePatterns instead. Will be removed in 2.0.0.')
   static final List<MarkdownComponent> inlineComponents = [
     InlineDirectiveMd(),
     ATagMd(),
@@ -230,7 +259,62 @@ abstract class MarkdownComponent {
   bool get inline;
 }
 
-/// Inline component
+/// Inline component of the legacy regex pipeline.
+///
+/// A subclass is reachable only through `inlineComponents`, which selects the
+/// legacy pipeline: the document is rendered as one text tree, with no
+/// incremental segment cache, no span-level streaming reveal and no lazy
+/// sliver, so a streaming reply re-parses and re-lays-out the whole message on
+/// every append. Use [InlinePattern] for host syntax that is still text, or
+/// [InlineDirective] for a delimited payload the parser must not read; both
+/// work on either pipeline.
+///
+/// Before:
+///
+/// ```dart
+/// class ShoutMd extends InlineMd {
+///   @override
+///   RegExp get exp => RegExp(r'!![A-Za-z]+!!');
+///
+///   @override
+///   InlineSpan span(
+///     BuildContext context,
+///     String text,
+///     GptMarkdownConfig config,
+///   ) {
+///     return TextSpan(
+///       text: text.replaceAll('!!', '').toUpperCase(),
+///       style: config.style?.copyWith(fontWeight: FontWeight.bold),
+///     );
+///   }
+/// }
+///
+/// GptMarkdown(
+///   text,
+///   inlineComponents: [ShoutMd(), ...MarkdownComponent.inlineComponents],
+/// )
+/// ```
+///
+/// After:
+///
+/// ```dart
+/// GptMarkdown(
+///   text,
+///   inlinePatterns: [
+///     InlinePattern(
+///       pattern: RegExp(r'!![A-Za-z]+!!'),
+///       builder: (context, match, style) => TextSpan(
+///         text: match[0]!.replaceAll('!!', '').toUpperCase(),
+///         style: style.copyWith(fontWeight: FontWeight.bold),
+///       ),
+///     ),
+///   ],
+/// )
+/// ```
+@Deprecated(
+  'Use InlinePattern, or InlineDirective for a delimited payload. '
+  'Will be removed in 2.0.0.',
+)
 abstract class InlineMd extends MarkdownComponent {
   @override
   bool get inline => true;
@@ -248,6 +332,13 @@ abstract class InlineMd extends MarkdownComponent {
 /// The directive was lifted out of the source before parsing, leaving an inert
 /// sentinel; this is the regex pipeline's half of putting it back. Registered
 /// first so nothing else can claim the sentinel.
+///
+/// The modern pipeline unmasks directives itself, so no caller should name
+/// this type; [InlineDirective] is the API.
+@Deprecated(
+  'Built-in of the legacy regex pipeline; there is no replacement. '
+  'Will be removed in 2.0.0.',
+)
 class InlineDirectiveMd extends InlineMd {
   @override
   Set<MarkdownScope> get scopes => MarkdownComponent.allScopes;
@@ -282,7 +373,72 @@ class InlineDirectiveMd extends InlineMd {
   }
 }
 
-/// Block component
+/// Block component of the legacy regex pipeline.
+///
+/// A subclass is reachable only through `components`, which selects the legacy
+/// pipeline: the document is rendered as one text tree, with no incremental
+/// segment cache, no span-level streaming reveal and no lazy sliver, so a
+/// streaming reply re-parses and re-lays-out the whole message on every
+/// append. Register the block with [MarkdownBlockComponent] instead, using
+/// [FencedBlockSyntax] or a [MarkdownBlockSyntax] subclass for the syntax; the
+/// parsed node is cached, so a rebuild does not run the syntax again.
+///
+/// Before:
+///
+/// ```dart
+/// class CalloutMd extends BlockMd {
+///   @override
+///   String get expString => r':::(\w+)\n([\s\S]*?)\n:::';
+///
+///   @override
+///   Widget build(
+///     BuildContext context,
+///     String text,
+///     GptMarkdownConfig config,
+///   ) {
+///     final match = exp.firstMatch(text);
+///     return Row(
+///       children: [
+///         Icon(
+///           match?.group(1) == 'warning' ? Icons.warning : Icons.info,
+///         ),
+///         Flexible(child: Text(match?.group(2) ?? '')),
+///       ],
+///     );
+///   }
+/// }
+///
+/// GptMarkdown(
+///   text,
+///   components: [CalloutMd(), ...MarkdownComponent.globalComponents],
+/// )
+/// ```
+///
+/// After:
+///
+/// ```dart
+/// GptMarkdown(
+///   text,
+///   blockComponents: [
+///     MarkdownBlockComponent(
+///       syntax: const FencedBlockSyntax(
+///         type: 'callout',
+///         opening: ':::warning',
+///       ),
+///       builder: (context, node, config) => Row(
+///         children: [
+///           const Icon(Icons.warning),
+///           Flexible(child: Text(node.body)),
+///         ],
+///       ),
+///     ),
+///   ],
+/// )
+/// ```
+@Deprecated(
+  'Use MarkdownBlockComponent with blockComponents instead. '
+  'Will be removed in 2.0.0.',
+)
 abstract class BlockMd extends MarkdownComponent {
   @override
   bool get inline => false;
@@ -326,6 +482,14 @@ abstract class BlockMd extends MarkdownComponent {
 }
 
 /// Indent component
+///
+/// A built-in of the legacy regex pipeline's `components` list; the modern
+/// pipeline handles indentation in its own block parser and never builds this
+/// component.
+@Deprecated(
+  'Built-in of the legacy regex pipeline; there is no replacement. '
+  'Will be removed in 2.0.0.',
+)
 class IndentMd extends BlockMd {
   @override
   String get expString => (r"^(\ \ +)([^\n]+)$");
@@ -361,6 +525,13 @@ class IndentMd extends BlockMd {
 }
 
 /// Heading component
+///
+/// A built-in of the legacy regex pipeline's `components` list; the modern
+/// pipeline parses headings itself.
+@Deprecated(
+  'Built-in of the legacy regex pipeline; there is no replacement. '
+  'Will be removed in 2.0.0.',
+)
 class HTag extends BlockMd {
   @override
   String get expString => (r"(?<hash>#{1,6})\ (?<data>[^\n]+?)$");
@@ -387,6 +558,14 @@ class HTag extends BlockMd {
   }
 }
 
+/// Blank-line separator of the legacy regex pipeline.
+///
+/// A built-in of the legacy regex pipeline's `components` list; the modern
+/// pipeline splits blocks itself.
+@Deprecated(
+  'Built-in of the legacy regex pipeline; there is no replacement. '
+  'Will be removed in 2.0.0.',
+)
 class NewLines extends InlineMd {
   @override
   RegExp get exp => RegExp(r"\n\n+");
@@ -408,6 +587,13 @@ class NewLines extends InlineMd {
 }
 
 /// Horizontal line component
+///
+/// A built-in of the legacy regex pipeline's `components` list; the modern
+/// pipeline parses horizontal rules itself.
+@Deprecated(
+  'Built-in of the legacy regex pipeline; there is no replacement. '
+  'Will be removed in 2.0.0.',
+)
 class HrLine extends BlockMd {
   @override
   String get expString => (r"⸻|((--)[-]+)$");
@@ -422,6 +608,13 @@ class HrLine extends BlockMd {
 }
 
 /// Checkbox component
+///
+/// A built-in of the legacy regex pipeline's `components` list; the modern
+/// pipeline parses task list items itself.
+@Deprecated(
+  'Built-in of the legacy regex pipeline; there is no replacement. '
+  'Will be removed in 2.0.0.',
+)
 class CheckBoxMd extends BlockMd {
   @override
   String get expString => (r"\[((?:\x|\ ))\]\ (\S[^\n]*?)$");
@@ -443,6 +636,13 @@ class CheckBoxMd extends BlockMd {
 }
 
 /// Radio Button component
+///
+/// A built-in of the legacy regex pipeline's `components` list; the modern
+/// pipeline parses radio options itself.
+@Deprecated(
+  'Built-in of the legacy regex pipeline; there is no replacement. '
+  'Will be removed in 2.0.0.',
+)
 class RadioButtonMd extends BlockMd {
   @override
   String get expString => (r"\(((?:\x|\ ))\)\ (\S[^\n]*)$");
@@ -464,6 +664,13 @@ class RadioButtonMd extends BlockMd {
 }
 
 /// Block quote component
+///
+/// A built-in of the legacy regex pipeline's `components` list; the modern
+/// pipeline parses block quotes itself.
+@Deprecated(
+  'Built-in of the legacy regex pipeline; there is no replacement. '
+  'Will be removed in 2.0.0.',
+)
 class BlockQuote extends InlineMd {
   @override
   bool get inline => false;
@@ -511,6 +718,13 @@ class BlockQuote extends InlineMd {
 }
 
 /// Unordered list component
+///
+/// A built-in of the legacy regex pipeline's `components` list; the modern
+/// pipeline parses unordered lists itself.
+@Deprecated(
+  'Built-in of the legacy regex pipeline; there is no replacement. '
+  'Will be removed in 2.0.0.',
+)
 class UnOrderedList extends BlockMd {
   @override
   String get expString => (r"(?:\-|\*)\ ([^\n]+)$");
@@ -530,6 +744,13 @@ class UnOrderedList extends BlockMd {
 }
 
 /// Ordered list component
+///
+/// A built-in of the legacy regex pipeline's `components` list; the modern
+/// pipeline parses ordered lists itself.
+@Deprecated(
+  'Built-in of the legacy regex pipeline; there is no replacement. '
+  'Will be removed in 2.0.0.',
+)
 class OrderedList extends BlockMd {
   @override
   String get expString => (r"([0-9]+)\.\ ([^\n]+)$");
@@ -583,7 +804,6 @@ InlineSpan inlineCodeSpan(
     return builder(context, code, textStyle, codeStyle);
   }
 
-  // ignore: deprecated_member_use_from_same_package
   final legacyBuilder = config.highlightBuilder;
   if (legacyBuilder != null) {
     // Kept so 1.1.x code compiles. Wrapped on the baseline rather than at
@@ -597,6 +817,14 @@ InlineSpan inlineCodeSpan(
   return CodeTextSpan(text: code, codeStyle: codeStyle, style: textStyle);
 }
 
+/// Inline code component of the legacy regex pipeline.
+///
+/// A built-in of the legacy regex pipeline's `inlineComponents` list; the
+/// modern pipeline parses inline code itself.
+@Deprecated(
+  'Built-in of the legacy regex pipeline; there is no replacement. '
+  'Will be removed in 2.0.0.',
+)
 class HighlightedText extends InlineMd {
   @override
   RegExp get exp => RegExp(r"`(?!`)(.+?)(?<!`)`(?!`)");
@@ -613,6 +841,13 @@ class HighlightedText extends InlineMd {
 }
 
 /// Bold text component
+///
+/// A built-in of the legacy regex pipeline's `inlineComponents` list; the
+/// modern pipeline parses bold text itself.
+@Deprecated(
+  'Built-in of the legacy regex pipeline; there is no replacement. '
+  'Will be removed in 2.0.0.',
+)
 class BoldMd extends InlineMd {
   @override
   RegExp get exp =>
@@ -642,6 +877,14 @@ class BoldMd extends InlineMd {
   }
 }
 
+/// Strikethrough text component of the legacy regex pipeline.
+///
+/// A built-in of the legacy regex pipeline's `inlineComponents` list; the
+/// modern pipeline parses strikethrough itself.
+@Deprecated(
+  'Built-in of the legacy regex pipeline; there is no replacement. '
+  'Will be removed in 2.0.0.',
+)
 class StrikeMd extends InlineMd {
   @override
   RegExp get exp => RegExp(r"(?<!\*)\~\~(?<!\s)(.+?)(?<!\s)\~\~(?!\*)");
@@ -674,6 +917,13 @@ class StrikeMd extends InlineMd {
 }
 
 /// Italic text component
+///
+/// A built-in of the legacy regex pipeline's `inlineComponents` list; the
+/// modern pipeline parses italic text itself.
+@Deprecated(
+  'Built-in of the legacy regex pipeline; there is no replacement. '
+  'Will be removed in 2.0.0.',
+)
 class ItalicMd extends InlineMd {
   @override
   RegExp get exp =>
@@ -699,6 +949,14 @@ class ItalicMd extends InlineMd {
   }
 }
 
+/// Block LaTeX component of the legacy regex pipeline.
+///
+/// A built-in of the legacy regex pipeline's component lists; the modern
+/// pipeline parses display maths itself.
+@Deprecated(
+  'Built-in of the legacy regex pipeline; there is no replacement. '
+  'Will be removed in 2.0.0.',
+)
 class LatexMathMultiLine extends BlockMd {
   @override
   String get expString => (r"\ *\\\[((?:.)*?)\\\]");
@@ -721,7 +979,14 @@ class LatexMathMultiLine extends BlockMd {
   }
 }
 
-/// Italic text component
+/// Inline LaTeX component of the legacy regex pipeline.
+///
+/// A built-in of that pipeline's `inlineComponents` list; the modern pipeline
+/// parses inline maths itself.
+@Deprecated(
+  'Built-in of the legacy regex pipeline; there is no replacement. '
+  'Will be removed in 2.0.0.',
+)
 class LatexMath extends InlineMd {
   @override
   RegExp get exp => RegExp(
@@ -749,6 +1014,13 @@ class LatexMath extends InlineMd {
 }
 
 /// source text component
+///
+/// A built-in of the legacy regex pipeline's `inlineComponents` list; the
+/// modern pipeline parses `[1]` citation chips itself.
+@Deprecated(
+  'Built-in of the legacy regex pipeline; there is no replacement. '
+  'Will be removed in 2.0.0.',
+)
 class SourceTag extends InlineMd {
   @override
   RegExp get exp => RegExp(r"(?:【.*?)?\[(\d+?)\]");
@@ -769,6 +1041,13 @@ class SourceTag extends InlineMd {
 }
 
 /// Link text component
+///
+/// A built-in of the legacy regex pipeline's `inlineComponents` list; the
+/// modern pipeline parses links itself.
+@Deprecated(
+  'Built-in of the legacy regex pipeline; there is no replacement. '
+  'Will be removed in 2.0.0.',
+)
 class ATagMd extends InlineMd {
   @override
   RegExp get exp => RegExp(r"(?<!\!)\[.*?\]\([^\s]*\)");
@@ -978,7 +1257,6 @@ InlineSpan buildLinkSpan(
     return span;
   }
 
-  // ignore: deprecated_member_use_from_same_package
   final legacyBuilder = config.linkBuilder;
   if (legacyBuilder != null) {
     // Kept so 1.2.x code compiles: a Widget still has to go in a placeholder,
@@ -1058,6 +1336,13 @@ bool _hasReachableTap(InlineSpan root) {
 }
 
 /// Image component
+///
+/// A built-in of the legacy regex pipeline's `inlineComponents` list; the
+/// modern pipeline parses images itself.
+@Deprecated(
+  'Built-in of the legacy regex pipeline; there is no replacement. '
+  'Will be removed in 2.0.0.',
+)
 class ImageMd extends InlineMd {
   @override
   RegExp get exp => RegExp(r"\!\[[^\[\]]*\]\([^\s]*\)");
@@ -1122,6 +1407,13 @@ class ImageMd extends InlineMd {
 }
 
 /// Table component
+///
+/// A built-in of the legacy regex pipeline's component lists; the modern
+/// pipeline parses tables itself.
+@Deprecated(
+  'Built-in of the legacy regex pipeline; there is no replacement. '
+  'Will be removed in 2.0.0.',
+)
 class TableMd extends BlockMd {
   /// A table cannot be a link label.
   @override
@@ -1343,6 +1635,14 @@ class TableMd extends BlockMd {
   }
 }
 
+/// Fenced code block component of the legacy regex pipeline.
+///
+/// A built-in of the legacy regex pipeline's `components` list; the modern
+/// pipeline parses fenced code itself.
+@Deprecated(
+  'Built-in of the legacy regex pipeline; there is no replacement. '
+  'Will be removed in 2.0.0.',
+)
 class CodeBlockMd extends BlockMd {
   @override
   String get expString => r"```(.*?)\n((.*?)(:?\n\s*?```)|(.*)(:?\n```)?)$";
@@ -1365,6 +1665,14 @@ class CodeBlockMd extends BlockMd {
   }
 }
 
+/// `<u>` underline component of the legacy regex pipeline.
+///
+/// A built-in of the legacy regex pipeline's `inlineComponents` list; the
+/// modern pipeline parses `<u>` spans itself.
+@Deprecated(
+  'Built-in of the legacy regex pipeline; there is no replacement. '
+  'Will be removed in 2.0.0.',
+)
 class UnderLineMd extends InlineMd {
   @override
   RegExp get exp =>

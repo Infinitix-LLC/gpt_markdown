@@ -33,7 +33,6 @@ class _ReplyViewState extends State<ReplyView> {
   @override
   Widget build(BuildContext context) => GptMarkdown(
     _buffer.toString(),
-    incremental: true, // The default; written here to make the intent clear.
     animation: GptMarkdownAnimation.fade,
     blockAnimation: GptMarkdownBlockAnimation.fadeIn,
     isStreaming: _generating,
@@ -44,7 +43,12 @@ class _ReplyViewState extends State<ReplyView> {
 Keep the same widget identity while the reply grows. Giving every chunk a new
 key remounts the renderer and discards its reveal position and caches.
 
-## `incremental`
+## `incremental` (deprecated in 1.3.0)
+
+> [!IMPORTANT]
+> `incremental` is deprecated. plusparse is the default and passing the
+> argument is no longer necessary. It keeps working until 2.0.0; the migration
+> is to delete it. See [MIGRATION.md](../MIGRATION.md).
 
 `incremental` defaults to `true`. It selects the single-pass plusparse parser
 and a segment-cached renderer:
@@ -74,7 +78,6 @@ This optimization is useful even without animation:
 ```dart
 GptMarkdown(
   streamedText,
-  incremental: true,
   animation: GptMarkdownAnimation.none,
 )
 ```
@@ -84,7 +87,8 @@ There is no need to fake a disabled animation with an extremely high
 
 ### Legacy compatibility
 
-Set `incremental: false` to select the older combined-regex renderer. This is
+Set `incremental: false` to select the older combined-regex renderer — also
+deprecated, and the only reason to reach for it is to compare the two. This is
 primarily an escape hatch for compatibility testing.
 
 Supplying custom `components` or `inlineComponents` also selects the legacy
@@ -177,7 +181,6 @@ The two axes compose:
 ```dart
 GptMarkdown(
   streamedText,
-  incremental: true,
   animation: GptMarkdownAnimation.blurIn,
   blockAnimation: GptMarkdownBlockAnimation.slideUp,
   isStreaming: generating,

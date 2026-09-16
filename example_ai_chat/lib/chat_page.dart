@@ -372,6 +372,7 @@ class _ChatPageState extends State<ChatPage> {
               width: double.infinity,
               child: GptMarkdown(
                 _reply,
+                // ignore: deprecated_member_use
                 incremental: _incremental,
                 animation:
                     _fadeReveal
