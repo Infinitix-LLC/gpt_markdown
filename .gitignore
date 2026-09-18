@@ -45,3 +45,7 @@ attached_assets/
 
 # Golden comparison artefacts. Written on a failing run, never input.
 test/**/failures/
+
+# Internal competitor comparison. Kept locally; `docs/benchmark.md` is the
+# published version, without the third-party chat kit.
+docs/comparison.md

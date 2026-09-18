@@ -16,7 +16,6 @@ Markdown and LaTeX rendering for Flutter, built for AI chat output.
 | [Comparison with other renderers](comparison.md) | You are choosing between this and another Markdown package |
 | [Performance baseline](performance-baseline.md) | You are comparing revisions of this package and need the cold first-paint record |
 | [Native rendering measurements](rendering-profile-results.md) | You want profile-mode numbers rather than debug-VM ones |
-| [Committed branch versus upstream main](benchmark-vs-main.md) | You want this branch measured against `origin/main` |
 
 > [!NOTE]
 > Representative code from these guides is compiled by the test suite
