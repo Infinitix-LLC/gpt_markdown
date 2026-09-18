@@ -134,9 +134,20 @@ void main() {
     await tester.pumpWidget(
       const MaterialApp(home: GptMarkdown('$table\n\n$table')),
     );
-    final bars = tester.widgetList<Scrollbar>(find.byType(Scrollbar)).toList();
-    expect(bars, hasLength(2));
-    expect(identical(bars[0].controller, bars[1].controller), isFalse);
+    // Found through the scroll views, not through `Scrollbar`: a table only
+    // draws a bar on pointer platforms, and the ownership this guards is the
+    // controller, which exists either way.
+    final views =
+        tester
+            .widgetList<SingleChildScrollView>(
+              find.ancestor(
+                of: find.byType(Table),
+                matching: find.byType(SingleChildScrollView),
+              ),
+            )
+            .toList();
+    expect(views, hasLength(2));
+    expect(identical(views[0].controller, views[1].controller), isFalse);
     expect(tester.takeException(), isNull);
   });
 

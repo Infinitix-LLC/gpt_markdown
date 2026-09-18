@@ -648,13 +648,59 @@ class _TableViewportState extends State<_TableViewport> {
     super.dispose();
   }
 
+  /// The strip reserved under the table for the bar, and the bar's own
+  /// thickness — the same number, so the bar fills the strip exactly. Material
+  /// would otherwise hold a 2px `crossAxisMargin` off the edge, leaving a gap
+  /// under the bar; that is set to zero below.
+  static const double _barStrip = 8;
+
   @override
-  Widget build(BuildContext context) => Scrollbar(
-    controller: _controller,
-    child: SingleChildScrollView(
-      controller: _controller,
-      scrollDirection: Axis.horizontal,
-      child: widget.child,
-    ),
-  );
+  Widget build(BuildContext context) {
+    // A horizontal scrollable never gets a scrollbar from the ambient
+    // behaviour — `MaterialScrollBehavior.buildScrollbar` returns the child
+    // unchanged for `Axis.horizontal` on every platform — so this widget is
+    // the only reason one appears, and it is on us to decide where.
+    //
+    // On a touch device, nowhere: a finger already knows how to drag a table
+    // sideways, and the bar has no gesture of its own to offer. Drawn, it
+    // overlaps the bottom row, because a scrollbar paints inside the viewport
+    // it belongs to.
+    switch (Theme.of(context).platform) {
+      case TargetPlatform.android:
+      case TargetPlatform.iOS:
+      case TargetPlatform.fuchsia:
+        return SingleChildScrollView(
+          controller: _controller,
+          scrollDirection: Axis.horizontal,
+          child: widget.child,
+        );
+      case TargetPlatform.linux:
+      case TargetPlatform.macOS:
+      case TargetPlatform.windows:
+        // A pointer has no such affordance, so the bar earns its place — but
+        // it gets a strip of its own rather than the last row's. The strip is
+        // exactly the bar's height: no gap under it.
+        return ScrollbarTheme(
+          // `crossAxisMargin` is not a `Scrollbar` argument; it only reaches
+          // the painter through the theme. Material defaults it to 2, which
+          // holds the bar off the viewport edge and leaves a gap beneath it.
+          data: ScrollbarThemeData(
+            crossAxisMargin: 0,
+            mainAxisMargin: 0,
+            thickness: const WidgetStatePropertyAll<double>(_barStrip),
+          ),
+          child: Scrollbar(
+            controller: _controller,
+            child: SingleChildScrollView(
+              controller: _controller,
+              scrollDirection: Axis.horizontal,
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: _barStrip),
+                child: widget.child,
+              ),
+            ),
+          ),
+        );
+    }
+  }
 }
