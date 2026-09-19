@@ -112,17 +112,23 @@ plusparse doing equivalent source-to-renderable-structure work:
 
 | Scenario | Measured speedup |
 |---|---:|
-| Dense inline syntax | about **15x** |
-| Typical AI reply | about **23x** |
-| Large 35 KB document | **14x to 36x** |
-| Re-parsing streamed prefixes | about **48x** |
+| Dense inline syntax | about **4x** |
+| Typical AI reply | about **3.3x** |
+| Block-heavy document | about **3.4x** |
+| Large 35 KB document | about **6.4x** |
+| Re-parsing streamed prefixes | about **8.7x** |
 
-Measured over three runs on Flutter 3.44.2 / Dart 3.12.2, macOS 26.5.2. The
-figures first recorded here were higher — 20x, 32x, 54x and 69x — because the
-legacy parser has since started caching its anchored dispatch regexes instead
-of compiling one per match. A cheaper denominator shrinks every ratio, and
-none of it means plusparse became slower. The 35 KB row moves enough between
-runs that only its order of magnitude carries meaning.
+Measured on Flutter 3.44.2 / Dart 3.12.2, macOS.
+
+**These figures were wrong twice before, both times too high, and the reason is
+worth recording.** The first set (20x, 32x, 54x, 69x) predated the legacy
+parser caching its anchored dispatch regexes; a cheaper denominator shrank
+them to 15x, 23x, 36x and 48x. Those were still wrong, for a larger reason:
+the benchmark timed `Plusparse.parse`, which stops at the AST, against a
+legacy call that also built the `InlineSpan` tree. Unequal work inflates every
+ratio. The benchmark now runs `PlusparseRenderer.render` on both sides and
+asserts they produce the same visible text, so the comparison cannot drift
+apart again without the test failing.
 
 Run it locally:
 

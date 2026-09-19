@@ -86,8 +86,9 @@ GptMarkdown(
 )
 ```
 
-The single-pass parser measures between about 15x and 50x faster than the
-legacy parser in the package benchmarks, depending on the document. Segment
+The single-pass parser measures between about 3x and 9x faster than the legacy
+parser in the package benchmarks, depending on the document — both sides
+building the same spans, asserted to render the same text. Segment
 caching rebuilds only the changing tail, so append cost stays roughly flat as
 a reply grows. The reveal adapts when tokens arrive quickly, fast-forwards
 when generation finishes, avoids unsafe splits inside code fences and block

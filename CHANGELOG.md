@@ -1,66 +1,56 @@
 ## 1.3.0
 
-A new single-pass parser, a lazy sliver, and the legacy regex parser
-deprecated. Nothing is removed and everything deprecated keeps working; see
-[MIGRATION.md](MIGRATION.md).
+Our biggest release yet.
+
+`gpt_markdown` 1.3.0 introduces a new rendering pipeline for fast,
+production-grade AI output. Parsing is **3–9× faster** than the legacy parser,
+whole-frame rendering is up to **2× faster**, and streaming performance stays
+flat as responses grow.
+
+At 12 KB, per-chunk streaming is **31× faster** with `GptMarkdown` and **74×
+faster** with `SliverGptMarkdown` compared with 1.2.1. See the
+[benchmarks](docs/benchmark.md).
+
+Nothing has been removed. Existing integrations continue to work, and
+deprecated APIs remain supported until 2.0.0.
 
 ### Added
 
-* **plusparse**, a single-pass parser, now the default. Parses 2-3x faster than
-  1.2.1, and a streaming reply costs a flat ~1 ms per chunk instead of climbing
-  without limit — 31x faster at 12 KB.
-* **`SliverGptMarkdown`** builds only what is on screen. Use it past a
-  screenful; below that the plain widget is cheaper.
-* **Streaming animations** — `animation:` for a character reveal,
-  `blockAnimation:` for block entrances, with timing and curve arguments.
-* **`blockComponents`** for custom block syntax, and **`InlineDirective`** for a
-  delimited region the parser does not look inside.
-* **Span-returning builders** — `inlineLinkBuilder`, `inlineSourceTagBuilder`,
-  `inlineCodeBuilder` — replacing the three that returned a `Widget`.
-* **Syntax highlighting** for fenced code, with a copy button and language
-  label.
-
-### Deprecated
-
-The legacy regex parser and everything that selects it. All of it still works;
-removal is planned for 2.0.0. [MIGRATION.md](MIGRATION.md) lists all 36 symbols
-with replacements.
-
-* `GptMarkdown.incremental` — delete the argument; plusparse is the default.
-* `GptMarkdown.components` / `inlineComponents` — use `blockComponents`,
-  `inlinePatterns` or `inlineDirectives`. Passing either, **even an empty
-  list**, silently selects the legacy parser.
-* `InlineMd`, `BlockMd`, `MarkdownComponent.globalComponents`,
-  `MarkdownComponent.inlineComponents`, `MdWidget`, the 22 built-in regex
-  components, `LinkButton` and `LinkSpanBuilder`.
+* **`plusparse`** — a new single-pass parser, enabled by default.
+* **`SliverGptMarkdown`** — lazy rendering for long documents and streaming
+  responses.
+* **Streaming animations** — character reveals and block entrances with
+  configurable timing and curves.
+* **Modern extension APIs** for custom block and inline syntax.
+* **Span-based builders** for links, citations, and inline code.
+* **Syntax highlighting for nearly 200 languages**, with a language label and
+  accessible copy button.
 
 ### Changed
 
-* **Links render as a text span, not a widget**, so they wrap mid-label, sit on
-  the baseline and are selectable. `find.byType(LinkButton)` finds nothing —
-  count `LinkTextSpan`s instead.
-* **Block constructs render as sibling widgets** rather than placeholders inside
-  a paragraph. Selection across blocks and text scaling both behave differently.
-* The fenced-code panel is one rounded surface; the copy button is an icon.
-* Text direction now drives block layout, in both parsers.
+* Links now wrap naturally, align with surrounding text, and remain selectable.
+* Block elements render independently, improving selection, scaling, and
+  bidirectional layouts.
 
 ### Fixed
 
-Too many to list individually — the highlights:
+* `maxLines` now limits the complete document, and paragraph line breaks are
+  preserved.
+* Lists, quotes, tables, code blocks, images, and mathematics scale and style
+  consistently.
+* Streaming accessibility no longer produces repeated announcement storms.
+* Fixed numerous parsing, reveal-ordering, and streaming-stability issues.
 
-* `maxLines` clamps the whole document again, not each block.
-* A line break inside a paragraph survives the new parser.
-* Five style-sheet fields that were documented but read by no renderer now work
-  (`inlineCode`, `headerTextStyle`, `rowStripeColor`, `bulletShape`, `ImageStyle`
-  bounds and fit).
-* Text scaling is resolved at one boundary; nested lists, quotes, tables and
-  code blocks scale correctly.
-* The code block's copy button is reachable by keyboard and does not lose the
-  first stylus tap.
-* A streaming reply is one live semantics node rather than an announcement
-  storm, and regains its structure when it settles.
-* Emphasis, task lists, block maths in list items, `|` inside maths or code,
-  and many reveal-ordering and streaming-stability bugs.
+### Deprecated
+
+The legacy regex parser remains fully functional, with removal planned
+for 2.0.0.
+
+The `incremental` argument is no longer needed. Replace `components` and
+`inlineComponents` with `blockComponents`, `inlinePatterns`, or
+`inlineDirectives`.
+
+See [MIGRATION.md](MIGRATION.md) for complete upgrade guidance.
 
 ## 1.2.1
 

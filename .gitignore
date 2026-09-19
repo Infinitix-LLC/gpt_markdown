@@ -49,3 +49,6 @@ test/**/failures/
 # Internal competitor comparison. Kept locally; `docs/benchmark.md` is the
 # published version, without the third-party chat kit.
 docs/comparison.md
+
+# Blog drafts. Written here, published elsewhere — not part of the package.
+/block/

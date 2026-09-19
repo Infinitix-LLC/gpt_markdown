@@ -25,8 +25,12 @@ single-construct row renders that construct **ten times** in one document, so a
 per-construct cost is a tenth of what the harness reports — worth remembering
 before reading any one row as the cost of one heading or one code block. Debug
 VM on macOS, so treat the ratios as the result and ignore the absolute
-microseconds. Each package rendered identical output — same paragraph count,
-same character count — so nobody is winning by drawing less.
+microseconds. Each package was checked for rendering the same document before
+its timings were used — same visible text, same block count — so nobody is
+winning by drawing less. Character counts are *not* comparable across
+packages: a renderer that wraps a block in a `WidgetSpan` contributes a
+`U+FFFC` placeholder for it, and the three do that differently. See §5b, where
+the same check is spelled out in detail.
 
 ### 1a. Drawing a finished message (cold mount)
 
@@ -90,8 +94,8 @@ Using the plain `GptMarkdown`, at 18 KB:
 
 - **Against `flutter_markdown_plus` and `markdown_widget` this is not a ratio,
   it is a different shape.** Both re-render the whole reply on every chunk, so
-  their cost climbs without limit — 17 ms → 70 ms and 17 ms → 88 ms, still
-  rising. Ours stays flat. The longer the answer, the bigger the gap. At 18 KB
+  their cost climbs without limit — 21.8 ms → 80.2 ms and 20.4 ms → 93.0 ms,
+  still rising. Ours stays flat. The longer the answer, the bigger the gap. At 18 KB
   they are dropping 4–5 frames per token; we fit inside one.
 - **Which of our two widgets you use decides this.** `GptMarkdown` hands every
   block to one `Column`, so the whole document is in the tree at once.
@@ -243,7 +247,7 @@ And on the table, two things that were tried and did not help:
 | **Built-in `selectable:` flag** | NO — wrap in `SelectionArea` | **YES** | **YES** |
 | **Table of contents** | NO | NO | **YES — with scroll sync** |
 | **Style sheet size** | many style objects | **57 fields, per tag** | per-node configs |
-| **Package size** | 15,800 lines | **2,800 lines** | **2,450 lines** |
+| **Package size** | 17,000 lines | **2,800 lines** | **2,450 lines** |
 | **Dependencies** | 2 | **3, all tiny** | 3 |
 
 ### 2c. Roughly equal
@@ -272,9 +276,9 @@ reply grows, where both of the others climb without limit.
 Where you pay for it is code blocks and small tables.
 `CodeBlockStyle(showCopyButton: false)` halves a code block. For tables the
 opt-out is `TableStyle.columnWidth`, but pick the policy carefully — see the
-correction in §1c. Leave
-them on unless a profile says otherwise — a chat reply carries one or two code
-blocks, not the ten these benchmarks stack up.
+correction in §1c. Leave both switches alone unless a profile says otherwise: a
+chat reply carries one or two code blocks, not the ten these benchmarks stack
+up.
 
 **flutter_markdown_plus** — a document viewer, not a chat. Smallest and
 simplest by far (2,800 lines), the most granular style sheet, footnotes, and
@@ -308,8 +312,8 @@ and per-chunk cost grows faster than any other package here.
 ## 5. Against our own 1.2.1
 
 The tables above compare this package with other packages. This one compares it
-with itself: tag `v1.2.1`, the last release, against the working tree — and the
-two widgets the working tree offers, `GptMarkdown` and `SliverGptMarkdown`.
+with itself: tag `v1.2.1`, the previous release, against 1.3.0 — and the two
+widgets 1.3.0 offers, `GptMarkdown` and `SliverGptMarkdown`.
 
 **Mostly end-to-end renders.** Every figure in §5a and §5b is a real frame —
 parse, build, layout and paint — with each iteration mounting the widget,
@@ -413,6 +417,13 @@ pipeline, so repetition would answer the wrong question.
 whole frames 1.4x to 2.0x. The duplicate control sat at 0-5% on every row but
 one (the prose reply's frame, 18%, where the document is small enough that the
 numbers approach the harness floor).
+
+**These parse figures are conservative and now out of date.** They were taken
+before autolink detection was rewritten from a regular expression to a
+character scan, which removed most of the parse stage's cost — finding bare
+URLs in a link-free paragraph fell from 487 us to 18 us. The §5c table has not
+been re-run against v1.2.1 since. The in-version comparison in the package
+benchmark, which *is* current, puts the parser at 3x to 9x.
 
 The frame ratio is lower than the parse ratio because parsing is not where the
 time goes. On a reply with structure in it — headings, lists, a table, a fence —
