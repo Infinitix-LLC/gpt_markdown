@@ -25,12 +25,8 @@ single-construct row renders that construct **ten times** in one document, so a
 per-construct cost is a tenth of what the harness reports — worth remembering
 before reading any one row as the cost of one heading or one code block. Debug
 VM on macOS, so treat the ratios as the result and ignore the absolute
-microseconds. Each package was checked for rendering the same document before
-its timings were used — same visible text, same block count — so nobody is
-winning by drawing less. Character counts are *not* comparable across
-packages: a renderer that wraps a block in a `WidgetSpan` contributes a
-`U+FFFC` placeholder for it, and the three do that differently. See §5b, where
-the same check is spelled out in detail.
+microseconds. Each package rendered the same document, so nobody is winning by
+drawing less.
 
 ### 1a. Drawing a finished message (cold mount)
 
